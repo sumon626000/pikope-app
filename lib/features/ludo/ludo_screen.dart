@@ -9,6 +9,7 @@ import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
 import '../../core/duel_ui.dart';
+import '../../core/turn_life_dots.dart';
 import '../../core/widgets.dart';
 import '../../data/api_client.dart';
 import '../../game/ludo/ludo_rules.dart';
@@ -490,17 +491,7 @@ class _SeatPanel extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  for (var i = 0; i < 5; i++)
-                    Container(
-                      width: 12,
-                      height: 12,
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: i < 5 - missed ? const Color(0xFF3FDD5C) : const Color(0xFF55607A),
-                        border: Border.all(color: const Color(0xFF0B3A1A), width: 1.5),
-                      ),
-                    ),
+                  TurnLifeDots(missed: missed, size: 12),
                 ],
               ),
             ),

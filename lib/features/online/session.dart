@@ -182,6 +182,38 @@ class SessionNotifier extends Notifier<SessionState> {
     return r['request'] as Map<String, dynamic>;
   }
 
+  Future<List<Map<String, dynamic>>> redeemRequests({int limit = 20}) async {
+    await ensureSignedIn();
+    return ((await _api.get('/me/redeems'))['requests'] as List).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> cancelRedeem(int id) async {
+    await ensureSignedIn();
+    final r = await _api.post('/redeem/cancel', {'id': id});
+    _adopt(r['user'] as Map<String, dynamic>);
+    return r['request'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>?> lookupTransferTarget(String gameId) async {
+    await ensureSignedIn();
+    final code = gameId.replaceAll(RegExp(r'\D'), '');
+    if (code.length != 6) return null;
+    try {
+      return (await _api.get('/transfer/lookup?gameId=$code'))['profile'] as Map<String, dynamic>;
+    } on ApiException catch (e) {
+      if (e.code == 'not_found' || e.status == 404) return null;
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> sendCoinTransfer({required String gameId, required int amount}) async {
+    await ensureSignedIn();
+    final code = gameId.replaceAll(RegExp(r'\D'), '');
+    final r = await _api.post('/transfer/send', {'gameId': code, 'amount': amount});
+    _adopt(r['user'] as Map<String, dynamic>);
+    return r['transfer'] as Map<String, dynamic>;
+  }
+
   /// Operator announcements to show in the inbox (and home banner).
   Future<List<Map<String, dynamic>>> notices() async {
     await ensureSignedIn();

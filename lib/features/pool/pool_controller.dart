@@ -692,7 +692,8 @@ class PoolController extends ChangeNotifier implements ShotTable {
         ..consecutiveFouls = ps[i]['consecutiveFouls'] as int
         ..shots = ps[i]['shots'] as int
         ..ballsPocketed = ps[i]['ballsPocketed'] as int
-        ..fouls = ps[i]['fouls'] as int;
+        ..fouls = ps[i]['fouls'] as int
+        ..missed = ps[i]['missed'] as int? ?? 0;
     }
     state
       ..turn = v['turn'] as int

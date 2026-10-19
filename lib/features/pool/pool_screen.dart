@@ -188,6 +188,7 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
                     shotSeconds: c.config.shotSeconds,
                     size: 84,
                     nameSide: NameSide.hidden,
+                    turnMisses: widget.driver != null ? c.players[i].missed : null,
                   ),
                 ),
                 AnimatedPositioned(

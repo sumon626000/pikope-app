@@ -77,7 +77,8 @@ class OnlineGameDriver implements GameLink {
   /// True while the server cannot be reached (no answer over the socket or
   /// over HTTP for [_offlineAfter]). Play resumes by itself once it is back.
   final ValueNotifier<bool> offline = ValueNotifier(false);
-  static const _offlineAfter = Duration(seconds: 7);
+  /// Shown as "reconnecting" until contact returns; match state keeps polling.
+  static const _offlineAfter = Duration(seconds: 20);
   DateTime _lastContact = DateTime.now();
 
   void _contact() {

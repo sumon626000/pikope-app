@@ -11,6 +11,7 @@ import '../misc/leaderboard_screen.dart';
 import 'cues_screen.dart';
 import 'duel_chrome.dart';
 import 'lobby_data.dart';
+import '../online/online_screens.dart';
 import 'matchmaking_screen.dart';
 import 'shop_screen.dart';
 import '../../l10n/strings.dart';
@@ -18,12 +19,15 @@ import '../../l10n/strings.dart';
 /// Pick what to play for: a row of tables, cheapest to richest, that scrolls
 /// sideways with the chosen one large in the middle.
 class BetLevelScreen extends ConsumerStatefulWidget {
-  const BetLevelScreen({super.key, required this.mode, this.practiceFirst = false});
+  const BetLevelScreen({super.key, required this.mode, this.practiceFirst = false, this.friendsRoom = false});
 
   final DuelMode mode;
 
   /// Open straight on the free practice choice.
   final bool practiceFirst;
+
+  /// Pick a stake, then open a private room (play with friends).
+  final bool friendsRoom;
 
   @override
   ConsumerState<BetLevelScreen> createState() => _BetLevelScreenState();
@@ -63,13 +67,13 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
   }
 
   void _play(BetLevel level) {
-    final t = ref.read(stringsProvider);
     final coins = ref.read(settingsProvider).coins;
     if (coins < level.buyIn) {
-      showDuelMessage(context,
-          title: t.notEnoughCoin,
-          body: t.notEnoughTableBody(formatPicoCoins(level.buyIn), formatPicoCoins(coins)),
-          icon: Icons.lock_rounded);
+      _open(const ShopScreen(initialTab: 1));
+      return;
+    }
+    if (widget.friendsRoom) {
+      _open(OnlineLobbyScreen.stakedPrivate(gameKey: widget.mode.apiName, level: level));
       return;
     }
     _open(MatchmakingScreen(mode: widget.mode, level: level));
@@ -123,8 +127,8 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 22),
                       alignment: Alignment.center,
                       decoration: duelPanel(radius: 14, rim: on ? DuelColors.gold : DuelColors.rim, glow: on),
-                      child: Text('${levels[i].stake}',
-                          style: AppText.label(22, color: on ? DuelColors.gold : Colors.white, weight: FontWeight.w900)),
+                      child: Text(levels[i].displayName,
+                          style: AppText.label(18, color: on ? DuelColors.gold : Colors.white, weight: FontWeight.w900)),
                     ),
                   );
                 },
@@ -159,6 +163,7 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
             ),
           ],
           // Bottom row, as on the home screen but with BACK.
+          if (!widget.friendsRoom)
           Positioned(
             left: 42,
             top: 722,
@@ -333,10 +338,9 @@ class _LevelCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
     final poker = mode == DuelMode.poker;
-    final potPrize = level.stake * mode.seats;
     String plain(int v) => v >= 10000 ? formatCoins(v, compact: true) : '$v';
-    final headline = plain(level.stake);
-    final winLine = poker ? plain(level.maxPrize!) : plain(potPrize);
+    final headline = level.displayName;
+    final winLine = poker ? plain(level.maxPrize!) : plain(level.prize ?? level.stake * mode.seats);
     return Container(
       width: 372,
       height: 470,
@@ -359,8 +363,6 @@ class _LevelCard extends ConsumerWidget {
           Column(
             children: [
               const SizedBox(height: 28),
-              Text(t.stake, style: AppText.label(28, color: DuelColors.gold, weight: FontWeight.w900)),
-              const SizedBox(height: 12),
               SizedBox(
                 height: 104,
                 child: FittedBox(
@@ -368,12 +370,14 @@ class _LevelCard extends ConsumerWidget {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 34),
                     child: Text(headline,
-                        style: AppText.label(96, color: poker ? DuelColors.gold : Colors.white, weight: FontWeight.w900).copyWith(
+                        style: AppText.label(52, color: poker ? DuelColors.gold : Colors.white, weight: FontWeight.w900).copyWith(
                           shadows: [Shadow(color: color.withValues(alpha: 0.8), blurRadius: 24)],
                         )),
                   ),
                 ),
               ),
+              const SizedBox(height: 6),
+              Text(t.stakeAmount(level.stake), style: AppText.label(22, color: DuelColors.gold, weight: FontWeight.w800)),
               const SizedBox(height: 14),
               // The glowing rule under the prize.
               Container(
@@ -389,7 +393,7 @@ class _LevelCard extends ConsumerWidget {
               const SizedBox(height: 4),
               Text(winLine, style: AppText.label(28, color: Colors.white, weight: FontWeight.w900)),
               const SizedBox(height: 10),
-              Text(t.buyIn(level.buyIn), style: AppText.label(22, color: Colors.white, weight: FontWeight.w900)),
+              Text(t.entryFee(level.buyIn), style: AppText.label(22, color: Colors.white, weight: FontWeight.w900)),
               const SizedBox(height: 14),
               if (poker)
                 Text(t.minPrizePlayers(level.minPrize!),

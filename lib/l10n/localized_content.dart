@@ -79,6 +79,12 @@ const _howToEn = [
     'CARROM',
     '1 v 1. Pocket your nine pieces; cover the red queen; avoid fouls with the striker. First to pocket all nine wins.',
   ),
+  (
+    'LUDO (2 OR 4 PLAYERS)',
+    'Roll the dice on your turn and move a piece by that many steps. Pocket all four pieces into the home column '
+        'before your opponents. In a 4-player room everyone plays for themselves; in 2-player it is head to head. '
+        'Online staked rooms use the same entry fee and prize as the table you picked.',
+  ),
 ];
 
 const _howToBn = [
@@ -120,6 +126,11 @@ const _howToBn = [
   (
     'ক্যারাম',
     '১ বনাম ১। নিজের ৯টি গুটি পকেট; লাল রানী কভার; স্ট্রাইকার ফাউল এড়িয়ে খেলুন। ৯টি আগে = জয়।'
+  ),
+  (
+    'লুডু (২ বা ৪ খেলোয়াড়)',
+    'আপনার টার্নে ডাইস রোল করে গুটি এগোান। প্রতিপক্ষের আগে চারটি গুটি হোমে নিয়ে জিতুন। '
+        '৪ জনে সবাই নিজের জন্য; ২ জনে ১ বনাম ১। অনলাইন স্টেক রুমে বেছে নেওয়া টেবিলের এন্ট্রি ও প্রাইজ প্রযোজ্য।'
   ),
 ];
 

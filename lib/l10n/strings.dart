@@ -102,11 +102,28 @@ class AppStrings {
   String get picoCoin => _t('PICO COIN', 'পিকো কয়েন');
   String shopSub(int globalDiscount) => globalDiscount > 0
       ? _t('EXTRA $globalDiscount% ON PACKS · 1 COIN = 1 BDT', 'প্যাকে অতিরিক্ত $globalDiscount% · ১ কয়েন = ১ টাকা')
-      : _t('BUY · ADD · REDEEM · HISTORY', 'কিনুন · যোগ · রিডিম · ইতিহাস');
+      : _t('BUY · ADD · SEND · REDEEM · HISTORY', 'কিনুন · যোগ · পাঠান · রিডিম · ইতিহাস');
   String get tabBuy => _t('BUY', 'কিনুন');
   String get tabAdd => _t('ADD', 'যোগ');
+  String get tabTransfer => _t('SEND', 'পাঠান');
   String get tabRedeem => _t('REDEEM', 'রিডিম');
   String get tabHistory => _t('HISTORY', 'ইতিহাস');
+  String get transferOff => _t('Coin transfer is off.', 'কয়েন পাঠানো বন্ধ।');
+  String get transferGameIdLabel => _t('RECIPIENT GAME ID (6 DIGITS)', 'গ্রহীতার গেম আইডি (৬ সংখ্যা)');
+  String get transferAmountLabel => _t('AMOUNT (PICO COIN)', 'পরিমাণ (পিকো কয়েন)');
+  String transferFeeHint(int pct, String fee, String total) =>
+      _t('Fee $pct% ($fee) · Total deducted $total', 'ফি $pct% ($fee) · মোট কাটা $total');
+  String get transferConfirmTap => _t('TAP AGAIN TO SEND', 'পাঠাতে আবার ট্যাপ করুন');
+  String get transferSendBtn => _t('SEND COIN', 'কয়েন পাঠান');
+  String get transferGuestOnly => _t('Only registered accounts can send coin.', 'শুধু রেজিস্টার্ড অ্যাকাউন্ট পাঠাতে পারবে।');
+  String get transferInvalidId => _t('No player with this game ID.', 'এই গেম আইডিতে কেউ নেই।');
+  String get transferNotEligible => _t('This ID cannot receive transfers (guest or invalid).', 'এই আইডি গ্রহণ করতে পারবে না।');
+  String get transferSent => _t('TRANSFER SENT', 'পাঠানো হয়েছে');
+  String transferSentBody(String name, int amount) => _t('You sent $amount to $name.', '$name কে $amount পাঠানো হয়েছে।');
+  String get badgeTransfer => _t('TRANSFER', 'ট্রান্সফার');
+  String get redeemCancel => _t('CANCEL', 'বাতিল');
+  String get redeemPendingTitle => _t('PENDING REDEEMS', 'অপেক্ষমান রিডিম');
+  String get redeemCancelled => _t('Redeem cancelled. Coins returned.', 'রিডিম বাতিল। কয়েন ফেরত।');
   String get packsTitle => _t('PICO COIN PACKS', 'পিকো কয়েন প্যাক');
   String get noPacks => _t('NO PACKS YET — ADD THEM IN ADMIN', 'এখনো প্যাক নেই — অ্যাডমিনে যোগ করুন');
   String get cuesSection => _t('CUES', 'কিউ');
@@ -264,6 +281,8 @@ class AppStrings {
         return 'প্রত্যাখ্যাত';
       case 'pending':
         return 'অপেক্ষমান';
+      case 'cancelled':
+        return 'বাতিল';
       default:
         return status.toUpperCase();
     }
@@ -293,6 +312,8 @@ class AppStrings {
   String get practice => _t('PRACTICE', 'অভ্যাস');
   String get practiceSub => _t('FREE - BOTS OR PASS & PLAY', 'ফ্রি — বট বা পাস অ্যান্ড প্লে');
   String buyIn(int n) => _t('BUY IN: $n', 'বাই ইন: $n');
+  String entryFee(int n) => _t('ENTRY: $n', 'এন্ট্রি: $n');
+  String stakeAmount(int n) => _t('STAKE $n', 'স্টেক $n');
   String minPrizePlayers(int prize) =>
       _t('MIN PRIZE ${formatCoinsDisplay(prize)}  -  4 PLAYERS', 'ন্যূন. পুরস্কার ${formatCoinsDisplay(prize)}  -  ৪ খেলোয়াড়');
   String get playersOnline => _t('PLAYERS ONLINE', 'খেলোয়াড় অনলাইন');
@@ -349,8 +370,8 @@ class AppStrings {
       );
   String get friendsTitle => _t('PLAY WITH FRIENDS', 'বন্ধুদের সাথে খেলুন');
   String get friendsBody => _t(
-        'A private room with a code to share. Friendly matches are free: no buy-in, no prize.',
-        'কোড শেয়ার করে প্রাইভেট রুম। বন্ধুত্বপূর্ণ ম্যাচ ফ্রি — কোনো বাই-ইন/পুরস্কার নেই।',
+        'Pick a table amount, then create a private room or join with a room code. Entry fee applies; winner takes the prize.',
+        'টেবিলের পরিমাণ বেছে নিন, তারপর প্রাইভেট রুম বানান বা রুম কোড দিয়ে জয়েন করুন। এন্ট্রি ফি লাগে; বিজয়ী প্রাইজ পায়।',
       );
   String get poolFriendsTitle => _t('POOL WITH FRIENDS', 'বন্ধুদের সাথে পুল');
   String get poolFriendsBody => _t('Pick the table for your private room.', 'প্রাইভেট রুমের টেবিল বেছে নিন।');
@@ -360,7 +381,9 @@ class AppStrings {
   String get practiceFreeTitle => _t('PRACTICE\nFOR FREE', 'ফ্রি\nঅভ্যাস');
   String get practiceFreeSub => _t('PLAY AGAINST BOTS', 'বটের বিপক্ষে খেলুন');
   String get friendsBannerTitle => _t('PLAY WITH\nFRIENDS', 'বন্ধুদের\nসাথে');
-  String get friendsBannerSub => _t('PRIVATE ROOM - FREE', 'প্রাইভেট রুম — ফ্রি');
+  String get friendsBannerSub => _t('PRIVATE ROOM - STAKED', 'প্রাইভেট রুম — স্টেক');
+  String friendsStakeLine(String entry, String prize) =>
+      _t('Entry $entry  ·  Win $prize  ·  Share the room code', 'এন্ট্রি $entry  ·  জয় $prize  ·  রুম কোড শেয়ার করুন');
   String get poolSub => _t('8, 9 AND 10 BALL\nAND BILLIARD POKER', '৮, ৯, ১০ বল\nও বিলিয়ার্ড পোকার');
   String get ludoSub => _t('2 OR 4 PLAYERS\nROLL AND RACE HOME', '২ বা ৪ খেলোয়াড়\nঘরে পৌঁছান');
   String get carromSub => _t('1 V 1\nPOCKET YOUR NINE', '১ বনাম ১\nনয়টি পকেট');
@@ -633,6 +656,8 @@ class AppStrings {
   String buyInColon(String amount) => _t('BUY IN: $amount', 'বাই ইন: $amount');
   String buyInWinUpTo(String buyIn, String maxPrize) =>
       _t('BUY IN: $buyIn  -  WIN UP TO $maxPrize', 'বাই ইন: $buyIn  -  জিততে পারেন $maxPrize');
+  String entryWinUpTo(String entry, String maxPrize) =>
+      _t('ENTRY: $entry  -  WIN UP TO $maxPrize', 'এন্ট্রি: $entry  -  জিততে পারেন $maxPrize');
   String get readyShort => _t('READY', 'প্রস্তুত');
   String get winBadge => _t('WIN', 'জয়');
   String playerWins(String name) => _t('${name.toUpperCase()} WINS!', '${name.toUpperCase()} জিতেছে!');

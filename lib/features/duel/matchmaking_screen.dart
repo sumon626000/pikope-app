@@ -178,7 +178,7 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Sing
     final prizeLine = _started && (_room?['prize'] as int? ?? 0) > 0
         ? t.prizeColon(formatCoins(_room!['prize'] as int))
         : poker
-            ? t.buyInWinUpTo(formatCoins(widget.level.buyIn), formatCoins(widget.level.maxPrize!, compact: true))
+            ? t.entryWinUpTo(formatCoins(widget.level.buyIn), formatCoins(widget.level.maxPrize!, compact: true))
             : t.prizeColon(formatCoins(widget.level.prize!));
     return PopScope(
       canPop: false,

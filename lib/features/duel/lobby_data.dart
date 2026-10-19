@@ -35,12 +35,26 @@ int _asInt(Object? value, [int fallback = 0]) {
 }
 
 class BetLevel {
-  const BetLevel({required this.level, required this.stake, required this.buyIn, required this.players, this.prize, this.minPrize, this.maxPrize});
+  const BetLevel({
+    required this.level,
+    required this.name,
+    required this.stake,
+    required this.fee,
+    required this.buyIn,
+    required this.players,
+    this.prize,
+    this.minPrize,
+    this.maxPrize,
+  });
 
   final int level;
+  final String name;
   final int stake;
+  final int fee;
   final int buyIn;
   final int players;
+
+  String get displayName => name.isNotEmpty ? name : '$stake';
 
   /// Billiard: what the winner takes.
   final int? prize;
@@ -51,7 +65,9 @@ class BetLevel {
 
   factory BetLevel.fromJson(Map<String, dynamic> j) => BetLevel(
         level: _asInt(j['level']),
+        name: (j['name'] as String?)?.trim() ?? '',
         stake: _asInt(j['stake']),
+        fee: _asInt(j['fee']),
         buyIn: _asInt(j['buyIn']),
         players: _asInt(j['players']),
         prize: j['prize'] == null ? null : _asInt(j['prize']),
@@ -86,13 +102,13 @@ class CoinShopPack {
   factory CoinShopPack.fromJson(Map<String, dynamic> j) => CoinShopPack(
         id: j['id'] as String,
         name: j['name'] as String,
-        coins: j['coins'] as int,
-        discountPercent: j['discountPercent'] as int,
-        globalDiscountPercent: j['globalDiscountPercent'] as int? ?? 0,
-        receiveCoins: j['receiveCoins'] as int,
-        priceCoins: j['priceCoins'] as int,
-        free: j['free'] as bool,
-        claimed: j['claimed'] as bool,
+        coins: _asInt(j['coins']),
+        discountPercent: _asInt(j['discountPercent']),
+        globalDiscountPercent: _asInt(j['globalDiscountPercent']),
+        receiveCoins: _asInt(j['receiveCoins']),
+        priceCoins: _asInt(j['priceCoins']),
+        free: j['free'] as bool? ?? false,
+        claimed: j['claimed'] as bool? ?? false,
       );
 }
 
@@ -126,6 +142,27 @@ class CoinDepositConfig {
           for (final a in (j['agents'] as List? ?? const []).cast<Map<String, dynamic>>())
             (id: a['id'] as String, label: a['label'] as String, number: a['number'] as String),
         ],
+      );
+}
+
+class CoinTransferConfig {
+  const CoinTransferConfig({
+    required this.enabled,
+    required this.feePercent,
+    required this.minCoins,
+    required this.maxCoins,
+  });
+
+  final bool enabled;
+  final int feePercent;
+  final int minCoins;
+  final int maxCoins;
+
+  factory CoinTransferConfig.fromJson(Map<String, dynamic> j) => CoinTransferConfig(
+        enabled: j['enabled'] as bool? ?? false,
+        feePercent: j['feePercent'] as int? ?? 10,
+        minCoins: j['minCoins'] as int? ?? 10,
+        maxCoins: j['maxCoins'] as int? ?? 500000,
       );
 }
 
@@ -233,6 +270,7 @@ class LobbyData {
     required this.coinShop,
     required this.redeem,
     required this.coinDeposit,
+    required this.coinTransfer,
     required this.push,
     required this.fetchedAt,
   });
@@ -247,6 +285,7 @@ class LobbyData {
   final CoinShopInfo coinShop;
   final RedeemConfig redeem;
   final CoinDepositConfig coinDeposit;
+  final CoinTransferConfig coinTransfer;
   final PushConfig push;
   final DateTime fetchedAt;
 
@@ -265,6 +304,7 @@ class LobbyData {
         coinShop: CoinShopInfo.fromJson(j['coinShop'] as Map<String, dynamic>? ?? const {'globalDiscountPercent': 0, 'packs': []}),
         redeem: RedeemConfig.fromJson(j['redeem'] as Map<String, dynamic>? ?? const {'enabled': false}),
         coinDeposit: CoinDepositConfig.fromJson(j['coinDeposit'] as Map<String, dynamic>? ?? const {'enabled': false}),
+        coinTransfer: CoinTransferConfig.fromJson(j['coinTransfer'] as Map<String, dynamic>? ?? const {'enabled': false}),
         push: PushConfig.fromJson(j['push'] as Map<String, dynamic>?),
         fetchedAt: DateTime.now(),
       );

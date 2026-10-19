@@ -9,6 +9,7 @@ import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
 import '../../core/duel_ui.dart';
+import '../../core/turn_life_dots.dart';
 import '../../core/widgets.dart';
 import '../../data/api_client.dart';
 import '../../game/carrom/carrom_physics.dart';
@@ -267,6 +268,7 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
               shotSeconds: state.shotSeconds,
               pieces: _c.pieceSkin,
               chat: _c.chatOf(seat) == null ? null : carromChatPresets[_c.chatOf(seat)!],
+              missed: widget.driver != null ? p.missed : null,
             ),
           );
         }),
@@ -351,6 +353,7 @@ class _SeatPanel extends StatelessWidget {
     required this.clock,
     required this.shotSeconds,
     required this.pieces,
+    this.missed,
     this.chat,
   });
 
@@ -370,6 +373,7 @@ class _SeatPanel extends StatelessWidget {
   final ValueListenable<double> clock;
   final int shotSeconds;
   final PieceSkin pieces;
+  final int? missed;
   final String? chat;
 
   static const _shadow = [Shadow(color: Color(0xCC000000), blurRadius: 3, offset: Offset(0, 1.5))];
@@ -424,6 +428,13 @@ class _SeatPanel extends StatelessWidget {
                 ),
               ),
             ),
+            if (missed != null)
+              Positioned(
+                top: _box + 8,
+                left: 0,
+                right: 0,
+                child: Center(child: TurnLifeDots(missed: missed!, size: 11)),
+              ),
             Positioned(
               top: _box + 26,
               child: SizedBox(

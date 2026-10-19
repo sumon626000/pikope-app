@@ -7,6 +7,7 @@ import '../../core/bd_phone.dart';
 import '../../core/app_state.dart';
 import '../../core/widgets/bd_phone_field.dart';
 import '../../core/app_theme.dart';
+import '../../core/duel_ui.dart' show formatCoins;
 import '../../core/widgets.dart';
 import '../../data/api_client.dart';
 import '../../data/app_game.dart';
@@ -24,6 +25,7 @@ import '../start/login_screen.dart';
 import 'game_link.dart';
 import 'realtime_socket.dart';
 import 'session.dart';
+import '../duel/lobby_data.dart';
 import '../../l10n/strings.dart';
 
 /// Opens the match screen for an online game - from a full room, or when
@@ -92,27 +94,49 @@ const _body = TextStyle(fontFamily: 'sans-serif', fontSize: 14, height: 1.4, col
 class OnlineLobbyScreen extends ConsumerStatefulWidget {
   const OnlineLobbyScreen({super.key, required this.game})
       : ludoPlayers = null,
-        carrom = false;
+        carrom = false,
+        friendLevel = null,
+        friendGameKey = null;
 
   /// A Ludo private room for [players] (2 or 4).
   const OnlineLobbyScreen.ludo(this.ludoPlayers, {super.key})
       : game = null,
-        carrom = false;
+        carrom = false,
+        friendLevel = null,
+        friendGameKey = null;
 
   /// A carrom private room.
   const OnlineLobbyScreen.carrom({super.key})
       : game = null,
         ludoPlayers = null,
-        carrom = true;
+        carrom = true,
+        friendLevel = null,
+        friendGameKey = null;
+
+  /// Private room at a chosen stake (play with friends).
+  const OnlineLobbyScreen.stakedPrivate({super.key, required String gameKey, required BetLevel level})
+      : game = null,
+        ludoPlayers = gameKey == 'ludo2' ? 2 : (gameKey == 'ludo4' ? 4 : null),
+        carrom = gameKey == 'carrom',
+        friendLevel = level,
+        friendGameKey = gameKey;
 
   final AppGame? game;
   final int? ludoPlayers;
   final bool carrom;
+  final BetLevel? friendLevel;
+  final String? friendGameKey;
 
-  /// Private room only (no free quick match): Ludo and carrom.
-  bool get isLudo => game == null;
-  String get gameKey => carrom ? 'carrom' : (isLudo ? (ludoPlayers == 2 ? 'ludo2' : 'ludo4') : game!.apiName);
-  String get titleText => carrom ? 'CARROM' : (isLudo ? 'LUDO' : game!.title);
+  bool get isLudo => ludoPlayers != null;
+  String get gameKey =>
+      friendGameKey ?? (carrom ? 'carrom' : (isLudo ? (ludoPlayers == 2 ? 'ludo2' : 'ludo4') : game!.apiName));
+
+  bool get stakedFriends => friendLevel != null;
+  String get titleText => carrom
+      ? 'CARROM'
+      : isLudo
+          ? 'LUDO'
+          : (game?.title ?? AppGameInfo.titleOf(friendGameKey ?? gameKey));
   String get taglineText => carrom
       ? '1 V 1 - PRIVATE ROOM'
       : isLudo
@@ -168,16 +192,19 @@ class _OnlineLobbyScreenState extends ConsumerState<OnlineLobbyScreen> {
     final t = ref.watch(stringsProvider);
     final session = ref.watch(sessionProvider);
     final settings = ref.watch(settingsProvider);
+    final level = widget.friendLevel;
     final gameTitle = widget.carrom
         ? t.carromTitle
         : widget.isLudo
             ? t.ludoTitle
-            : t.appGameTitle(widget.game!);
+            : (widget.game != null ? t.appGameTitle(widget.game!) : AppGameInfo.titleOf(widget.gameKey));
     final tagline = widget.carrom
         ? t.taglinePrivateCarrom
         : widget.isLudo
             ? t.taglinePrivateLudo(widget.ludoPlayers ?? 4)
-            : t.appGameTagline(widget.game!);
+            : widget.game != null
+                ? t.appGameTagline(widget.game!)
+                : t.poolFriendsBody;
     return PageFrame(
       title: t.onlineSuffix(gameTitle),
       maxWidth: 760,
@@ -231,6 +258,18 @@ class _OnlineLobbyScreenState extends ConsumerState<OnlineLobbyScreen> {
                 ],
               ),
             ),
+          if (level != null) ...[
+            Builder(builder: (context) {
+              final seats = widget.isLudo
+                  ? (widget.ludoPlayers ?? 2)
+                  : (widget.carrom ? 2 : (widget.game?.players ?? 2));
+              final prize = level.prize ?? level.stake * seats;
+              return SectionCard(
+                title: level.displayName,
+                child: Text(t.friendsStakeLine(formatCoins(level.buyIn), formatCoins(prize)), style: _body),
+              );
+            }),
+          ],
           SectionCard(
             title: tagline,
             child: Column(
@@ -238,7 +277,7 @@ class _OnlineLobbyScreenState extends ConsumerState<OnlineLobbyScreen> {
                 Row(
                   children: [
                     // Ludo friendly rooms are private only (no public quick match).
-                    if (!widget.isLudo) ...[
+                    if (!widget.isLudo && !widget.stakedFriends) ...[
                       Expanded(
                         child: GameButton(
                           label: t.quickMatch,
@@ -261,7 +300,11 @@ class _OnlineLobbyScreenState extends ConsumerState<OnlineLobbyScreen> {
                         color: AppColors.gold,
                         onPressed: _busy || !session.signedIn
                             ? null
-                            : () => _enter('/rooms', {'game': widget.gameKey, 'private': true}),
+                            : () {
+                                final body = <String, dynamic>{'game': widget.gameKey, 'private': true};
+                                if (widget.friendLevel != null) body['level'] = widget.friendLevel!.level;
+                                _enter('/rooms', body);
+                              },
                       ),
                     ),
                   ],

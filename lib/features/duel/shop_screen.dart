@@ -12,6 +12,7 @@ import 'board_shop.dart';
 import 'duel_chrome.dart';
 import 'lobby_data.dart';
 import '../../l10n/strings.dart';
+import 'coin_transfer_tab.dart';
 
 /// Pico coin: buy packs, redeem to mobile wallet, full activity history.
 class ShopScreen extends ConsumerStatefulWidget {
@@ -24,8 +25,8 @@ class ShopScreen extends ConsumerStatefulWidget {
 }
 
 class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 4, vsync: this, initialIndex: widget.initialTab.clamp(0, 3));
-  int? _packUnit;
+  late final TabController _tabs = TabController(length: 5, vsync: this, initialIndex: widget.initialTab.clamp(0, 4));
+  CoinShopPack? _selectedPack;
   int _packQty = 1;
 
   @override
@@ -35,10 +36,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
   }
 
   void _openPack(CoinShopPack pack) {
-    final maxBdt = ref.read(lobbyProvider).valueOrNull?.coinDeposit.maxBdt ?? 50000;
-    final unit = pack.coins.clamp(1, maxBdt);
     setState(() {
-      _packUnit = unit;
+      _selectedPack = pack;
       _packQty = 1;
     });
     _tabs.animateTo(1);
@@ -73,6 +72,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
                   tabs: [
                     Tab(text: t.tabBuy),
                     Tab(text: t.tabAdd),
+                    Tab(text: t.tabTransfer),
                     Tab(text: t.tabRedeem),
                     Tab(text: t.tabHistory),
                   ],
@@ -83,7 +83,18 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
                     controller: _tabs,
                     children: [
                       _BuyTab(data: data!, onBuy: _openPack),
-                      _DepositTab(config: data.coinDeposit, unit: _packUnit, qty: _packQty, onQty: (q) => setState(() => _packQty = q)),
+                      _DepositTab(
+                        config: data.coinDeposit,
+                        pack: _selectedPack,
+                        packs: data.coinShop.packs,
+                        qty: _packQty,
+                        onPickPack: (p) => setState(() {
+                          _selectedPack = p;
+                          _packQty = 1;
+                        }),
+                        onQty: (q) => setState(() => _packQty = q),
+                      ),
+                      CoinTransferTab(config: data.coinTransfer),
                       _RedeemTab(config: data.redeem),
                       const _ActivityTab(),
                     ],
@@ -179,11 +190,20 @@ class _ShopDoor extends StatelessWidget {
 }
 
 class _DepositTab extends ConsumerStatefulWidget {
-  const _DepositTab({required this.config, this.unit, this.qty = 1, this.onQty});
+  const _DepositTab({
+    required this.config,
+    this.pack,
+    this.packs = const [],
+    this.qty = 1,
+    this.onPickPack,
+    this.onQty,
+  });
 
   final CoinDepositConfig config;
-  final int? unit;
+  final CoinShopPack? pack;
+  final List<CoinShopPack> packs;
   final int qty;
+  final ValueChanged<CoinShopPack>? onPickPack;
   final ValueChanged<int>? onQty;
 
   @override
@@ -209,13 +229,13 @@ class _DepositTabState extends ConsumerState<_DepositTab> {
   @override
   void didUpdateWidget(_DepositTab old) {
     super.didUpdateWidget(old);
-    if (old.unit != widget.unit || old.qty != widget.qty) _syncPackAmount();
+    if (old.pack?.id != widget.pack?.id || old.qty != widget.qty) _syncPackAmount();
   }
 
   void _syncPackAmount() {
-    final unit = widget.unit;
-    if (unit == null) return;
-    final total = unit * widget.qty;
+    final pack = widget.pack;
+    if (pack == null) return;
+    final total = pack.coins * widget.qty;
     final text = '$total';
     if (_bdt.text != text) _bdt.text = text;
   }
@@ -231,6 +251,8 @@ class _DepositTabState extends ConsumerState<_DepositTab> {
   int? get _amount => int.tryParse(_bdt.text.replaceAll(RegExp(r'\D'), ''));
 
   int get _coins {
+    final pack = widget.pack;
+    if (pack != null) return pack.receiveCoins * widget.qty;
     final a = _amount ?? 0;
     final r = widget.config.coinPerBdt;
     return r <= 0 ? a : a * r;
@@ -294,7 +316,7 @@ class _DepositTabState extends ConsumerState<_DepositTab> {
   }
 
   Widget _packStepper() {
-    final unit = widget.unit ?? 0;
+    final unit = widget.pack?.coins ?? 0;
     final canAdd = unit * (widget.qty + 1) <= widget.config.maxBdt;
     final canSub = widget.qty > 1;
     return Padding(
@@ -402,10 +424,32 @@ class _DepositTabState extends ConsumerState<_DepositTab> {
               ],
             ),
             const SizedBox(height: 16),
-            if (widget.unit != null) _packStepper(),
+            if (widget.packs.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (final p in widget.packs)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 10),
+                        child: ChoiceChip(
+                          label: Text(
+                            p.receiveCoins > p.coins ? '${p.coins} → ${p.receiveCoins}' : '${p.coins}',
+                            style: AppText.label(18, weight: FontWeight.w800),
+                          ),
+                          selected: widget.pack?.id == p.id,
+                          onSelected: _busy ? null : (_) => widget.onPickPack?.call(p),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+            if (widget.pack != null) _packStepper(),
             TextField(
               controller: _bdt,
-              readOnly: widget.unit != null,
+              readOnly: widget.pack != null,
               style: input,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -494,6 +538,68 @@ class _RedeemBalanceCard extends StatelessWidget {
   }
 }
 
+class _PendingRedeemRow extends ConsumerStatefulWidget {
+  const _PendingRedeemRow({required this.row, required this.onCancelled});
+
+  final Map<String, dynamic> row;
+  final VoidCallback onCancelled;
+
+  @override
+  ConsumerState<_PendingRedeemRow> createState() => _PendingRedeemRowState();
+}
+
+class _PendingRedeemRowState extends ConsumerState<_PendingRedeemRow> {
+  bool _busy = false;
+
+  Future<void> _cancel() async {
+    final t = ref.read(stringsProvider);
+    setState(() => _busy = true);
+    try {
+      await ref.read(sessionProvider.notifier).cancelRedeem(widget.row['id'] as int);
+      await ref.read(lobbyProvider.notifier).refresh();
+      if (mounted) {
+        widget.onCancelled();
+        showDuelMessage(context, title: t.redeemCancel, body: t.redeemCancelled, icon: Icons.undo_rounded);
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        showDuelMessage(context, title: t.redeemOff, body: t.maybeApi(e.message), icon: Icons.error_outline);
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = ref.watch(stringsProvider);
+    final r = widget.row;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A2140),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: DuelColors.gold.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '${formatCoins(r['coins'] as int)} → ${r['bdt']} BDT · ${r['walletProviderLabel']}',
+              style: AppText.label(18, weight: FontWeight.w800),
+            ),
+          ),
+          TextButton(
+            onPressed: _busy ? null : _cancel,
+            child: Text(_busy ? '…' : t.redeemCancel, style: AppText.label(18, color: DuelColors.red, weight: FontWeight.w900)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _RedeemTab extends ConsumerStatefulWidget {
   const _RedeemTab({required this.config});
 
@@ -509,6 +615,7 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
   String _provider = 'bkash';
   bool _busy = false;
   String? _error;
+  late Future<List<Map<String, dynamic>>> _pending;
 
   @override
   void initState() {
@@ -516,6 +623,13 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
     if (widget.config.providers.isNotEmpty) {
       _provider = widget.config.providers.first.id;
     }
+    _reloadPending();
+  }
+
+  void _reloadPending() {
+    _pending = ref.read(sessionProvider.notifier).redeemRequests().then(
+          (list) => list.where((r) => r['status'] == 'pending').toList(),
+        );
   }
 
   @override
@@ -571,6 +685,7 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
           );
       await ref.read(lobbyProvider.notifier).refresh();
       if (mounted) {
+        setState(_reloadPending);
         showDuelMessage(context,
             title: t.redeemSent,
             body: t.redeemSentBody(_bdt),
@@ -609,6 +724,26 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            FutureBuilder<List<Map<String, dynamic>>>(
+              future: _pending,
+              builder: (context, snap) {
+                final rows = snap.data ?? const [];
+                if (rows.isEmpty) return const SizedBox.shrink();
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(t.redeemPendingTitle, style: AppText.label(22, color: DuelColors.silver, weight: FontWeight.w900)),
+                    const SizedBox(height: 10),
+                    for (final r in rows)
+                      _PendingRedeemRow(
+                        row: r,
+                        onCancelled: () => setState(_reloadPending),
+                      ),
+                    const SizedBox(height: 20),
+                  ],
+                );
+              },
+            ),
             Text(t.cashOutTitle, style: AppText.label(36, color: DuelColors.gold, weight: FontWeight.w900)),
             const SizedBox(height: 16),
             _RedeemBalanceCard(
@@ -785,13 +920,30 @@ class _ActivityRow extends ConsumerWidget {
         time: time,
       );
     }
+    if (kind == 'transfer') {
+      final sent = item['direction'] == 'sent';
+      final amount = item['amount'] as int;
+      final fee = item['fee'] as int? ?? 0;
+      final peer = sent ? (item['toName'] as String? ?? '') : (item['fromName'] as String? ?? '');
+      final peerId = sent ? item['toGameId'] : item['fromGameId'];
+      return _rowShell(
+        badge: t.badgeTransfer,
+        badgeColor: sent ? DuelColors.silver : DuelColors.green,
+        title: sent ? '→ $peer' : '← $peer',
+        sub: 'ID $peerId · ${sent ? '-${formatCoins(amount + fee)}' : '+${formatCoins(amount)}'}',
+        coins: sent ? -(amount + fee) : amount,
+        time: time,
+      );
+    }
     if (kind == 'redeem') {
       final status = item['status'] as String;
       final color = status == 'approved'
           ? DuelColors.green
           : status == 'rejected'
               ? DuelColors.red
-              : DuelColors.gold;
+              : status == 'cancelled'
+                  ? DuelColors.dim
+                  : DuelColors.gold;
       return _rowShell(
         badge: t.statusLabel(status),
         badgeColor: color,
@@ -892,9 +1044,12 @@ class _CoinPackCard extends ConsumerWidget {
             children: [
               const PikoCoinIcon(size: 84),
               const SizedBox(height: 8),
-              Text(formatCoins(pack.receiveCoins, compact: true),
+              Text(formatCoins(pack.coins, compact: true),
                   style: AppText.label(34, color: Colors.white, weight: FontWeight.w900)),
-              Text(pack.name, style: AppText.label(12, color: DuelColors.dim, weight: FontWeight.w700)),
+              Text(t.youGetCoins(formatPicoCoins(pack.receiveCoins)),
+                  style: AppText.label(14, color: DuelColors.gold, weight: FontWeight.w800)),
+              if (pack.name != '${pack.coins}')
+                Text(pack.name, style: AppText.label(12, color: DuelColors.dim, weight: FontWeight.w700)),
               if (pack.discountPercent > 0 || pack.globalDiscountPercent > 0)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),

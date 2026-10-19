@@ -74,6 +74,7 @@ class PoolPlayer {
   int shots = 0;
   int ballsPocketed = 0;
   int fouls = 0;
+  int missed = 0;
 }
 
 class PoolShotResult {

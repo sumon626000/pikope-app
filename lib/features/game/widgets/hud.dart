@@ -7,6 +7,7 @@ import '../../../l10n/strings.dart';
 
 import '../../../core/app_theme.dart';
 import '../../../core/audio_service.dart';
+import '../../../core/turn_life_dots.dart';
 import '../../../core/widgets.dart';
 import '../../../game/models/match_state.dart';
 import '../../../game/models/player_state.dart';
@@ -94,6 +95,7 @@ class AvatarSeat extends StatelessWidget {
     required this.clock,
     required this.shotSeconds,
     this.tag,
+    this.turnMisses,
     this.winnerLabel = 'WINNER',
     this.size = 96,
     this.nameSide = NameSide.below,
@@ -108,6 +110,7 @@ class AvatarSeat extends StatelessWidget {
   final ValueNotifier<double> clock;
   final int shotSeconds;
   final String? tag;
+  final int? turnMisses;
   final String winnerLabel;
 
   @override
@@ -162,13 +165,23 @@ class AvatarSeat extends StatelessWidget {
                   Positioned(left: -14, bottom: -6, right: -14, child: _Badge(winnerLabel, AppColors.gold))
                 else if (tag != null)
                   Positioned(left: -14, bottom: -6, right: -14, child: _Badge(tag!, AppColors.gold)),
+                if (turnMisses != null)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: -14,
+                    child: Center(child: TurnLifeDots(missed: turnMisses!, size: size * 0.11)),
+                  ),
               ],
             ),
           );
     final label = Text(name.toUpperCase(), maxLines: 1, style: AppText.label(size * 0.19));
     switch (nameSide) {
       case NameSide.hidden:
-        return Padding(padding: const EdgeInsets.symmetric(horizontal: 30), child: tile);
+        return Padding(
+          padding: EdgeInsets.fromLTRB(30, 0, 30, turnMisses != null ? 10 : 0),
+          child: tile,
+        );
       case NameSide.right:
         return Row(
           mainAxisSize: MainAxisSize.min,

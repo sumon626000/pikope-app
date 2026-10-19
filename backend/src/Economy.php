@@ -15,13 +15,14 @@ final class Economy
 {
     public const DEFAULTS = [
         // House fee charged on top of the stake, in percent.
-        'rakePercent' => 5,
+        'rakePercent' => 10,
         // Winner prize for pot games (pool, ludo, carrom): stake × seats × (this ÷ 200).
         // 200 = full pot (1v1 stake 100 → win 200). 180 = stake 100 → win 180.
-        'winPayoutPercent' => 200,
-        // Stake per player at each level. Buy-in = stake + fee.
+        'winPayoutPercent' => 180,
+        // Stake per player at each level. Entry = stake + house fee.
         'billiardStakes' => [25, 50, 100, 300, 500, 1000, 5000, 10000],
         'pokerStakes' => [25, 50, 100, 300, 500, 1000, 5000, 10000],
+        'stakeNames' => ['ROOKIE', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', 'ROYAL', 'LEGEND'],
         // Billiard poker: the prize is stake x multiplier, drawn per match.
         // Weights are occurrences per 100,000,000 matches.
         'jackpot' => [
@@ -36,7 +37,7 @@ final class Economy
         ],
         'dailyBonus' => [200, 300, 400, 500, 700, 900, 1500],
         'dailyGems' => [0, 0, 0, 0, 0, 0, 0],
-        'startCoins' => 2000,
+        'startCoins' => 0,
         // Share of a referred player's stake paid to whoever invited them.
         // 1 means 1 coin per 100 of stake. Kept at or below the house fee.
         'referralPercent' => 1,
@@ -80,7 +81,26 @@ final class Economy
         if (!is_int($rake) && !is_float($rake) || $rake < 0 || $rake > 50) {
             throw ApiError::badRequest('rakePercent must be between 0 and 50');
         }
-        foreach (['billiardStakes', 'pokerStakes', 'dailyBonus', 'dailyGems'] as $key) {
+        foreach (['billiardStakes', 'pokerStakes'] as $key) {
+            $list = $c[$key] ?? null;
+            if (!is_array($list) || !array_is_list($list) || count($list) !== 8) {
+                throw ApiError::badRequest("$key must be exactly 8 stake amounts");
+            }
+            foreach ($list as $v) {
+                if (!is_int($v) || $v < 1 || $v > 100000000) {
+                    throw ApiError::badRequest("$key must hold whole numbers above zero");
+                }
+            }
+        }
+        $names = $c['stakeNames'] ?? null;
+        if (!is_array($names) || !array_is_list($names) || count($names) !== 8) {
+            throw ApiError::badRequest('stakeNames must be exactly 8 labels');
+        }
+        $c['stakeNames'] = array_map(static function ($raw): string {
+            $s = strtoupper(preg_replace('/[^A-Za-z0-9 _-]/', '', trim((string) $raw)) ?? '');
+            return substr($s === '' ? 'LEVEL' : $s, 0, 16);
+        }, $names);
+        foreach (['dailyBonus', 'dailyGems'] as $key) {
             $list = $c[$key] ?? null;
             if (!is_array($list) || !array_is_list($list) || $list === [] || count($list) > 12) {
                 throw ApiError::badRequest("$key must be a list of 1-12 numbers");
@@ -222,8 +242,16 @@ final class Economy
     {
         $c = self::config();
         $out = [];
+        $names = self::config()['stakeNames'] ?? self::DEFAULTS['stakeNames'];
         foreach ($c[$mode === 'poker' ? 'pokerStakes' : 'billiardStakes'] as $i => $stake) {
-            $level = ['level' => $i, 'stake' => $stake, 'fee' => self::fee($stake), 'buyIn' => $stake + self::fee($stake)];
+            $fee = self::fee($stake);
+            $level = [
+                'level' => $i,
+                'name' => (string) ($names[$i] ?? ('LEVEL ' . ($i + 1))),
+                'stake' => $stake,
+                'fee' => $fee,
+                'buyIn' => $stake + $fee,
+            ];
             if ($mode === 'poker') {
                 $xs = array_column($c['jackpot'], 'x');
                 $level += ['minPrize' => $stake * min($xs), 'maxPrize' => $stake * max($xs)];
@@ -594,6 +622,7 @@ final class Economy
                 'packs' => CoinShop::publicPacks((int) $user['id']),
             ],
             'redeem' => Redeem::publicConfig(),
+            'coinTransfer' => CoinTransfer::publicConfig(),
             'coinDeposit' => CoinDeposit::publicConfig(),
             'promotions' => Promotions::publicConfig(),
             'push' => [

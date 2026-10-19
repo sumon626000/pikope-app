@@ -21,7 +21,7 @@ import '../online/session.dart';
 import '../carrom/carrom_lobby_screen.dart';
 import '../ludo/ludo_lobby_screen.dart';
 import '../misc/how_to_play_screen.dart';
-import 'bet_level_screen.dart' show showPoolPracticeDialog;
+import 'bet_level_screen.dart';
 import 'challenge_screen.dart';
 import 'cues_screen.dart';
 import 'duel_chrome.dart';
@@ -191,6 +191,13 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
   static const _ludoColor = Color(0xFFE8721C);
   static const _carromColor = Color(0xFFD9A34A);
 
+  static DuelMode _friendsDuelMode(AppGame game) => switch (game) {
+        AppGame.poker => DuelMode.poker,
+        AppGame.eightBall => DuelMode.eight,
+        AppGame.nineBall => DuelMode.nine,
+        AppGame.tenBall => DuelMode.ten,
+      };
+
   void _practice() {
     final t = ref.read(stringsProvider);
     _chooser(
@@ -211,9 +218,9 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
         body: t.friendsBody,
         choices: [
           (t.poolTitle, _poolColor, _friendsPool),
-          (t.ludoPlayers(2), _ludoColor, () => _open(OnlineLobbyScreen.ludo(2))),
-          (t.ludoPlayers(4), _ludoColor, () => _open(OnlineLobbyScreen.ludo(4))),
-          (t.carromTitle, _carromColor, () => _open(const OnlineLobbyScreen.carrom())),
+          (t.ludoPlayers(2), _ludoColor, () => _open(const BetLevelScreen(mode: DuelMode.ludo2, friendsRoom: true))),
+          (t.ludoPlayers(4), _ludoColor, () => _open(const BetLevelScreen(mode: DuelMode.ludo4, friendsRoom: true))),
+          (t.carromTitle, _carromColor, () => _open(const BetLevelScreen(mode: DuelMode.carrom, friendsRoom: true))),
         ],
       );
   }
@@ -225,7 +232,11 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
       body: t.poolFriendsBody,
       choices: [
         for (final game in AppGame.values)
-          (t.appGameTitle(game), game == AppGame.poker ? DuelColors.purple : DuelColors.blue, () => _open(OnlineLobbyScreen(game: game))),
+          (
+            t.appGameTitle(game),
+            game == AppGame.poker ? DuelColors.purple : DuelColors.blue,
+            () => _open(BetLevelScreen(mode: _friendsDuelMode(game), friendsRoom: true)),
+          ),
       ],
     );
   }

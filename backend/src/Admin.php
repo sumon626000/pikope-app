@@ -17,21 +17,19 @@ final class Admin
 
     public static function handle(string $method, string $path): never
     {
-        $user = Config::get('ADMIN_USER');
-        $pass = Config::get('ADMIN_PASS');
-        if ($user === '' || $pass === '') {
+        if (!AdminAuth::isEnabled()) {
             throw ApiError::notFound('No such endpoint');
         }
         self::assertAdminIpAllowed();
         RateLimit::hit('admin:' . RateLimit::ip(), 120, 300);
         [$givenUser, $givenPass] = Http::basicAuth();
-        if (!hash_equals($user, $givenUser) || !hash_equals($pass, $givenPass)) {
+        if (!AdminAuth::verify($givenUser, $givenPass)) {
             RateLimit::hit('admin-fail:' . RateLimit::ip(), 15, 900);
             header('WWW-Authenticate: Basic realm="PikoPe master admin"');
             http_response_code(401);
             exit('Sign in required');
         }
-        $csrf = hash_hmac('sha256', 'csrf-v2|' . date('Y-m-d') . '|' . $user, $pass);
+        $csrf = AdminAuth::csrfToken();
 
         if ($method === 'POST') {
             self::requireCsrf($csrf);
@@ -85,6 +83,13 @@ final class Admin
                     self::saveSupport();
                 case '/admin/app-update':
                     self::saveAppUpdate();
+                case '/admin/account':
+                    self::saveAdminAccount();
+                case '/admin/alerts/read':
+                    AdminAlert::markAllRead();
+                    self::back('/admin/alerts', 'All alerts marked read.');
+                case '/admin/transfer/save':
+                    self::saveTransferConfig();
             }
             throw ApiError::notFound('No such endpoint');
         }
@@ -110,6 +115,9 @@ final class Admin
             '/admin/push' => self::pushPage($csrf),
             '/admin/support' => self::supportPage($csrf),
             '/admin/app-update' => self::appUpdatePage($csrf),
+            '/admin/account' => self::accountPage($csrf),
+            '/admin/alerts' => self::alertsPage($csrf),
+            '/admin/transfer' => self::transferPage($csrf),
             default => throw ApiError::notFound('No such endpoint'),
         };
     }
@@ -192,8 +200,9 @@ final class Admin
         $c['winPayoutPercent'] = (int) ($_POST['winPayoutPercent'] ?? $c['winPayoutPercent'] ?? 200);
         $c['startCoins'] = (int) ($_POST['startCoins'] ?? $c['startCoins']);
         $c['referralPercent'] = (int) ($c['referralPercent'] ?? 0);
-        $c['billiardStakes'] = self::intListFromPost('billiardStakes');
-        $c['pokerStakes'] = self::intListFromPost('pokerStakes');
+        $c['billiardStakes'] = self::fixedIntListFromPost('billiardStakes', 8);
+        $c['pokerStakes'] = self::fixedIntListFromPost('pokerStakes', 8);
+        $c['stakeNames'] = self::fixedStringListFromPost('stakeNames', 8);
         $c['dailyBonus'] = self::intListFromPost('dailyBonus');
         $c['dailyGems'] = self::intListFromPost('dailyGems', allowZero: true);
         $xs = $_POST['jackpot_x'] ?? [];
@@ -235,6 +244,34 @@ final class Admin
         }
         if ($out === []) {
             throw ApiError::badRequest("$key needs at least one valid number");
+        }
+        return $out;
+    }
+
+    /** @return list<int> */
+    private static function fixedIntListFromPost(string $key, int $count): array
+    {
+        $out = self::intListFromPost($key);
+        if (count($out) !== $count) {
+            throw ApiError::badRequest("$key must have exactly $count values");
+        }
+        return $out;
+    }
+
+    /** @return list<string> */
+    private static function fixedStringListFromPost(string $key, int $count): array
+    {
+        $raw = $_POST[$key] ?? [];
+        if (!is_array($raw)) {
+            throw ApiError::badRequest("$key must be a list of labels");
+        }
+        $out = [];
+        foreach ($raw as $v) {
+            $s = strtoupper(preg_replace('/[^A-Za-z0-9 _-]/', '', trim((string) $v)) ?? '');
+            $out[] = substr($s === '' ? 'LEVEL' : $s, 0, 16);
+        }
+        if (count($out) !== $count) {
+            throw ApiError::badRequest("$key must have exactly $count labels");
         }
         return $out;
     }
@@ -620,6 +657,7 @@ CSS;
             $cache = [
                 'deposits' => self::n("SELECT COUNT(*) AS n FROM coin_deposit_requests WHERE status = 'pending'"),
                 'redeems' => self::n("SELECT COUNT(*) AS n FROM redeem_requests WHERE status = 'pending'"),
+                'alerts' => AdminAlert::unreadCount(),
             ];
         }
 
@@ -642,8 +680,12 @@ CSS;
             'Money' => [
                 'deposits' => ['Coin add', '/admin/deposits'],
                 'redeems' => ['Redeem', '/admin/redeems'],
+                'transfer' => ['Coin transfer', '/admin/transfer'],
                 'coin-shop' => ['Coin shop', '/admin/coin-shop'],
                 'referrals' => ['Referrals', '/admin/referrals'],
+            ],
+            'Security' => [
+                'alerts' => ['Signals / alerts', '/admin/alerts'],
             ],
             'Settings' => [
                 'economy' => ['Economy', '/admin/economy'],
@@ -653,6 +695,7 @@ CSS;
                 'notices' => ['Notices', '/admin/notices'],
                 'support' => ['Support links', '/admin/support'],
                 'app-update' => ['App update', '/admin/app-update'],
+                'account' => ['Admin password', '/admin/account'],
             ],
         ];
         echo '<div class="shell"><details class="nav-wrap" open><summary>Menu — PikoPe Admin</summary>',
@@ -670,13 +713,15 @@ CSS;
                     $badge = '<span class="nav-badge">' . self::e($pending['deposits']) . '</span>';
                 } elseif ($key === 'redeems' && $pending['redeems'] > 0) {
                     $badge = '<span class="nav-badge">' . self::e($pending['redeems']) . '</span>';
+                } elseif ($key === 'alerts' && $pending['alerts'] > 0) {
+                    $badge = '<span class="nav-badge">' . self::e($pending['alerts']) . '</span>';
                 }
                 echo '<a class="', $key === $active ? 'on' : '', '" href="', self::e($base . $href), '">',
                     '<span class="nav-dot"></span><span>', self::e($label), '</span>', $badge, '</a>';
             }
             echo '</nav>';
         }
-        echo '<p class="side-note"><strong>Security:</strong> Use HTTPS, a strong ADMIN_PASS, and optional ADMIN_IP_ALLOWLIST in .env.</p>',
+        echo '<p class="side-note"><strong>Security:</strong> HTTPS, strong password (<a href="', self::e($base), '/admin/account">change here</a>), optional ADMIN_IP_ALLOWLIST in .env.</p>',
             '</aside></details><main><header class="page-head"><h1>', self::e($title), '</h1>';
         self::renderFlash();
     }
@@ -689,6 +734,8 @@ CSS;
         $items = [
             ['Coin add (review)', '/admin/deposits?status=pending', 'Approve bKash / Nagad', $pending['deposits']],
             ['Redeem (review)', '/admin/redeems?status=pending', 'Cash out requests', $pending['redeems']],
+            ['Security signals', '/admin/alerts', 'Redeem abuse, hacks, transfers', $pending['alerts']],
+            ['Coin transfer fee', '/admin/transfer', 'Fee % and limits', 0],
             ['Players', '/admin/players', 'Search and edit accounts', 0],
             ['Economy', '/admin/economy', 'Stakes, fees, bonus', 0],
             ['Push message', '/admin/push', 'APK notifications', 0],
@@ -791,12 +838,17 @@ CSS;
                           FROM users WHERE is_bot = 0 ORDER BY id DESC LIMIT 15');
         $games = Db::all("SELECT g.id, g.game, g.status, g.created_at, g.finished_at, u.display_name AS winner
                           FROM games g LEFT JOIN users u ON u.id = g.winner_id ORDER BY g.id DESC LIMIT 15");
-        $csrf = hash_hmac('sha256', date('Y-m-d') . Config::get('ADMIN_USER'), Config::get('ADMIN_PASS'));
+        $csrf = AdminAuth::csrfToken();
         $base = self::base();
 
         self::begin('Dashboard', 'dashboard');
         self::pageLead('Everything in one place — start with <b>Quick actions</b> below for daily approve and settings.');
         self::quickLinks();
+        $unreadAlerts = AdminAlert::unreadCount();
+        if ($unreadAlerts > 0) {
+            echo '<section class="section"><h2>Unread signals (', self::e($unreadAlerts), ')</h2><p class="muted">Suspicious redeem, transfer abuse, or game integrity.</p>',
+                '<p><a class="btn" href="', self::e($base), '/admin/alerts">Open alerts</a></p></section>';
+        }
         echo '<section class="section"><h2>Key metrics</h2><div class="stats">';
         foreach ($stats as $label => $value) {
             echo '<div class="stat"><b>', self::e($value), '</b><span>', self::e($label), '</span></div>';
@@ -933,7 +985,7 @@ CSS;
              FROM users WHERE $where ORDER BY id DESC LIMIT " . self::PER . ' OFFSET ' . (($page - 1) * self::PER),
             $params
         );
-        $csrf = hash_hmac('sha256', date('Y-m-d') . Config::get('ADMIN_USER'), Config::get('ADMIN_PASS'));
+        $csrf = AdminAuth::csrfToken();
         $keep = $q === '' ? [] : ['q' => $q];
         $next = '/admin/players' . ($q === '' ? '' : '?q=' . rawurlencode($q));
 
@@ -1460,10 +1512,10 @@ CSS;
     {
         $base = self::base();
         $status = (string) ($_GET['status'] ?? 'pending');
-        if (!in_array($status, ['pending', 'approved', 'rejected', 'all'], true)) {
+        if (!in_array($status, ['pending', 'approved', 'rejected', 'cancelled', 'all'], true)) {
             $status = 'pending';
         }
-        $where = $status === 'all' ? '1=1' : 'r.status = ' . ($status === 'pending' ? "'pending'" : ($status === 'approved' ? "'approved'" : "'rejected'"));
+        $where = $status === 'all' ? '1=1' : 'r.status = ' . Db::pdo()->quote($status);
         $rows = Db::all(
             "SELECT r.*, u.display_name, u.phone, u.coins AS balance_now
              FROM redeem_requests r JOIN users u ON u.id = r.user_id
@@ -1476,6 +1528,7 @@ CSS;
             '<a class="', $status === 'pending' ? 'on' : '', '" href="', self::e($base), '/admin/redeems?status=pending">Pending</a>',
             '<a class="', $status === 'approved' ? 'on' : '', '" href="', self::e($base), '/admin/redeems?status=approved">Approved</a>',
             '<a class="', $status === 'rejected' ? 'on' : '', '" href="', self::e($base), '/admin/redeems?status=rejected">Rejected</a>',
+            '<a class="', $status === 'cancelled' ? 'on' : '', '" href="', self::e($base), '/admin/redeems?status=cancelled">Cancelled</a>',
             '<a class="', $status === 'all' ? 'on' : '', '" href="', self::e($base), '/admin/redeems?status=all">All</a>',
             '</div>',
             '<section class="section"><h2>Settings</h2><div class="card"><form method="post" action="', self::e($base), '/admin/redeem/save">', self::csrfField($csrf),
@@ -1494,6 +1547,7 @@ CSS;
             $pill = match ($r['status']) {
                 'pending' => '<span class="pill">pending</span>',
                 'approved' => '<span class="pill good">approved</span>',
+                'cancelled' => '<span class="pill">cancelled</span>',
                 default => '<span class="pill bad">rejected</span>',
             };
             echo '<tr><td>', self::e($r['id']),
@@ -1526,6 +1580,62 @@ CSS;
         }
         echo '</table>', self::tableScrollClose(), '</section>';
         self::end();
+    }
+
+    private static function alertsPage(string $csrf): never
+    {
+        $base = self::base();
+        $rows = AdminAlert::listRecent(100);
+        self::begin('Security signals', 'alerts');
+        self::pageLead('Automatic alerts: illegal redeem attempts, bad transfer targets, suspicious game actions.');
+        echo '<p><form method="post" action="', self::e($base), '/admin/alerts/read">', self::csrfField($csrf),
+            '<button class="ghost">Mark all read</button></form></p>',
+            '<section class="section">', self::tableScrollOpen(),
+            '<table class="one"><tr><th>When<th>Kind<th>Title<th>Detail<th>Player</tr>';
+        foreach ($rows as $a) {
+            $when = date('Y-m-d H:i', (int) ($a['createdAt'] / 1000));
+            $player = $a['userId'] !== null
+                ? '<a href="' . self::e($base) . '/admin/player?id=' . self::e($a['userId']) . '">' . self::e((string) ($a['playerName'] ?? ('#' . $a['userId']))) . '</a>'
+                : '—';
+            $unread = ($a['read'] ?? true) ? '' : ' class="row-alert"';
+            echo '<tr', $unread, '><td>', self::e($when),
+                '<td><code>', self::e($a['kind']), '</code>',
+                '<td>', self::e($a['title']),
+                '<td>', self::e((string) ($a['detail'] ?? '')),
+                '<td>', $player, '</tr>';
+        }
+        if ($rows === []) {
+            echo '<tr><td colspan="5" class="muted">No alerts yet.</td></tr>';
+        }
+        echo '</table>', self::tableScrollClose(), '</section>';
+        self::end();
+    }
+
+    private static function transferPage(string $csrf): never
+    {
+        $base = self::base();
+        $c = CoinTransfer::config();
+        self::begin('Coin transfer', 'transfer');
+        self::pageLead('Players send Pico coin by 6-digit game ID. Fee is taken from the sender on top of the amount.');
+        echo '<section class="section"><div class="card"><form method="post" action="', self::e($base), '/admin/transfer/save">', self::csrfField($csrf),
+            '<label class="check"><input type="checkbox" name="enabled" value="1"', $c['enabled'] ? ' checked' : '', '> Allow transfers in the app</label>',
+            '<div class="grid">',
+            '<label>Fee % (0–50)<input type="number" name="feePercent" min="0" max="50" value="', self::e($c['feePercent']), '"></label>',
+            '<label>Min coins<input type="number" name="minCoins" min="1" value="', self::e($c['minCoins']), '"></label>',
+            '<label>Max coins<input type="number" name="maxCoins" min="1" value="', self::e($c['maxCoins']), '"></label>',
+            '</div><button>Save transfer settings</button></form></div></section>';
+        self::end();
+    }
+
+    private static function saveTransferConfig(): never
+    {
+        CoinTransfer::save([
+            'enabled' => isset($_POST['enabled']),
+            'feePercent' => (int) ($_POST['feePercent'] ?? 10),
+            'minCoins' => (int) ($_POST['minCoins'] ?? 10),
+            'maxCoins' => (int) ($_POST['maxCoins'] ?? 500000),
+        ]);
+        self::back('/admin/transfer', 'Transfer settings saved.');
     }
 
     private static function saveDepositConfig(): never
@@ -1653,12 +1763,16 @@ CSS;
         $c = CoinShop::config();
         $global = (int) $c['globalDiscountPercent'];
         self::begin('Coin shop', 'coin-shop');
-        self::pageLead('Shop packs. The coin amount is what the player sends on the add-coin page. They can tap plus to buy that pack more than once. Edit a pack here and the app follows.');
+        self::pageLead(
+            'Shop packs. <b>Base coins</b> = BDT amount on the add-coin page. '
+            . '<b>Bonus %</b> = extra Pico coins on top (100 at 5% → player gets 105). '
+            . 'Global % adds to every pack. Re-save a pack with the same ID to update it.'
+        );
         echo '<section class="section"><div class="card"><form class="row" method="post" action="', self::e($base), '/admin/coin-shop/global">', self::csrfField($csrf),
             '<label>Global discount on coins (%)<input type="number" name="globalDiscountPercent" min="0" max="100" required value="', self::e($global), '"></label>',
             '<button>Save global discount</button></form></div></section>',
             '<section class="section"><h2>Packs</h2>', self::tableScrollOpen(),
-            '<table><tr><th>Active<th>ID<th>Name<th>Base coins<th>Pack discount<th>Global<th>Player gets<th>Price (coins)<th>Sort<th></tr>';
+            '<table><tr><th>Active<th>ID<th>Name<th>Base coins<th>Bonus %<th>Global %<th>Player gets<th>Price (coins)<th>Sort<th></tr>';
         $packs = $c['packs'];
         usort($packs, static fn (array $a, array $b): int => ($a['sort'] <=> $b['sort']) ?: strcmp($a['id'], $b['id']));
         foreach ($packs as $p) {
@@ -1678,7 +1792,7 @@ CSS;
             '<label>Pack id (letters, numbers, _)<input name="id" maxlength="32" required pattern="[a-zA-Z0-9_-]+" placeholder="starter"></label>',
             '<label>Name<input name="name" maxlength="32" required placeholder="STARTER"></label>',
             '<label>Base coins<input type="number" name="coins" min="1" max="100000000" required></label>',
-            '<label>Discount on coins (%)<input type="number" name="discountPercent" min="0" max="100" value="0"></label>',
+            '<label>Bonus on deposit (%)<input type="number" name="discountPercent" min="0" max="100" value="5" title="Extra coins on top of base amount"></label>',
             '<label>Price in coins (0 = free once)<input type="number" name="priceCoins" min="0" max="100000000" value="0"></label>',
             '<label>Sort order<input type="number" name="sort" value="0"></label>',
             '<label>Active<select name="active"><option value="1">yes</option><option value="0">no</option></select></label>',
@@ -1700,24 +1814,40 @@ CSS;
             '<label>House fee (% of stake)<input type="number" name="rakePercent" min="0" max="50" required value="', self::e($c['rakePercent']), '"></label>',
             '<label>Win payout % <span class="muted">(1v1: stake 100 → win ', self::e(Economy::winnerPrize(100, 2)), ' at current setting)</span>',
             '<input type="number" name="winPayoutPercent" min="50" max="300" required value="', self::e($c['winPayoutPercent'] ?? 200), '"></label>',
-            '<label>Starting Pico coin (new players)<input type="number" name="startCoins" min="0" max="100000000" required value="', self::e($c['startCoins']), '"></label>',
+            '<label>Joining balance (new accounts)<input type="number" name="startCoins" min="0" max="100000000" required value="', self::e($c['startCoins']), '"></label>',
             '</div>',
             '<p class="hint"><b>Win payout</b> controls how much the winner gets in Pool / Ludo / Carrom. ',
-            '200 = full pot (100 stake → 200 win). 180 = 100 stake → 180 win. House keeps the rest + the fee on buy-in. ',
-            'Billiard poker still uses the jackpot table below.</p></div>',
-            '<div class="card"><h2 style="margin:0 0 12px">Pool / Ludo / Carrom stakes</h2>',
-            '<p class="hint">Buy-in = stake + house fee. One box per bet level (left = lowest).</p><div class="row">';
-        foreach ($c['billiardStakes'] as $i => $stake) {
-            echo '<label>Level ', self::e($i + 1), '<input type="number" name="billiardStakes[]" min="1" max="100000000" required value="', self::e($stake), '"></label>';
+            '200 = full pot (100 stake → 200 win). 180 = 100 stake → 180 win. House keeps the rest + the entry fee. ',
+            'Billiard poker still uses the jackpot table below.</p></div>';
+        $names = array_values(array_slice($c['stakeNames'] ?? Economy::DEFAULTS['stakeNames'], 0, 8));
+        while (count($names) < 8) {
+            $names[] = Economy::DEFAULTS['stakeNames'][count($names)] ?? 'LEVEL';
         }
-        echo '<label>New level (optional)<input type="number" name="billiardStakes[]" min="0" max="100000000" placeholder="Add stake"></label>',
-            '</div><p class="hint">Leave optional box empty to keep current levels only.</p></div>',
-            '<div class="card"><h2 style="margin:0 0 12px">Billiard poker stakes</h2><div class="row">';
-        foreach ($c['pokerStakes'] as $i => $stake) {
-            echo '<label>Level ', self::e($i + 1), '<input type="number" name="pokerStakes[]" min="1" max="100000000" required value="', self::e($stake), '"></label>';
+        echo '<div class="card"><h2 style="margin:0 0 12px">Table names (8 levels)</h2>',
+            '<p class="hint">Shown in the app instead of “buy in”. Left = lowest stake.</p><div class="row">';
+        foreach ($names as $i => $name) {
+            echo '<label>ID ', self::e($i + 1), '<input type="text" name="stakeNames[]" maxlength="16" required value="', self::e($name), '"></label>';
         }
-        echo '<label>New level (optional)<input type="number" name="pokerStakes[]" min="0" max="100000000" placeholder="Add stake"></label>',
-            '</div></div>',
+        echo '</div></div>';
+        $billiard = array_values(array_slice($c['billiardStakes'], 0, 8));
+        while (count($billiard) < 8) {
+            $billiard[] = Economy::DEFAULTS['billiardStakes'][count($billiard)] ?? 100;
+        }
+        echo '<div class="card"><h2 style="margin:0 0 12px">Pool / Ludo / Carrom stakes</h2>',
+            '<p class="hint">Entry = stake + house fee. Exactly 8 levels.</p><div class="row">';
+        foreach ($billiard as $i => $stake) {
+            echo '<label>', self::e($names[$i] ?? ('Level ' . ($i + 1))), ' stake<input type="number" name="billiardStakes[]" min="1" max="100000000" required value="', self::e($stake), '"></label>';
+        }
+        echo '</div></div>';
+        $poker = array_values(array_slice($c['pokerStakes'], 0, 8));
+        while (count($poker) < 8) {
+            $poker[] = Economy::DEFAULTS['pokerStakes'][count($poker)] ?? 100;
+        }
+        echo '<div class="card"><h2 style="margin:0 0 12px">Billiard poker stakes</h2><div class="row">';
+        foreach ($poker as $i => $stake) {
+            echo '<label>', self::e($names[$i] ?? ('Level ' . ($i + 1))), ' stake<input type="number" name="pokerStakes[]" min="1" max="100000000" required value="', self::e($stake), '"></label>';
+        }
+        echo '</div></div>',
             '<div class="card"><h2 style="margin:0 0 12px">Daily login bonus (7 days)</h2><p class="hint">Day 1 = first claim, then day 2, … resets after day 7.</p>',
             '<div class="grid">';
         foreach ($c['dailyBonus'] as $i => $coins) {
@@ -1972,6 +2102,47 @@ CSS;
             '<label class="span2">APK SHA-256 (optional)<input name="apkSha256" maxlength="64" value="', self::e($c['apkSha256'] ?? ''), '" placeholder="64 hex chars; app rejects a mismatch"></label>',
             '<label class="span2">Note for players<textarea name="notes" rows="3" maxlength="400">', self::e($c['notes']), '</textarea></label>',
             '</div><button>Save app update</button></form></div></section>';
+        self::end();
+    }
+
+    private static function saveAdminAccount(): never
+    {
+        try {
+            AdminAuth::change(
+                (string) ($_POST['current_password'] ?? ''),
+                (string) ($_POST['new_username'] ?? AdminAuth::username()),
+                (string) ($_POST['new_password'] ?? ''),
+                (string) ($_POST['confirm_password'] ?? ''),
+            );
+        } catch (ApiError $e) {
+            self::fail($e->getMessage(), '/admin/account');
+        }
+        self::back(
+            '/admin/account',
+            'Admin sign-in updated. Your browser may ask you to sign in again with the new username and password.'
+        );
+    }
+
+    private static function accountPage(string $csrf): never
+    {
+        $base = self::base();
+        $user = AdminAuth::username();
+        $stored = AdminAuth::usesStoredCredentials();
+        self::begin('Admin password', 'account');
+        self::pageLead(
+            'Change the username and password for this admin panel (HTTP Basic sign-in). '
+            . 'Minimum 12 characters for the new password. After saving, use the new details when the browser prompts you.'
+        );
+        echo '<section class="section"><div class="card"><form method="post" action="', self::e($base), '/admin/account">', self::csrfField($csrf),
+            '<p class="hint">Signed in as <b>', self::e($user), '</b>. ',
+            $stored ? 'Credentials are stored in the database (overrides .env).' : 'Still using ADMIN_USER / ADMIN_PASS from .env until you save here.</p>',
+            '<div class="grid">',
+            '<label>Current password<input type="password" name="current_password" required autocomplete="current-password"></label>',
+            '<label>New username<input name="new_username" maxlength="64" required pattern="[A-Za-z0-9._-]+" value="', self::e($user), '"></label>',
+            '<label>New password<input type="password" name="new_password" required minlength="12" autocomplete="new-password"></label>',
+            '<label>Confirm new password<input type="password" name="confirm_password" required minlength="12" autocomplete="new-password"></label>',
+            '</div><p class="hint">Leave .env ADMIN_PASS as a backup recovery only; login uses the saved password once you change it here.</p>',
+            '<button>Save admin sign-in</button></form></div></section>';
         self::end();
     }
 }

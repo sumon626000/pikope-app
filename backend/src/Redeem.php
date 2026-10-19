@@ -74,6 +74,7 @@ final class Redeem
         $min = (int) $c['minCoins'];
         $max = (int) $c['maxCoins'];
         if ($coins < $min || $coins > $max) {
+            AdminAlert::signal('redeem_abuse', 'Redeem out of range', "user=$userId coins=$coins", $userId);
             throw ApiError::badRequest("Redeem between $min and $max Pico coin.", 'bad_amount');
         }
         Economy::ensureRedeemableColumn();
@@ -90,6 +91,12 @@ final class Redeem
                 throw ApiError::notFound('No such player');
             }
             if ($coins > (int) $u['redeemable_coins']) {
+                AdminAlert::signal(
+                    'redeem_abuse',
+                    'Illegal redeem attempt (win balance)',
+                    "user=$userId coins=$coins redeemable={$u['redeemable_coins']}",
+                    $userId
+                );
                 throw ApiError::conflict('Not enough redeemable win balance. Deposits cannot be cashed out.', 'not_enough_redeemable');
             }
             $pending = (int) Db::one(
@@ -132,6 +139,30 @@ final class Redeem
                 'Redeem approved',
                 (int) $r['bdt_amount'] . ' BDT will be sent to your wallet.'
             );
+        });
+    }
+
+    /** Player cancels a pending request before admin review; coins are refunded. */
+    public static function cancelByUser(int $userId, int $id): array
+    {
+        return Db::transaction(static function () use ($userId, $id): array {
+            $r = Db::one('SELECT * FROM redeem_requests WHERE id = ? FOR UPDATE', [$id]);
+            if ($r === null || (int) $r['user_id'] !== $userId) {
+                throw ApiError::notFound('Request not found.');
+            }
+            if ($r['status'] !== 'pending') {
+                throw ApiError::conflict('This request can no longer be cancelled.', 'redeem_not_pending');
+            }
+            Economy::move($userId, (int) $r['coins'], 'redeem_refund:' . $id);
+            Db::run(
+                'UPDATE redeem_requests SET status = \'cancelled\', admin_note = ?, reviewed_at = NOW() WHERE id = ?',
+                ['Cancelled by player', $id]
+            );
+            $row = Db::one('SELECT * FROM redeem_requests WHERE id = ?', [$id]);
+            return [
+                'request' => self::publicRow($row),
+                'user' => Auth::publicUser(Db::one('SELECT * FROM users WHERE id = ?', [$userId])),
+            ];
         });
     }
 
@@ -191,7 +222,8 @@ final class Redeem
             [$userId]
         ) as $r) {
             $reason = (string) $r['reason'];
-            if (str_starts_with($reason, 'redeem:') || str_starts_with($reason, 'deposit:')) {
+            if (str_starts_with($reason, 'redeem:') || str_starts_with($reason, 'deposit:')
+                || $reason === 'transfer_out' || $reason === 'transfer_in') {
                 continue;
             }
             $items[] = [
@@ -212,6 +244,23 @@ final class Redeem
                 'kind' => 'redeem',
                 'at' => strtotime((string) $r['created_at']) * 1000,
             ] + self::publicRow($r);
+        }
+
+        CoinTransfer::ensureTable();
+        foreach (Db::all(
+            'SELECT t.*, fu.display_name AS from_name, fu.referral_code AS from_code,
+                    tu.display_name AS to_name, tu.referral_code AS to_code
+             FROM coin_transfers t
+             JOIN users fu ON fu.id = t.from_user_id
+             JOIN users tu ON tu.id = t.to_user_id
+             WHERE t.from_user_id = ? OR t.to_user_id = ?
+             ORDER BY t.id DESC LIMIT ' . $limit,
+            [$userId, $userId]
+        ) as $r) {
+            $items[] = [
+                'kind' => 'transfer',
+                'at' => (int) strtotime((string) $r['created_at']) * 1000,
+            ] + CoinTransfer::historyRow($r, $userId);
         }
 
         $items = array_merge($items, CoinDeposit::activityItems($userId, $limit));
@@ -239,6 +288,12 @@ final class Redeem
         }
         if (str_starts_with($reason, 'redeem_refund:')) {
             return 'Redeem refunded';
+        }
+        if ($reason === 'transfer_out') {
+            return 'Coin transfer sent';
+        }
+        if ($reason === 'transfer_in') {
+            return 'Coin transfer received';
         }
         $dep = CoinDeposit::walletLabel($reason);
         if ($dep !== null) {
@@ -269,6 +324,7 @@ final class Redeem
             'walletNumber' => self::maskWallet((string) $r['wallet_number']),
             'walletNumberFull' => (string) $r['wallet_number'],
             'status' => $r['status'],
+            'canCancel' => $r['status'] === 'pending',
             'adminNote' => $r['admin_note'],
             'createdAt' => strtotime((string) $r['created_at']) * 1000,
             'reviewedAt' => $r['reviewed_at'] !== null ? strtotime((string) $r['reviewed_at']) * 1000 : null,

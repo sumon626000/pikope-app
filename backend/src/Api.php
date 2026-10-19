@@ -88,6 +88,10 @@ final class Api
             $method === 'GET' && $path === '/me/activity' => self::activity(),
             $method === 'GET' && $path === '/me/redeems' => self::redeems(),
             $method === 'POST' && $path === '/redeem/request' => self::throttled('redeem', 10, 3600, self::redeemRequest(...)),
+            $method === 'POST' && $path === '/redeem/cancel' => self::throttled('redeem', 20, 3600, self::redeemCancel(...)),
+            $method === 'GET' && $path === '/transfer/lookup' => self::transferLookup(),
+            $method === 'GET' && $path === '/transfer/history' => self::transferHistory(),
+            $method === 'POST' && $path === '/transfer/send' => self::throttled('transfer', 30, 3600, self::transferSend(...)),
             $method === 'POST' && $path === '/deposit/request' => self::throttled('deposit', 15, 3600, self::depositRequest(...)),
             $method === 'GET' && $path === '/notices' => self::notices(),
             $method === 'GET' && $path === '/me/notifications' => self::notifications(),
@@ -101,7 +105,10 @@ final class Api
             $method === 'POST' && $path === '/matches/bot' => self::throttled('bot', 30, 3600, self::botMatch(...)),
 
             $method === 'POST' && $path === '/rooms' => self::throttled('rooms', 60, 300, static fn (): array => RoomService::create(
-                Auth::user(), Http::str('game', 16), (bool) (Http::body()['private'] ?? false)
+                Auth::user(),
+                Http::str('game', 16),
+                (bool) (Http::body()['private'] ?? false),
+                is_int(Http::body()['level'] ?? null) ? Http::body()['level'] : null
             )),
             $method === 'POST' && $path === '/rooms/quick' => self::throttled('rooms', 60, 300, static fn (): array => RoomService::quick(
                 Auth::user(), Http::str('game', 16), is_int(Http::body()['level'] ?? null) ? Http::body()['level'] : null
@@ -114,7 +121,7 @@ final class Api
             $method === 'GET' && preg_match('#^/games/(\d+)$#', $path, $m) === 1 => GameService::get(
                 (int) $m[1], (int) Auth::user()['id'], (int) ($_GET['since'] ?? 0)
             ),
-            $method === 'POST' && preg_match('#^/games/(\d+)/actions$#', $path, $m) === 1 => GameService::act(
+            $method === 'POST' && preg_match('#^/games/(\d+)/actions$#', $path, $m) === 1 => self::gameAct(
                 (int) $m[1], (int) Auth::user()['id'], Http::body()
             ),
             $method === 'POST' && preg_match('#^/games/(\d+)/aim$#', $path, $m) === 1 => self::throttled('aim', 80, 10, static fn (): array => GameService::shareAim(
@@ -468,6 +475,58 @@ final class Api
         $provider = Http::str('walletProvider', 24);
         $wallet = Http::str('walletNumber', 20);
         return Redeem::create((int) Auth::user()['id'], $coins, $provider, $wallet);
+    }
+
+    private static function redeemCancel(): array
+    {
+        $id = self::int(Http::body(), 'id');
+        return Redeem::cancelByUser((int) Auth::user()['id'], $id);
+    }
+
+    private static function transferLookup(): array
+    {
+        $code = trim((string) ($_GET['gameId'] ?? ''));
+        if (!preg_match('/^\d{6}$/', $code)) {
+            throw ApiError::badRequest('Game ID must be 6 digits.', 'bad_game_id');
+        }
+        $profile = CoinTransfer::lookupProfile($code, (int) Auth::user()['id']);
+        if ($profile === null) {
+            throw ApiError::notFound('No player with that game ID.');
+        }
+        return ['profile' => $profile];
+    }
+
+    private static function transferHistory(): array
+    {
+        $limit = (int) ($_GET['limit'] ?? 40);
+        return ['transfers' => CoinTransfer::historyForUser((int) Auth::user()['id'], $limit)];
+    }
+
+    private static function transferSend(): array
+    {
+        return CoinTransfer::send(
+            (int) Auth::user()['id'],
+            Http::str('gameId', 6),
+            self::int(Http::body(), 'amount')
+        );
+    }
+
+    /** @param array<string,mixed> $body */
+    private static function gameAct(int $gameId, int $uid, array $body): array
+    {
+        try {
+            return GameService::act($gameId, $uid, $body);
+        } catch (ApiError $e) {
+            if (in_array($e->errorCode, ['bad_aim', 'not_your_turn', 'wrong_phase'], true)) {
+                AdminAlert::signal(
+                    'game_integrity',
+                    'Suspicious game action',
+                    'game=' . $gameId . ' code=' . $e->errorCode . ' ' . $e->getMessage(),
+                    $uid
+                );
+            }
+            throw $e;
+        }
     }
 
     private static function depositRequest(): array

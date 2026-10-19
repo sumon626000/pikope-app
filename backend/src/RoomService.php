@@ -67,14 +67,24 @@ final class RoomService
         }
     }
 
-    public static function create(array $user, string $game, bool $private): array
+    public static function create(array $user, string $game, bool $private, ?int $level = null): array
     {
         self::requireGame($game);
-        return Db::transaction(static function () use ($user, $game, $private): array {
+        $stakeMode = $game === 'poker' ? 'poker' : 'billiard';
+        $bet = null;
+        if ($level !== null) {
+            $bet = Economy::level($stakeMode, $level);
+            if ((int) $user['coins'] < $bet['buyIn']) {
+                throw ApiError::conflict('Not enough coins for this table', 'not_enough_coins');
+            }
+        }
+        return Db::transaction(static function () use ($user, $game, $private, $level, $bet): array {
             $uid = (int) $user['id'];
             self::leaveWaitingRooms($uid);
-            Db::run('INSERT INTO rooms (code, game, host_id, is_private) VALUES (?, ?, ?, ?)',
-                [self::newCode(), $game, $uid, $private ? 1 : 0]);
+            Db::run(
+                'INSERT INTO rooms (code, game, host_id, is_private, level, stake, fee) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [self::newCode(), $game, $uid, $private ? 1 : 0, $level, $bet['stake'] ?? 0, $bet['fee'] ?? 0]
+            );
             $roomId = Db::lastId();
             Db::run('INSERT INTO room_players (room_id, user_id, seat) VALUES (?, ?, 0)', [$roomId, $uid]);
             return self::view($roomId);
@@ -192,6 +202,10 @@ final class RoomService
         $taken = array_map(static fn ($p) => (int) $p['seat'], $players);
         $mine = in_array((int) $user['id'], array_map(static fn ($p) => (int) $p['user_id'], $players), true);
         if (!$mine) {
+            $buyIn = (int) $room['stake'] + (int) $room['fee'];
+            if ($buyIn > 0 && (int) $user['coins'] < $buyIn) {
+                throw ApiError::conflict('Not enough coins for this table', 'not_enough_coins');
+            }
             if (count($players) >= $needed) {
                 throw ApiError::conflict('That room is full', 'room_full');
             }
@@ -275,6 +289,10 @@ final class RoomService
         return Db::transaction(static function () use ($roomId): bool {
             $room = Db::one('SELECT * FROM rooms WHERE id = ? FOR UPDATE', [$roomId]);
             if ($room === null || $room['status'] !== 'waiting' || (int) $room['is_private'] === 1) {
+                return false;
+            }
+            // Real-coin tables: only humans (private or public staked rooms).
+            if ((int) $room['stake'] > 0 || (int) $room['fee'] > 0 || $room['level'] !== null) {
                 return false;
             }
             $players = Db::all(
@@ -369,19 +387,22 @@ final class RoomService
             if ($next !== null && ($next['status'] === 'waiting' || $mine)) {
                 return $next['status'] === 'waiting' ? self::seat((int) $next['id'], $user) : self::view((int) $next['id']);
             }
-            // A match against stand-ins: play again at the same table (public,
-            // same stake) so bots can sit down again if nobody else does.
+            // Free public rematch vs bots only; staked tables are private humans-only.
             $vsBots = Db::one('SELECT 1 FROM room_players p JOIN users u ON u.id = p.user_id WHERE p.room_id = ? AND u.is_bot = 1', [$roomId]) !== null;
-            if ($vsBots) {
-                $stake = (int) $room['stake'] + (int) $room['fee'];
-                if ($stake > 0 && (int) Db::one('SELECT coins FROM users WHERE id = ?', [$uid])['coins'] < $stake) {
+            $staked = (int) $room['stake'] > 0 || (int) $room['fee'] > 0 || $room['level'] !== null;
+            $game = $room['game'];
+            if (in_array($game, self::BILLIARD_GAMES, true) && $room['level'] !== null) {
+                $game = 'billiard';
+            }
+            if ($vsBots && !$staked) {
+                Db::run('INSERT INTO rooms (code, game, host_id, is_private, level, stake, fee) VALUES (?, ?, ?, 0, NULL, 0, 0)',
+                    [self::newCode(), $game, $uid]);
+            } elseif ($staked) {
+                $buyIn = (int) $room['stake'] + (int) $room['fee'];
+                if ($buyIn > 0 && (int) Db::one('SELECT coins FROM users WHERE id = ?', [$uid])['coins'] < $buyIn) {
                     throw ApiError::conflict('Not enough coins for this table', 'not_enough_coins');
                 }
-                $game = $room['game'];
-                if (in_array($game, self::BILLIARD_GAMES, true) && $room['level'] !== null) {
-                    $game = 'billiard';
-                }
-                Db::run('INSERT INTO rooms (code, game, host_id, is_private, level, stake, fee) VALUES (?, ?, ?, 0, ?, ?, ?)',
+                Db::run('INSERT INTO rooms (code, game, host_id, is_private, level, stake, fee) VALUES (?, ?, ?, 1, ?, ?, ?)',
                     [self::newCode(), $game, $uid, $room['level'], $room['stake'], $room['fee']]);
             } else {
                 Db::run('INSERT INTO rooms (code, game, host_id, is_private) VALUES (?, ?, ?, 1)', [self::newCode(), $room['game'], $uid]);

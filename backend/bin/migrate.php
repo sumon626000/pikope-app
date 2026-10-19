@@ -85,4 +85,11 @@ if ($hasPhone === false) {
     $pdo->exec('ALTER TABLE users ADD UNIQUE KEY uq_users_phone (phone)');
     echo "added users.uq_users_phone\n";
 }
+$redeemStatus = $pdo->query("SHOW COLUMNS FROM redeem_requests LIKE 'status'")->fetch(PDO::FETCH_ASSOC)['Type'];
+if (!str_contains($redeemStatus, 'cancelled')) {
+    $pdo->exec("ALTER TABLE redeem_requests MODIFY status ENUM('pending','approved','rejected','cancelled') NOT NULL DEFAULT 'pending'");
+    echo "widened redeem_requests.status\n";
+}
+App\AdminAlert::ensureTable();
+App\CoinTransfer::ensureTable();
 echo "Schema is up to date.\n";

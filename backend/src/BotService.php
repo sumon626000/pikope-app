@@ -4,11 +4,9 @@ declare(strict_types=1);
 namespace App;
 
 /**
- * Stand-in players for public tables: when nobody else joins a quick match
- * within BOT_FILL_SECONDS (default 5), bots take the empty seats. Bots are ordinary user
- * rows (users.is_bot = 1): they pay the buy-in and collect a prize exactly
- * like people, so every coin stays accounted for; their balance is topped up
- * from the house when it runs low. bin/bot-worker.php drives them.
+ * Stand-in players for free public quick match only (stake 0). Staked / real-coin
+ * rooms never get bots. When nobody joins within BOT_FILL_SECONDS (default 5),
+ * bots take empty seats. bin/bot-worker.php drives them.
  */
 final class BotService
 {
@@ -54,6 +52,7 @@ final class BotService
         }
         $rows = Db::all(
             "SELECT r.id FROM rooms r WHERE r.status = 'waiting' AND r.is_private = 0
+               AND r.stake = 0 AND r.fee = 0 AND r.level IS NULL
                AND EXISTS (SELECT 1 FROM room_players p WHERE p.room_id = r.id
                            AND p.joined_at <= DATE_SUB(NOW(), INTERVAL ? SECOND))",
             [self::fillSeconds()]
