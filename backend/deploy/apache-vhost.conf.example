@@ -1,0 +1,28 @@
+# Apache 2.4 with mod_rewrite and PHP (mod_php or PHP-FPM).
+# public/.htaccess already contains the routing; AllowOverride must permit it.
+<VirtualHost *:443>
+    ServerName api.example.com
+    DocumentRoot /var/www/billiard-poker/backend/public
+
+    SSLEngine on
+    SSLCertificateFile    /etc/letsencrypt/live/api.example.com/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/api.example.com/privkey.pem
+
+    <Directory /var/www/billiard-poker/backend/public>
+        AllowOverride All
+        Require all granted
+        Options -Indexes
+    </Directory>
+
+    LimitRequestBody 3145728
+
+    # Live play: the WebSocket server (bin/ws-server.php) on 127.0.0.1:8081.
+    # Needs: a2enmod proxy proxy_wstunnel
+    ProxyPass        /ws ws://127.0.0.1:8081/
+    ProxyPassReverse /ws ws://127.0.0.1:8081/
+</VirtualHost>
+
+<VirtualHost *:80>
+    ServerName api.example.com
+    Redirect permanent / https://api.example.com/
+</VirtualHost>

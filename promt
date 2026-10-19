@@ -1,0 +1,1800 @@
+# MASTER BUILD PROMPT — BILLIARD POKER
+
+You are the lead game architect, senior Flutter developer, game-engine developer, UI/UX engineer, Firebase engineer, Cloudinary engineer, backend/security engineer, QA engineer, and release engineer.
+
+Your job is to build the COMPLETE, FUNCTIONAL, PRODUCTION-READY **Billiard Poker** game described in the project documents and supplied design-board images.
+
+This is NOT a prototype.
+
+This is NOT a UI-only project.
+
+This is NOT a fake/mock game.
+
+You must build the actual playable game with real game mechanics, real state management, real Firebase backend integration, real multiplayer synchronization where required, real authentication where required, real asset management through Cloudinary, and production-quality UI.
+
+---
+
+# 1. PROJECT SOURCE OF TRUTH
+
+The project contains these specification documents:
+
+1. `Rules Billiard Poker.pdf`
+2. `Rules of Billiards.pdf`
+
+I will also provide multiple:
+
+* UI design images
+* Game board images
+* Game screen references
+* Card design references
+* Player-position references
+* Other visual assets
+
+Read and analyse ALL available documents and images before implementing the final architecture.
+
+The Billiard Poker rules document is the PRIMARY source of truth for the actual Billiard Poker gameplay.
+
+The general Billiards document is a SECONDARY reference for billiards gameplay mechanics such as:
+
+* cue ball
+* object balls
+* pockets
+* break
+* ball-in-hand
+* fouls
+* legal contact
+* rail contact
+* shooting mechanics
+* billiards table behaviour
+
+DO NOT automatically import 9-ball, 8-ball or 10-ball winning rules into Billiard Poker.
+
+Billiard Poker has its OWN objective, card system, penalties, and victory system.
+
+---
+
+# 2. CORE GAME CONCEPT
+
+Billiard Poker is a:
+
+* 4-player
+* free-for-all
+* individual competition
+* billiards + poker card
+* turn-based
+* objective-completion
+* multiplayer game
+
+There are NO teams.
+
+Turn order rotates clockwise.
+
+Example:
+
+Player 1
+→ Player 2
+→ Player 3
+→ Player 4
+→ Player 1
+→ ...
+
+The game must support the full 4-player gameplay cycle.
+
+---
+
+# 3. PLAYER POV / CAMERA
+
+The game specification states that:
+
+* Each player's POV should be from the bottom corner.
+* The POV rotates clockwise according to the current player.
+
+Implement the camera/POV system accordingly.
+
+The active player should feel like they are sitting at the bottom shooting position.
+
+When the turn changes:
+
+* rotate the table/camera appropriately
+* rotate player position logically
+* keep the game board visually consistent
+* preserve ball positions
+* preserve card/player information
+* preserve all game state
+
+Do NOT physically recreate the table for every player.
+
+Use a logical world coordinate system and transform the rendering/camera.
+
+---
+
+# 4. BREAK ORDER
+
+At the beginning of a match:
+
+Each player picks one card from a standard 52-card deck.
+
+Cards are initially face-down.
+
+The highest card gets the first break.
+
+Card ranking:
+
+K > Q > J > 10 > 9 > 8 > 7 > 6 > 5 > 4 > 3 > 2 > A
+
+Ace is ALWAYS the lowest rank.
+
+If players draw the same rank, compare suits.
+
+Suit ranking:
+
+♠ Spades
+
+>
+
+♥ Hearts
+
+>
+
+♦ Diamonds
+
+>
+
+♣ Clubs
+
+Examples:
+
+A♠ beats A♥
+
+K♦ beats K♣
+
+After determining the first breaker, the remaining players shoot in descending order based on their drawn cards.
+
+This order becomes the initial turn order.
+
+The POV must rotate clockwise.
+
+---
+
+# 5. CARD DEALING
+
+After break order is determined:
+
+Each player receives exactly:
+
+7 poker cards.
+
+Use a standard 52-card deck.
+
+Each card corresponds to a numbered billiard ball.
+
+Mapping:
+
+Ace → Ball 1
+2 → Ball 2
+3 → Ball 3
+4 → Ball 4
+5 → Ball 5
+6 → Ball 6
+7 → Ball 7
+8 → Ball 8
+9 → Ball 9
+10 → Ball 10
+Jack → Ball 11
+Queen → Ball 12
+King → Ball 13
+
+This mapping is independent of suit.
+
+Example:
+
+A♠ = Ball 1
+
+A♥ = Ball 1
+
+K♣ = Ball 13
+
+Q♦ = Ball 12
+
+---
+
+# 6. DUPLICATE CARD/RANK OBJECTIVE RULE
+
+This is one of the MOST IMPORTANT rules.
+
+Duplicate cards representing the SAME numbered ball require that ball to be pocketed ONLY ONCE.
+
+Example:
+
+A♠
+A♥
+A♦
+A♣
+7♥
+7♦
+7♣
+
+Required objectives:
+
+Ball 1
+Ball 7
+
+NOT seven separate objectives.
+
+Another example:
+
+2♠
+8♥
+5♦
+5♣
+7♥
+Q♦
+K♣
+
+Required balls:
+
+2
+8
+5
+7
+12
+13
+
+Therefore:
+
+4 copies of Ace still require Ball 1 only once.
+
+2 copies of 5 still require Ball 5 only once.
+
+Implement this through a unique objective-ball set.
+
+Do NOT create duplicate objective requirements for the same numbered ball.
+
+---
+
+# 7. CARD DISTRIBUTION RULE
+
+No two players may receive the exact same physical card.
+
+For example:
+
+Only one player can receive:
+
+A♠
+
+Only one player can receive:
+
+7♥
+
+Only one player can receive:
+
+K♦
+
+However, different suits of the same rank may be distributed to different players.
+
+For example:
+
+Player 1 can have A♠
+
+Player 2 can have A♥
+
+Player 3 can have A♦
+
+Player 4 can have A♣
+
+This is valid.
+
+Implement the dealing algorithm so that the same exact 52-card identity cannot be dealt to two players.
+
+---
+
+# 8. PLAYER OBJECTIVES
+
+After dealing:
+
+Calculate each player's UNIQUE required balls.
+
+Example:
+
+Cards:
+
+A♠
+A♥
+A♦
+A♣
+7♥
+7♦
+7♣
+
+Objectives:
+
+1
+7
+
+The player only needs to pocket:
+
+Ball 1
+Ball 7
+
+Once an objective ball is legally completed, that numbered objective becomes completed.
+
+---
+
+# 9. SHOW CARD MECHANIC
+
+Before EVERY legal shot:
+
+The player must reveal the poker card corresponding to the ball they intend to play.
+
+The revealed card proves that the ball belongs to their current objective.
+
+This is an essential gameplay mechanic.
+
+The UI must clearly show:
+
+* selected card
+* selected ball
+* relationship between card and ball
+* current objective
+
+---
+
+# 10. RANDOM CARD REVEAL FOR DUPLICATES
+
+If a player has multiple cards representing the same ball:
+
+show ONLY ONE of those cards.
+
+Example:
+
+Player owns:
+
+A♠
+A♥
+A♦
+A♣
+
+When Ball 1 is pocketed:
+
+show ONE Ace card.
+
+Do NOT show all four Aces.
+
+The displayed Ace can be selected randomly from the available equivalent cards.
+
+Similarly:
+
+5♦
+5♣
+
+When Ball 5 is pocketed:
+
+show only one of:
+
+5♦
+5♣
+
+Do NOT reveal both.
+
+---
+
+# 11. GRAY-OUT CARD RULE
+
+When an objective ball is legally pocketed:
+
+ONE corresponding card must become completed/gray.
+
+Do NOT gray out every duplicate card.
+
+Example:
+
+Player has:
+
+A♠
+A♥
+A♦
+A♣
+7♥
+7♦
+7♣
+
+Player pockets Ball 1.
+
+Only ONE Ace card becomes gray/completed.
+
+The remaining Ace cards should remain visually available.
+
+However, the objective Ball 1 itself is completed and does not need to be pocketed again.
+
+This distinction is critical:
+
+CARD DISPLAY STATE
+≠
+OBJECTIVE STATE
+
+Maintain these separately.
+
+---
+
+# 12. FREE BALLS
+
+Balls:
+
+14
+15
+
+are FREE SHOT BALLS.
+
+They are NOT assigned to any player.
+
+Any player may legally pocket Ball 14 or Ball 15 according to the game mechanics.
+
+Pocketing either:
+
+Ball 14
+OR
+Ball 15
+
+awards:
+
++1 extra shot
+
+Implement this as a real gameplay mechanic.
+
+Do not add Ball 14 or Ball 15 to player objectives.
+
+Example:
+
+Player legally pockets Ball 14.
+
+Current turn continues with one additional shot.
+
+---
+
+# 13. NORMAL TURN
+
+On every shot:
+
+1. Player selects/reveals the poker card corresponding to the intended ball.
+2. The cue ball's FIRST object-ball contact must match the revealed card.
+3. The player attempts the shot.
+4. If the correct ball is legally pocketed:
+
+   * the objective is completed
+   * one corresponding card is grayed/completed
+   * the successful shot is recorded
+   * player continues shooting
+5. The player continues until:
+
+   * miss
+   * foul
+   * penalty
+   * turn ends
+   * other game-ending event
+
+The game must enforce these rules.
+
+---
+
+# 14. WRONG FIRST CONTACT
+
+If the cue ball first contacts a ball that does NOT match the revealed card:
+
+Penalty:
+
++1 additional penalty card
+
+AND:
+
+Turn ends immediately.
+
+The penalty card becomes a NEW objective.
+
+This is extremely important.
+
+Penalty cards are not just visual warnings.
+
+They increase the player's required objectives.
+
+Implement a proper penalty-objective system.
+
+---
+
+# 15. WRONG BALL POCKETED
+
+If a player pockets a ball that is NOT represented by their cards:
+
+Penalty:
+
++2 additional penalty cards
+
+AND:
+
+Turn ends immediately.
+
+The penalty cards become NEW objectives that must be completed before the player can win.
+
+Implement the penalty cards/objectives as part of the player's real game state.
+
+---
+
+# 16. TIMEOUT
+
+Every shot/turn that requires a timer must have a countdown.
+
+If the player does not take the shot before the timer expires:
+
+* receive a penalty card
+* turn immediately passes to the next player
+
+Implement:
+
+* visible countdown
+* warning state
+* timeout event
+* penalty generation
+* turn transition
+* server-safe validation if multiplayer
+
+Do NOT trust only the client-side timer for competitive gameplay.
+
+---
+
+# 17. PENALTY CARD SYSTEM
+
+Penalty cards are NEW objectives.
+
+When a penalty card is assigned:
+
+the player's required-objective set must be updated.
+
+Do not simply add a random visual card without changing game logic.
+
+The player must complete all required objectives, including penalty objectives, before being eligible to declare victory.
+
+---
+
+# 18. COMPLETING ALL OBJECTIVES
+
+When a player has successfully completed ALL required balls:
+
+DO NOT immediately declare them the winner.
+
+The player becomes:
+
+`READY_TO_DECLARE`
+
+but does NOT win yet.
+
+They must wait until their NEXT scheduled turn.
+
+This is a core rule.
+
+---
+
+# 19. DECLARE WINNER
+
+When the player's next scheduled turn begins:
+
+The player can announce:
+
+"Declare Winner"
+
+If nobody else has already declared victory:
+
+that player wins.
+
+Victory is awarded only after:
+
+1. all required objectives are complete
+2. player waits for next scheduled turn
+3. player reaches their turn
+4. player declares winner
+5. no other player has already won
+
+Implement this as a dedicated game state.
+
+---
+
+# 20. RACE TO DECLARE
+
+This creates the game's race mechanic.
+
+Example:
+
+Player 1 completes all objectives.
+
+Player 1 is waiting for their next turn.
+
+Before Player 1's next turn:
+
+Player 3 also completes all objectives.
+
+If Player 3's turn comes first:
+
+Player 3 declares winner.
+
+Player 3 wins.
+
+Therefore:
+
+Objective completion time
+AND
+turn order
+
+both affect victory.
+
+Do NOT simply set:
+
+allObjectivesCompleted = winner
+
+That would be WRONG.
+
+---
+
+# 21. BILLIARDS PHYSICS
+
+The game must feel like a real billiards game.
+
+Use appropriate billiards physics.
+
+Implement:
+
+* cue ball movement
+* object ball movement
+* ball collision
+* cushion/rail collision
+* friction
+* pocket detection
+* cue aiming
+* power control
+* shot execution
+* ball stopping
+* multiple-ball collision
+* legal first contact detection
+* pocket detection
+* scratch detection
+
+The billiards rules document can be used as reference for standard pool mechanics.
+
+However, DO NOT replace Billiard Poker's special card/objective rules with standard 9-ball/8-ball/10-ball winning rules.
+
+---
+
+# 22. SHOT VALIDATION
+
+Every shot should generate a structured result.
+
+For example:
+
+ShotResult:
+
+* selectedCard
+* selectedBall
+* firstContactBall
+* pocketedBalls
+* cueBallPocketed
+* railContact
+* legal
+* foulType
+* completedObjective
+* earnedExtraShot
+* penaltyCards
+* turnContinues
+* nextPlayer
+
+Use a deterministic rules engine.
+
+Do not scatter these calculations across UI widgets.
+
+---
+
+# 23. GAME ENGINE ARCHITECTURE
+
+Separate:
+
+GAME WORLD
+GAME PHYSICS
+GAME RULES
+GAME STATE
+NETWORK STATE
+UI STATE
+
+For example:
+
+GameEngine
+GamePhysics
+GameRules
+GameState
+TurnManager
+ShotValidator
+ObjectiveManager
+PenaltyManager
+VictoryManager
+
+Use appropriate names/structure.
+
+Do not create these classes blindly if the actual architecture can be cleaner.
+
+---
+
+# 24. GAME STATE
+
+Create explicit game states.
+
+For example:
+
+LOADING
+WAITING_FOR_PLAYERS
+DETERMINING_BREAK
+DEALING_CARDS
+READY
+PLAYER_TURN
+AIMING
+SHOOTING
+RESOLVING_SHOT
+PENALTY
+TURN_TRANSITION
+READY_TO_DECLARE
+DECLARE_PHASE
+GAME_OVER
+
+Adapt to the actual implementation.
+
+Avoid dozens of unrelated booleans.
+
+---
+
+# 25. MULTIPLAYER
+
+The game is designed for 4 players.
+
+Implement real multiplayer synchronization.
+
+Use Firebase/Firestore for:
+
+* room creation
+* room joining
+* player identity
+* player slots
+* ready status
+* turn state
+* game state
+* card assignment
+* objectives
+* shot result
+* penalties
+* winner
+* reconnection
+* player disconnect
+
+Do not simulate multiplayer with fake local players.
+
+If AI/bot players are required by the supplied specification, implement them separately.
+
+---
+
+# 26. SERVER AUTHORITY
+
+Competitive game-critical operations must not rely blindly on client values.
+
+Where appropriate, validate on backend/server:
+
+* card dealing
+* break order
+* turn ownership
+* timeout
+* penalty
+* objective completion
+* winner declaration
+* game result
+
+Use Firebase Cloud Functions/server-side logic where necessary.
+
+Never expose private backend credentials to Flutter.
+
+---
+
+# 27. FIREBASE
+
+Use Firebase as the backend.
+
+Use:
+
+* Firebase Authentication
+* Cloud Firestore
+* Cloud Functions where needed
+* Firebase Analytics if appropriate
+
+Create a clear Firestore architecture.
+
+Potential collections may include:
+
+users
+rooms
+games
+players
+gameSessions
+shots
+gameResults
+leaderboards
+
+BUT design the final schema based on the actual project requirements.
+
+Create:
+
+`FIREBASE_SCHEMA.md`
+
+Document every collection.
+
+---
+
+# 28. CLOUDINARY
+
+Use Cloudinary for application/game image storage.
+
+Store dynamic image assets in Cloudinary.
+
+Examples:
+
+* player avatars
+* game assets
+* banners
+* UI artwork
+* promotional images
+* other supplied image assets
+
+Firestore should store:
+
+* Cloudinary public ID
+* secure URL where appropriate
+* asset metadata
+
+Create a reusable:
+
+`CloudinaryService`
+
+Do NOT hardcode image URLs throughout the application.
+
+---
+
+# 29. DESIGN BOARDS
+
+I will provide board/design images.
+
+These are visual source-of-truth references.
+
+Reproduce them as accurately as possible.
+
+Analyse:
+
+* layout
+* colors
+* typography
+* card style
+* player position
+* table design
+* ball style
+* buttons
+* HUD
+* timer
+* score/objective display
+* animations
+* menus
+* dialogs
+
+Do NOT replace the design with a generic billiards UI.
+
+---
+
+# 30. CARD DESIGN
+
+The supplied rules specify:
+
+Card design:
+
+* white background
+* small number in top-left
+* small suit immediately after number in top-left
+* large number in bottom-right
+* black text
+
+Implement this card design faithfully.
+
+For example:
+
+Top-left:
+
+`A ♠`
+
+Bottom-right:
+
+`A`
+
+Use proper suit symbols and typography.
+
+Card states must include:
+
+NORMAL
+SELECTED
+REVEALED
+COMPLETED/GRAYED
+PENALTY
+DISABLED
+
+as appropriate.
+
+---
+
+# 31. PLAYER HUD
+
+The UI should clearly communicate:
+
+* current player
+* player name/avatar
+* turn status
+* cards
+* completed objectives
+* remaining objectives
+* penalty objectives
+* timer
+* free-shot status
+* shot count where required
+* declare-winner status
+
+Do not overload the screen.
+
+Use the supplied design boards as the primary visual guide.
+
+---
+
+# 32. CAMERA ROTATION
+
+The four-player camera positions should be:
+
+Player 1 → bottom
+Player 2 → left/right according to clockwise rotation
+Player 3 → top
+Player 4 → opposite side
+
+Use a consistent clockwise rotation.
+
+The exact visual positioning must follow the supplied board design.
+
+---
+
+# 33. CARD / OBJECTIVE UI
+
+The UI must distinguish:
+
+Cards owned by player
+
+from
+
+Unique numbered objectives
+
+from
+
+Completed objectives
+
+from
+
+Penalty objectives.
+
+Example:
+
+Cards:
+
+A♠
+A♥
+A♦
+A♣
+7♥
+7♦
+7♣
+
+Unique objectives:
+
+Ball 1
+Ball 7
+
+If Ball 1 is completed:
+
+Objective:
+
+✓ Ball 1
+○ Ball 7
+
+Only ONE Ace card becomes gray.
+
+---
+
+# 34. FREE SHOT UI
+
+When Ball 14 or 15 is legally pocketed:
+
+display a clear feedback:
+
+`+1 EXTRA SHOT`
+
+Then allow the same player to continue.
+
+Do not confuse this with objective completion.
+
+---
+
+# 35. FOUL / PENALTY UI
+
+When a foul happens:
+
+Show:
+
+* foul type
+* penalty awarded
+* affected objective(s)
+* turn-ending message
+* next player
+
+Examples:
+
+`WRONG FIRST CONTACT`
+`+1 PENALTY CARD`
+`TURN ENDED`
+
+or:
+
+`WRONG BALL POCKETED`
+`+2 PENALTY CARDS`
+`TURN ENDED`
+
+Use polished animations.
+
+---
+
+# 36. WINNER UI
+
+When the correct player declares:
+
+Show a complete victory sequence.
+
+Include:
+
+* winner
+* celebration
+* final result
+* player statistics if required
+* rematch
+* return/home option
+
+Do not declare victory early.
+
+---
+
+# 37. BREAK SCREEN
+
+Create a proper break-order experience.
+
+Possible sequence:
+
+1. All players receive a face-down break card.
+2. Cards are revealed.
+3. Rankings are calculated.
+4. Highest card is highlighted.
+5. Break order is displayed.
+6. First player prepares to break.
+7. Game starts.
+
+Use animations where appropriate.
+
+---
+
+# 38. DECK / RANDOMIZATION
+
+Use secure/deterministic randomization where necessary.
+
+For multiplayer:
+
+the server/backend should be responsible for authoritative deck assignment.
+
+Never allow the client to freely choose their seven cards.
+
+Do not allow duplicate exact physical cards.
+
+---
+
+# 39. RECONNECTION
+
+Multiplayer must tolerate temporary network interruption.
+
+If a player disconnects:
+
+* preserve game state
+* preserve turn
+* allow reconnection
+* prevent duplicate actions
+* recover the current state
+
+Do not reset the entire game because of a temporary disconnect.
+
+---
+
+# 40. FIRESTORE SECURITY
+
+Create strong Firestore security rules.
+
+Prevent:
+
+* unauthorized room access
+* modifying another player's cards
+* modifying another player's objectives
+* changing winner status
+* changing scores
+* changing turn ownership
+* fake shot results
+
+Never use:
+
+`allow read, write: if true;`
+
+in production.
+
+---
+
+# 41. RESPONSIVE UI
+
+Support:
+
+* small Android phones
+* standard Android phones
+* large phones
+* tablets if required
+
+The table must scale without:
+
+* clipping
+* overlap
+* distorted board
+* inaccessible controls
+* broken card layout
+
+Use logical coordinates for the game board.
+
+---
+
+# 42. PERFORMANCE
+
+The game must remain smooth.
+
+Optimize:
+
+* physics
+* rendering
+* animations
+* Firestore listeners
+* network synchronization
+* image loading
+* memory usage
+
+Avoid unnecessary widget rebuilds.
+
+Dispose resources properly.
+
+---
+
+# 43. AUDIO
+
+If the supplied design/specification requires audio, implement:
+
+* background music
+* cue shot sound
+* ball collision sound
+* pocket sound
+* foul sound
+* objective completed sound
+* extra-shot sound
+* winner sound
+
+Add sound/music settings where appropriate.
+
+---
+
+# 44. PROJECT STRUCTURE
+
+Use a maintainable architecture.
+
+Suggested structure:
+
+lib/
+
+core/
+constants/
+theme/
+utils/
+errors/
+services/
+widgets/
+
+features/
+auth/
+lobby/
+matchmaking/
+break_order/
+game/
+engine/
+physics/
+rules/
+models/
+state/
+widgets/
+profile/
+settings/
+results/
+
+data/
+models/
+repositories/
+datasources/
+
+domain/
+entities/
+repositories/
+usecases/
+
+Adapt this structure based on the actual implementation.
+
+Do NOT create unnecessarily complex architecture.
+
+---
+
+# 45. STATE MANAGEMENT
+
+Prefer Riverpod unless the existing project or specification requires another solution.
+
+Use proper state management for:
+
+* authentication
+* lobby
+* room
+* player state
+* game state
+* turn state
+* cards
+* objectives
+* penalties
+* settings
+* network state
+
+Do not put global game state inside widgets.
+
+---
+
+# 46. TESTING
+
+Create unit tests for:
+
+* card ranking
+* suit ranking
+* break determination
+* card-to-ball mapping
+* duplicate objective handling
+* card distribution
+* wrong first contact
+* wrong ball pocketed
+* timeout penalty
+* free ball extra shot
+* objective completion
+* penalty objectives
+* ready-to-declare state
+* declaration
+* race-to-declare
+* winner determination
+
+Create widget tests for critical UI.
+
+Create integration tests for:
+
+4-player room
+→ break order
+→ card dealing
+→ gameplay
+→ objective completion
+→ penalty
+→ declaration
+→ winner
+
+---
+
+# 47. DOCUMENTATION
+
+Create:
+
+README.md
+
+PROJECT_ANALYSIS.md
+
+PROJECT_DECISIONS.md
+
+FIREBASE_SCHEMA.md
+
+DESIGN_MAPPING.md
+
+SETUP_GUIDE.md
+
+MISSING_ASSETS.md
+
+Document:
+
+* setup
+* Firebase configuration
+* Cloudinary configuration
+* environment variables
+* running locally
+* testing
+* building APK
+* building AAB
+* deployment
+
+---
+
+# 48. ENVIRONMENT VARIABLES
+
+Never hardcode secrets.
+
+Create:
+
+`.env.example`
+
+Include placeholders for required configuration.
+
+Never commit:
+
+* Cloudinary secret
+* Firebase service-account private keys
+* backend secrets
+* production credentials
+
+Add sensitive files to `.gitignore`.
+
+---
+
+# 49. BUILD VALIDATION
+
+After implementation run:
+
+flutter pub get
+
+flutter analyze
+
+flutter test
+
+Then build:
+
+flutter build apk
+
+and:
+
+flutter build appbundle
+
+Fix all compilation errors.
+
+Fix analyzer errors/warnings where practical.
+
+Fix UI overflow.
+
+Fix runtime crashes.
+
+Fix game logic bugs.
+
+---
+
+# 50. QA CHECKLIST
+
+Before declaring the project complete, verify:
+
+[ ] 4 players supported
+
+[ ] Free-for-all works
+
+[ ] Turn order works
+
+[ ] Break order works
+
+[ ] Card ranking works
+
+[ ] Suit tiebreaker works
+
+[ ] 7 cards per player
+
+[ ] No duplicate exact physical card
+
+[ ] Card-to-ball mapping works
+
+[ ] Duplicate rank objective logic works
+
+[ ] Card reveal works
+
+[ ] One-card gray-out works
+
+[ ] Free Ball 14 works
+
+[ ] Free Ball 15 works
+
+[ ] Extra shot works
+
+[ ] Correct first contact works
+
+[ ] Wrong first contact penalty works
+
+[ ] Wrong ball pocketed penalty works
+
+[ ] Timeout penalty works
+
+[ ] Penalty cards become objectives
+
+[ ] All-objective completion works
+
+[ ] Player does NOT win immediately
+
+[ ] Ready-to-declare state works
+
+[ ] Next-turn declaration works
+
+[ ] Race-to-declare works
+
+[ ] Winner determination works
+
+[ ] Game-over state works
+
+[ ] Rematch works if required
+
+[ ] Firebase synchronization works
+
+[ ] Reconnection works
+
+[ ] Security rules work
+
+[ ] Cloudinary works
+
+[ ] Design matches provided references
+
+[ ] Responsive UI works
+
+[ ] No dead buttons
+
+[ ] No fake production data
+
+[ ] Tests pass
+
+[ ] Flutter analyzer passes
+
+[ ] APK builds
+
+[ ] AAB builds
+
+---
+
+# 51. IMPORTANT — DO NOT MIX THE GAME RULES
+
+The second rules document contains:
+
+9-Ball
+8-Ball
+10-Ball
+
+rules.
+
+These are reference billiards rules.
+
+DO NOT change Billiard Poker into:
+
+9-ball
+8-ball
+or
+10-ball.
+
+The Billiard Poker objective is based on poker cards and numbered-ball objectives.
+
+The special Billiard Poker rules have priority.
+
+Specifically:
+
+* 4 players
+* 7 cards per player
+* card-to-ball mapping
+* duplicate objective compression
+* card reveal
+* card gray-out
+* free balls 14/15
+* penalty cards
+* next-turn declaration
+* race-to-declare
+
+are fundamental to Billiard Poker.
+
+---
+
+# 52. DO NOT MAKE A STATIC BOARD
+
+The supplied board image is a visual reference.
+
+The final game must contain an actual interactive billiards table.
+
+The player must be able to:
+
+* aim
+* control shot power
+* shoot
+* observe physics
+* detect collisions
+* detect pockets
+* detect first contact
+* determine shot legality
+* resolve penalties
+* continue/end turn
+
+The board image must not simply be displayed as a static screenshot.
+
+---
+
+# 53. DO NOT USE FAKE MULTIPLAYER
+
+Do not create four fake UI players while the actual game only runs locally.
+
+If multiplayer is required:
+
+implement actual synchronized multiplayer.
+
+All players must see the same authoritative game state.
+
+---
+
+# 54. DO NOT USE HARDCODED GAME RESULTS
+
+Never write:
+
+if player == 1:
+winner = player1
+
+or equivalent fake logic.
+
+Winner must be determined from actual game state.
+
+---
+
+# 55. DO NOT STOP AT UI
+
+A successful implementation requires:
+
+DESIGN
++
+GAME ENGINE
++
+PHYSICS
++
+RULE ENGINE
++
+STATE MANAGEMENT
++
+MULTIPLAYER
++
+FIREBASE
++
+CLOUDINARY
++
+SECURITY
++
+TESTING
++
+DOCUMENTATION
++
+BUILD VALIDATION
+
+---
+
+# 56. WHEN INFORMATION IS MISSING
+
+Do not repeatedly ask for minor clarification.
+
+Make professional engineering decisions when possible.
+
+Only ask me if:
+
+* a missing decision fundamentally changes the game
+* two requirements are genuinely contradictory
+* a required credential is unavailable
+* a required asset cannot be reasonably substituted
+
+Otherwise:
+
+make the best engineering decision
+→ document it
+→ continue implementation.
+
+---
+
+# 57. DEVELOPMENT ORDER
+
+Follow this exact workflow:
+
+PHASE 1
+Read all documents.
+
+PHASE 2
+Inspect every supplied design image.
+
+PHASE 3
+Create:
+
+PROJECT_ANALYSIS.md
+PROJECT_DECISIONS.md
+DESIGN_MAPPING.md
+
+PHASE 4
+Design game architecture.
+
+PHASE 5
+Design Firestore schema.
+
+PHASE 6
+Initialize/configure Firebase.
+
+PHASE 7
+Implement Cloudinary integration.
+
+PHASE 8
+Implement authentication/lobby if required.
+
+PHASE 9
+Implement 4-player room.
+
+PHASE 10
+Implement break-card selection and ranking.
+
+PHASE 11
+Implement 7-card dealing.
+
+PHASE 12
+Implement objective generation.
+
+PHASE 13
+Implement billiards table/physics.
+
+PHASE 14
+Implement aiming and shooting.
+
+PHASE 15
+Implement card reveal.
+
+PHASE 16
+Implement first-contact validation.
+
+PHASE 17
+Implement pocket validation.
+
+PHASE 18
+Implement objective completion.
+
+PHASE 19
+Implement free balls 14/15.
+
+PHASE 20
+Implement penalties.
+
+PHASE 21
+Implement timeout.
+
+PHASE 22
+Implement turn transitions.
+
+PHASE 23
+Implement ready-to-declare.
+
+PHASE 24
+Implement race-to-declare.
+
+PHASE 25
+Implement winner.
+
+PHASE 26
+Implement complete UI/animations/audio.
+
+PHASE 27
+Implement multiplayer synchronization.
+
+PHASE 28
+Implement reconnection.
+
+PHASE 29
+Implement security rules.
+
+PHASE 30
+Implement tests.
+
+PHASE 31
+Run analyzer.
+
+PHASE 32
+Run tests.
+
+PHASE 33
+Build APK.
+
+PHASE 34
+Build AAB.
+
+PHASE 35
+Perform complete QA.
+
+PHASE 36
+Fix all issues.
+
+PHASE 37
+Prepare final documentation.
+
+---
+
+# 58. FINAL INSTRUCTION
+
+START NOW.
+
+First inspect:
+
+* both PDF specification documents
+* all available design-board images
+* all existing project files
+
+Then analyse the complete project.
+
+Do not jump directly into random UI implementation.
+
+Understand the game first.
+
+Then build the architecture.
+
+Then implement the complete playable Billiard Poker game.
+
+Do not give me a tutorial instead of coding.
+
+Do not give me pseudocode instead of implementation.
+
+Do not leave core TODOs.
+
+Do not create fake gameplay.
+
+Do not create fake multiplayer.
+
+Do not ignore the supplied designs.
+
+Do not silently change the rules.
+
+Build the actual complete project.
+
+Continue until:
+
+* code is implemented
+* game is playable
+* Firebase is integrated
+* Cloudinary is integrated
+* multiplayer works where required
+* rules are enforced
+* tests are written
+* analyzer passes
+* APK builds
+* AAB builds
+* documentation is complete
+
+At the end, give me a concise implementation report containing:
+
+1. Completed features
+2. Architecture
+3. Firebase setup
+4. Cloudinary setup
+5. Game engine
+6. Multiplayer
+7. Testing
+8. Build status
+9. Remaining manual configuration
+10. Known limitations, if any
+
+DO NOT STOP UNTIL THE PROJECT IS IN A PRODUCTION-READY STATE.
+

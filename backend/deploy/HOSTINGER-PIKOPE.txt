@@ -1,0 +1,43 @@
+PikoPe backend + admin — Hostinger (subdomain)
+==============================================
+
+Subdomain: pikope.bet369win.com
+
+1) Upload & extract this zip so you have:
+     .../public_html/pikope/public/index.php
+     .../public_html/pikope/.env.example
+     (not inside public_html root only — keep the pikope folder)
+
+2) hPanel → Subdomains → pikope
+     Document root MUST be:
+     .../public_html/pikope/public
+
+3) Copy .env.example → .env and set:
+     APP_URL=https://pikope.bet369win.com
+     DB_* from hPanel → MySQL
+     ADMIN_USER=...
+     ADMIN_PASS=...   (12+ characters)
+     APP_DEBUG=0
+     APP_TEST_HOOKS=0
+     CORS_ORIGIN=   (leave empty; do not use *)
+     Optional: ADMIN_IP_ALLOWLIST=your.office.ip
+     Then SSH or cron: php bin/doctor.php  (all [ok] before go-live)
+
+4) phpMyAdmin → Import → pikope/sql/schema.sql
+     OR Terminal: cd .../pikope && php bin/migrate.php
+
+5) Test:
+     https://pikope.bet369win.com/health
+     https://pikope.bet369win.com/admin
+
+6) Cron every 5 min:
+     php .../pikope/bin/cleanup.php
+     (watch "wallet drift" in output; should stay 0)
+
+   Optional daily (alert if exit code 1):
+     php .../pikope/bin/reconcile_wallet.php
+
+7) APK:
+     flutter build apk --release --dart-define=API_BASE_URL=https://pikope.bet369win.com
+
+Admin is English only at /admin (HTTP Basic = ADMIN_USER / ADMIN_PASS).

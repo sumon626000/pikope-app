@@ -1,0 +1,95 @@
+# Runs the whole backend behind an existing Traefik proxy (e.g. Coolify's).
+# Needs a .env next to this file - see deploy/docker/README.md.
+name: billiard-poker
+
+x-app: &app
+  build:
+    context: ../..
+    dockerfile: deploy/docker/Dockerfile
+  image: billiard-poker-backend
+  restart: unless-stopped
+  env_file: .env
+  environment:
+    DB_HOST: db
+    DB_PORT: "3306"
+    DB_NAME: billiard_poker
+    DB_USER: billiard_poker
+    WS_HOST: 0.0.0.0
+    WS_PORT: "8081"
+  depends_on:
+    db:
+      condition: service_healthy
+
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: billiard_poker
+      MYSQL_USER: billiard_poker
+      MYSQL_PASSWORD: ${DB_PASS}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS}
+    volumes:
+      - db-data:/var/lib/mysql
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  api:
+    <<: *app
+    volumes:
+      - uploads:/var/www/app/public/uploads/avatars
+    networks: [internal, proxy]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${PROXY_NETWORK:-coolify}
+      - traefik.http.middlewares.bp-https.redirectscheme.scheme=https
+      - traefik.http.routers.bp-api-http.entrypoints=http
+      - traefik.http.routers.bp-api-http.rule=${HOST_RULE}
+      - traefik.http.routers.bp-api-http.middlewares=bp-https
+      - traefik.http.routers.bp-api-http.service=bp-api
+      - traefik.http.routers.bp-api.entrypoints=https
+      - traefik.http.routers.bp-api.rule=${HOST_RULE}
+      - traefik.http.routers.bp-api.tls=true
+      - traefik.http.routers.bp-api.tls.certresolver=letsencrypt
+      - traefik.http.routers.bp-api.service=bp-api
+      - traefik.http.services.bp-api.loadbalancer.server.port=80
+
+  ws:
+    <<: *app
+    command: ["php", "bin/ws-server.php"]
+    networks: [internal, proxy]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${PROXY_NETWORK:-coolify}
+      - traefik.http.routers.bp-ws.entrypoints=https
+      - traefik.http.routers.bp-ws.rule=(${HOST_RULE}) && PathPrefix(`/ws`)
+      - traefik.http.routers.bp-ws.tls=true
+      - traefik.http.routers.bp-ws.tls.certresolver=letsencrypt
+      - traefik.http.routers.bp-ws.service=bp-ws
+      - traefik.http.services.bp-ws.loadbalancer.server.port=8081
+
+  # Rules on abandoned matches and prunes old data every five minutes.
+  cleanup:
+    <<: *app
+    command: ["sh", "-c", "while true; do php bin/cleanup.php || true; sleep 300; done"]
+    networks: [internal]
+
+  # Stand-in players for public tables nobody else joins (one instance only).
+  bots:
+    <<: *app
+    command: ["sh", "-c", "while true; do php bin/bot-worker.php || true; sleep 2; done"]
+    networks: [internal]
+
+volumes:
+  db-data:
+  uploads:
+
+networks:
+  internal:
+  proxy:
+    name: ${PROXY_NETWORK:-coolify}
+    external: true

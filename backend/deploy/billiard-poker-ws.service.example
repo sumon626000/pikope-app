@@ -1,0 +1,16 @@
+# systemd unit for the WebSocket server.
+#   sudo cp billiard-poker-ws.service.example /etc/systemd/system/billiard-poker-ws.service
+#   sudo systemctl daemon-reload && sudo systemctl enable --now billiard-poker-ws
+[Unit]
+Description=Billiard Poker WebSocket server
+After=network.target mysql.service
+
+[Service]
+User=www-data
+WorkingDirectory=/var/www/billiard-poker
+ExecStart=/usr/bin/php bin/ws-server.php
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "423488990422",
+    "project_id": "pikope-9348f",
+    "storage_bucket": "pikope-9348f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:423488990422:android:4127f640f3a91812e2ad77",
+        "android_client_info": {
+          "package_name": "com.pikope.piko"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDT_LQvgSG0uTSzYLXsc-Ykr0_A8JHH3S0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
