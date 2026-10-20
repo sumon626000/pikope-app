@@ -98,21 +98,22 @@ final class ZiniPay
         $cancel = $base . '/deposit/zinipay/return?deposit=' . $depositId . '&status=cancel';
         $webhook = $base . '/webhooks/zinipay';
 
+        $name = trim((string) $user['display_name']);
+        if ($name === '') {
+            $name = 'Player';
+        }
         $payload = [
-            'cus_name' => (string) $user['display_name'],
-            'amount' => $bdt,
+            'cus_name' => $name,
+            'cus_email' => self::customerEmail($userId, (string) ($user['email'] ?? '')),
+            'amount' => (float) $bdt,
             'metadata' => [
-                'deposit_id' => $depositId,
-                'user_id' => $userId,
+                'deposit_id' => (string) $depositId,
+                'user_id' => (string) $userId,
             ],
             'redirect_url' => $redirect,
             'cancel_url' => $cancel,
             'webhook_url' => $webhook,
         ];
-        $email = trim((string) ($user['email'] ?? ''));
-        if ($email !== '' && str_contains($email, '@')) {
-            $payload['cus_email'] = $email;
-        }
 
         $created = self::apiPost('/v1/payment/create', $payload);
         $paymentUrl = (string) ($created['payment_url'] ?? '');
@@ -266,8 +267,25 @@ final class ZiniPay
         if (!is_array($data)) {
             throw ApiError::badRequest('Invalid JSON from payment gateway.', 'zini_http');
         }
-        if ($code >= 400 || ($data['status'] ?? true) === false) {
+        $failed = $code >= 400
+            || ($data['success'] ?? true) === false
+            || ($data['status'] ?? true) === false;
+        if ($failed) {
             $msg = (string) ($data['message'] ?? 'Payment gateway error');
+            if (!empty($data['errors']) && is_array($data['errors'])) {
+                $parts = [];
+                foreach ($data['errors'] as $err) {
+                    if (!is_array($err)) {
+                        continue;
+                    }
+                    $field = (string) ($err['field'] ?? '');
+                    $detail = (string) ($err['message'] ?? '');
+                    $parts[] = $field !== '' ? "$field: $detail" : $detail;
+                }
+                if ($parts !== []) {
+                    $msg .= ' — ' . implode('; ', $parts);
+                }
+            }
             throw ApiError::badRequest($msg, 'zini_api');
         }
         return $data;
@@ -346,6 +364,16 @@ final class ZiniPay
             'createdAt' => $r['created_at'],
             'completedAt' => $r['completed_at'],
         ], $rows);
+    }
+
+    /** ZiniPay requires cus_email even when docs mark it optional. */
+    private static function customerEmail(int $userId, string $rawEmail): string
+    {
+        $email = trim($rawEmail);
+        if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return $email;
+        }
+        return 'player' . $userId . '@pikope.app';
     }
 
     /** @param array<string,mixed> $raw @return array<string,mixed> */

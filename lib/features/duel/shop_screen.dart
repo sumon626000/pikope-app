@@ -36,11 +36,18 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
     super.dispose();
   }
 
-  void _openPack(CoinShopPack pack) {
+  Future<void> _onPackTap(CoinShopPack pack) async {
+    final data = ref.read(lobbyProvider).valueOrNull;
+    if (data == null) return;
+    final cfg = data.coinDeposit;
     setState(() {
       _selectedPack = pack;
       _packQty = 1;
     });
+    if (cfg.autoEnabled && !pack.free) {
+      await openZiniPayDeposit(context, ref, config: cfg, bdt: pack.coins);
+      return;
+    }
     _tabs.animateTo(1);
   }
 
@@ -86,7 +93,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
                   child: TabBarView(
                     controller: _tabs,
                     children: [
-                      _BuyTab(data: data!, onBuy: _openPack),
+                      _BuyTab(data: data!, onBuy: _onPackTap),
                       _DepositTab(
                         config: data.coinDeposit,
                         pack: _selectedPack,
@@ -114,7 +121,7 @@ class _BuyTab extends ConsumerWidget {
   const _BuyTab({required this.data, required this.onBuy});
 
   final LobbyData data;
-  final void Function(CoinShopPack) onBuy;
+  final Future<void> Function(CoinShopPack) onBuy;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -221,15 +228,12 @@ class _DepositTabState extends ConsumerState<_DepositTab> {
   String _provider = 'bkash';
   bool _busy = false;
   String? _error;
-  late bool _autoMode;
 
   @override
   void initState() {
     super.initState();
     final agents = widget.config.agents;
     if (agents.isNotEmpty) _provider = agents.first.id;
-    final cfg = widget.config;
-    _autoMode = cfg.autoEnabled && (!cfg.manualEnabled || cfg.agents.isEmpty);
     _syncPackAmount();
   }
 
@@ -346,35 +350,6 @@ class _DepositTabState extends ConsumerState<_DepositTab> {
     );
   }
 
-  Widget _addModePicker(AppStrings t, bool manualOk, bool autoOk) {
-    if (!manualOk || !autoOk) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 10,
-        children: [
-          ChoiceChip(
-            label: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Text(t.addCoinManual, style: AppText.label(22, weight: FontWeight.w900)),
-            ),
-            selected: !_autoMode,
-            onSelected: _busy ? null : (_) => setState(() => _autoMode = false),
-          ),
-          ChoiceChip(
-            label: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Text(t.addCoinAuto, style: AppText.label(22, weight: FontWeight.w900)),
-            ),
-            selected: _autoMode,
-            onSelected: _busy ? null : (_) => setState(() => _autoMode = true),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _stepButton(IconData icon, bool enabled, VoidCallback onTap) {
     return GestureDetector(
       onTap: enabled
@@ -400,33 +375,24 @@ class _DepositTabState extends ConsumerState<_DepositTab> {
     final manualOk = cfg.manualEnabled && cfg.agents.isNotEmpty;
     final autoOk = cfg.autoEnabled;
     if (!manualOk && !autoOk) {
-      return Center(child: Text(t.manualAddOffTitle, style: AppText.label(22, color: DuelColors.dim, weight: FontWeight.w800)));
+      return Center(child: Text(t.paymentUnavailable, style: AppText.label(22, color: DuelColors.dim, weight: FontWeight.w800)));
     }
-    if (_autoMode && autoOk) {
+    if (autoOk) {
       return SingleChildScrollView(
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(36, 28, 36, 32),
           decoration: duelPanel(radius: 22),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (manualOk && autoOk) _addModePicker(t, manualOk, autoOk),
-              ZiniPayAutoPanel(
-                config: cfg,
-                pack: widget.pack,
-                packs: widget.packs,
-                qty: widget.qty,
-                onPickPack: widget.onPickPack,
-                onQty: widget.onQty,
-              ),
-            ],
+          child: ZiniPayAutoPanel(
+            config: cfg,
+            pack: widget.pack,
+            packs: widget.packs,
+            qty: widget.qty,
+            onPickPack: widget.onPickPack,
+            onQty: widget.onQty,
           ),
         ),
       );
-    }
-    if (!manualOk) {
-      return Center(child: Text(t.paymentNumbersNotSet, style: AppText.label(18, color: DuelColors.dim)));
     }
     final input = AppText.label(28, color: Colors.white);
     final field = InputDecorationTheme(
@@ -441,7 +407,6 @@ class _DepositTabState extends ConsumerState<_DepositTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (manualOk && autoOk) _addModePicker(t, manualOk, autoOk),
             Text(t.addCoinTitle, style: AppText.label(36, color: DuelColors.gold, weight: FontWeight.w900)),
             const SizedBox(height: 10),
             Text(t.addCoinSteps, style: AppText.label(20, color: DuelColors.dim)),
@@ -1128,7 +1093,7 @@ class _CoinPackCard extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: DuelColors.gold),
                 ),
-                child: Text(t.tabAdd, style: AppText.label(16, color: DuelColors.gold, weight: FontWeight.w900)),
+                child: Text(t.payNow, style: AppText.label(16, color: DuelColors.gold, weight: FontWeight.w900)),
               ),
             ],
           ),

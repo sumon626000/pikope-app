@@ -149,8 +149,11 @@ class AppStrings {
       );
   String get manualAddOffTitle => _t('MANUAL ADD IS OFF', 'ম্যানুয়াল যোগ বন্ধ');
   String get paymentNumbersNotSet => _t('PAYMENT NUMBERS NOT SET', 'পেমেন্ট নম্বর সেট নেই');
-  String get addCoinTitle => _t('ADD PICO COIN (bKash / Nagad)', 'পিকো কয়েন যোগ (bKash / Nagad)');
-  String get addCoinSteps => _t('1. Send BDT to the number below · 2. Submit TrxID here', '১. নিচের নম্বরে টাকা পাঠান · ২. TrxID জমা দিন');
+  String get addCoinTitle => _t('ADD PICO COIN', 'পিকো কয়েন যোগ');
+  String get addCoinSteps =>
+      _t('Choose amount · Pay with bKash/Nagad · Coin credits instantly', 'পরিমাণ বেছে নিন · bKash/Nagad দিয়ে পে · কয়েন সাথে সাথে যোগ');
+  String get payNow => _t('PAY NOW', 'এখনই পে');
+  String get paymentUnavailable => _t('Payment is not available right now.', 'পেমেন্ট এখন চালু নেই।');
   String get addCoinManual => _t('MANUAL', 'ম্যানুয়াল');
   String get addCoinAuto => _t('AUTO (ZiniPay)', 'অটো (ZiniPay)');
   String get autoAddTitle => _t('AUTO ADD COIN', 'অটো কয়েন যোগ');

@@ -7,7 +7,7 @@ namespace App;
 final class CoinDeposit
 {
     public const DEFAULTS = [
-        'enabled' => true,
+        'enabled' => false,
         'minBdt' => 100,
         'maxBdt' => 50000,
         'coinPerBdt' => 1,

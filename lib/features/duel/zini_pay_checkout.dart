@@ -13,6 +13,55 @@ import '../online/session.dart';
 import 'duel_chrome.dart';
 import 'lobby_data.dart';
 
+/// Opens hosted checkout after server creates a ZiniPay invoice.
+Future<void> openZiniPayDeposit(
+  BuildContext context,
+  WidgetRef ref, {
+  required CoinDepositConfig config,
+  required int bdt,
+}) async {
+  final t = ref.read(stringsProvider);
+  if (bdt < config.minBdt || bdt > config.maxBdt) {
+    if (context.mounted) {
+      showDuelMessage(context,
+          title: t.addCoinTitle, body: t.bdtRange(config.minBdt, config.maxBdt), icon: Icons.payments_outlined);
+    }
+    return;
+  }
+  if (!Env.hasBackend) {
+    if (context.mounted) {
+      showDuelMessage(context, title: t.addCoinTitle, body: t.offlineServer, icon: Icons.cloud_off_rounded);
+    }
+    return;
+  }
+  if (!config.autoEnabled) {
+    if (context.mounted) {
+      showDuelMessage(context, title: t.addCoinTitle, body: t.paymentUnavailable, icon: Icons.payment_rounded);
+    }
+    return;
+  }
+  try {
+    final r = await ref.read(sessionProvider.notifier).startZiniPayDeposit(bdt);
+    final url = r['paymentUrl'] as String;
+    final deposit = r['deposit'] as Map<String, dynamic>;
+    final returnPath = r['returnPath'] as String? ?? '/deposit/zinipay/return';
+    if (!context.mounted) return;
+    pushScreen(
+      context,
+      ZiniPayCheckoutScreen(
+        paymentUrl: url,
+        depositId: deposit['id'] as int,
+        returnPath: returnPath,
+      ),
+    );
+  } on ApiException catch (e) {
+    if (context.mounted) {
+      showDuelMessage(context,
+          title: t.addCoinTitle, body: t.maybeApi(e.message), icon: Icons.error_outline_rounded);
+    }
+  }
+}
+
 /// ZiniPay hosted checkout inside the app (auto coin add).
 class ZiniPayCheckoutScreen extends ConsumerStatefulWidget {
   const ZiniPayCheckoutScreen({
@@ -185,14 +234,9 @@ class _ZiniPayAutoPanelState extends ConsumerState<ZiniPayAutoPanel> {
 
   Future<void> _pay() async {
     final t = ref.read(stringsProvider);
-    final cfg = widget.config;
     final bdt = _amount;
-    if (bdt == null || bdt < cfg.minBdt || bdt > cfg.maxBdt) {
-      setState(() => _error = t.bdtRange(cfg.minBdt, cfg.maxBdt));
-      return;
-    }
-    if (!Env.hasBackend) {
-      setState(() => _error = t.offlineServer);
+    if (bdt == null) {
+      setState(() => _error = t.bdtRange(widget.config.minBdt, widget.config.maxBdt));
       return;
     }
     setState(() {
@@ -200,21 +244,7 @@ class _ZiniPayAutoPanelState extends ConsumerState<ZiniPayAutoPanel> {
       _error = null;
     });
     try {
-      final r = await ref.read(sessionProvider.notifier).startZiniPayDeposit(bdt);
-      final url = r['paymentUrl'] as String;
-      final deposit = r['deposit'] as Map<String, dynamic>;
-      final returnPath = r['returnPath'] as String? ?? '/deposit/zinipay/return';
-      if (!mounted) return;
-      pushScreen(
-        context,
-        ZiniPayCheckoutScreen(
-          paymentUrl: url,
-          depositId: deposit['id'] as int,
-          returnPath: returnPath,
-        ),
-      );
-    } on ApiException catch (e) {
-      if (mounted) setState(() => _error = t.maybeApi(e.message));
+      await openZiniPayDeposit(context, ref, config: widget.config, bdt: bdt);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -228,9 +258,9 @@ class _ZiniPayAutoPanelState extends ConsumerState<ZiniPayAutoPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(t.autoAddTitle, style: AppText.label(36, color: DuelColors.gold, weight: FontWeight.w900)),
+        Text(t.addCoinTitle, style: AppText.label(36, color: DuelColors.gold, weight: FontWeight.w900)),
         const SizedBox(height: 10),
-        Text(t.autoAddSteps, style: AppText.label(20, color: DuelColors.dim)),
+        Text(t.addCoinSteps, style: AppText.label(20, color: DuelColors.dim)),
         const SizedBox(height: 20),
         if (widget.packs.isNotEmpty) ...[
           SingleChildScrollView(
@@ -276,7 +306,7 @@ class _ZiniPayAutoPanelState extends ConsumerState<ZiniPayAutoPanel> {
         ],
         const SizedBox(height: 24),
         GameButton(
-          label: _busy ? t.pleaseWait : t.payWithZiniPay,
+          label: _busy ? t.pleaseWait : t.payNow,
           height: 88,
           fontSize: 24,
           onPressed: _busy ? null : _pay,

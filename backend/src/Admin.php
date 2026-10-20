@@ -1711,7 +1711,7 @@ CSS;
             $appUrl = $urls['appUrl'];
             echo '<div class="card grid" style="margin-top:12px"><p class="hint"><strong>APP_URL:</strong> ',
                 $appUrl !== '' ? self::e($appUrl) : '<span class="pill bad">Set APP_URL in server .env</span>',
-                '</p>';
+                ' — ZiniPay brand <strong>Website</strong> must use the same domain as redirect/webhook URLs.</p>';
             foreach ([
                 'Webhook (paste in ZiniPay)' => $urls['webhookUrl'],
                 'Redirect example' => $urls['returnUrlExample'],
@@ -1827,7 +1827,8 @@ CSS;
             '</div>',
             '<section class="section"><h2>Payment numbers</h2><p class="hint">Shown in the app — players can copy.</p>',
             '<div class="card"><form method="post" action="', self::e($base), '/admin/deposit/save">', self::csrfField($csrf),
-            '<label class="check"><input type="checkbox" name="enabled" value="1"', $c['enabled'] ? ' checked' : '', '> Allow manual coin add in the app</label>',
+            '<label class="check"><input type="checkbox" name="enabled" value="1"', $c['enabled'] ? ' checked' : '', '> Allow manual coin add in the app (TrxID)</label>',
+            '<p class="hint">Leave unchecked to use <strong>ZiniPay only</strong> — players pay straight from the shop (no MANUAL/AUTO choice).</p>',
             '<div class="grid">',
             '<label>bKash number<input name="bkashNumber" value="', self::e($c['bkashNumber']), '" placeholder="01XXXXXXXXX"></label>',
             '<label>Nagad number<input name="nagadNumber" value="', self::e($c['nagadNumber']), '" placeholder="01XXXXXXXXX"></label>',
