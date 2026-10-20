@@ -171,7 +171,7 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(t.tabTransfer, style: AppText.label(36, color: DuelColors.gold, weight: FontWeight.w900)),
+            Text(t.tabTransfer, style: AppText.label(40, color: DuelColors.gold, weight: FontWeight.w900)),
             const SizedBox(height: 8),
             Text(
               t.transferFeeHint(cfg.feePercent, formatCoins(fee), formatCoins(total)),

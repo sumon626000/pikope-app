@@ -618,7 +618,7 @@ final class Economy
             'daily' => self::dailyStatus($user),
             'cues' => $cues,
             'coinShop' => [
-                'globalDiscountPercent' => CoinShop::config()['globalDiscountPercent'],
+                'globalDiscountPercent' => 0,
                 'packs' => CoinShop::publicPacks((int) $user['id']),
             ],
             'redeem' => Redeem::publicConfig(),

@@ -115,6 +115,8 @@ class CoinShopPack {
 class CoinDepositConfig {
   const CoinDepositConfig({
     required this.enabled,
+    required this.manualEnabled,
+    required this.autoEnabled,
     required this.minBdt,
     required this.maxBdt,
     required this.coinPerBdt,
@@ -124,6 +126,8 @@ class CoinDepositConfig {
   });
 
   final bool enabled;
+  final bool manualEnabled;
+  final bool autoEnabled;
   final int minBdt;
   final int maxBdt;
   final int coinPerBdt;
@@ -133,6 +137,8 @@ class CoinDepositConfig {
 
   factory CoinDepositConfig.fromJson(Map<String, dynamic> j) => CoinDepositConfig(
         enabled: j['enabled'] as bool? ?? false,
+        manualEnabled: j['manualEnabled'] as bool? ?? j['enabled'] as bool? ?? false,
+        autoEnabled: j['autoEnabled'] as bool? ?? false,
         minBdt: j['minBdt'] as int? ?? 100,
         maxBdt: j['maxBdt'] as int? ?? 50000,
         coinPerBdt: j['coinPerBdt'] as int? ?? 1,

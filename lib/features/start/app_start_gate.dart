@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_state.dart';
+import '../../core/env.dart';
 import 'app_update.dart';
 import 'login_screen.dart';
 import 'start_route.dart';
@@ -22,7 +23,8 @@ class _AppStartGateState extends ConsumerState<AppStartGate> {
   @override
   void initState() {
     super.initState();
-    _signedIn = ref.read(settingsProvider).authToken.isNotEmpty;
+    // Saved token only skips login when this build talks to the server.
+    _signedIn = Env.hasBackend && ref.read(settingsProvider).authToken.isNotEmpty;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) checkForAppUpdate(context, ref);
     });

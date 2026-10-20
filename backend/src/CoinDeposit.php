@@ -59,6 +59,8 @@ final class CoinDeposit
         }
         return [
             'enabled' => (bool) $c['enabled'],
+            'manualEnabled' => (bool) $c['enabled'],
+            'autoEnabled' => class_exists(ZiniPay::class) && ZiniPay::publicEnabled(),
             'minBdt' => (int) $c['minBdt'],
             'maxBdt' => (int) $c['maxBdt'],
             'coinPerBdt' => (int) $c['coinPerBdt'],

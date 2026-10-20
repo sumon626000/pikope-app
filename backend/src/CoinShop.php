@@ -70,20 +70,19 @@ final class CoinShop
         self::$config = null;
     }
 
-    /** Coins the player receives (base + pack discount + global discount). */
+    /** Coins the player receives (base + per-pack bonus % only, e.g. 100 @ 5% → 105). */
     public static function receiveCoins(array $pack, ?int $global = null): int
     {
-        $global ??= (int) self::config()['globalDiscountPercent'];
+        unset($global);
         $base = (int) $pack['coins'];
-        $bonus = (int) $pack['discountPercent'] + max(0, $global);
-        return $base + intdiv($base * min(100, $bonus), 100);
+        $bonus = max(0, min(100, (int) $pack['discountPercent']));
+        return $base + intdiv($base * $bonus, 100);
     }
 
     /** @return list<array<string,mixed>> */
     public static function publicPacks(int $userId): array
     {
         $c = self::config();
-        $global = (int) $c['globalDiscountPercent'];
         $packs = $c['packs'];
         usort($packs, static fn (array $a, array $b): int => ($a['sort'] <=> $b['sort']) ?: strcmp($a['id'], $b['id']));
         $out = [];
@@ -91,7 +90,7 @@ final class CoinShop
             if (!(bool) ($p['active'] ?? true)) {
                 continue;
             }
-            $receive = self::receiveCoins($p, $global);
+            $receive = self::receiveCoins($p);
             $free = (int) $p['priceCoins'] <= 0;
             $claimed = $free && self::freeClaimed($userId, (string) $p['id']);
             $out[] = [
@@ -99,7 +98,7 @@ final class CoinShop
                 'name' => $p['name'],
                 'coins' => (int) $p['coins'],
                 'discountPercent' => (int) $p['discountPercent'],
-                'globalDiscountPercent' => $global,
+                'globalDiscountPercent' => 0,
                 'receiveCoins' => $receive,
                 'priceCoins' => (int) $p['priceCoins'],
                 'free' => $free,
@@ -119,8 +118,7 @@ final class CoinShop
             if ($pack === null || !(bool) ($pack['active'] ?? true)) {
                 throw ApiError::notFound('No such coin pack');
             }
-            $global = (int) self::config()['globalDiscountPercent'];
-            $receive = self::receiveCoins($pack, $global);
+            $receive = self::receiveCoins($pack);
             $price = (int) $pack['priceCoins'];
             if ($price <= 0) {
                 if (self::freeClaimed($uid, $packId)) {

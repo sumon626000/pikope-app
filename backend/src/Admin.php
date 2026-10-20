@@ -67,6 +67,8 @@ final class Admin
                     self::reviewRedeem(false);
                 case '/admin/deposit/save':
                     self::saveDepositConfig();
+                case '/admin/zinipay/save':
+                    self::saveZiniPayConfig();
                 case '/admin/deposit/approve':
                     self::reviewDeposit(true);
                 case '/admin/deposit/reject':
@@ -118,6 +120,7 @@ final class Admin
             '/admin/account' => self::accountPage($csrf),
             '/admin/alerts' => self::alertsPage($csrf),
             '/admin/transfer' => self::transferPage($csrf),
+            '/admin/zinipay' => self::ziniPayPage($csrf),
             default => throw ApiError::notFound('No such endpoint'),
         };
     }
@@ -679,6 +682,7 @@ CSS;
             ],
             'Money' => [
                 'deposits' => ['Coin add', '/admin/deposits'],
+                'zinipay' => ['ZiniPay (auto)', '/admin/zinipay'],
                 'redeems' => ['Redeem', '/admin/redeems'],
                 'transfer' => ['Coin transfer', '/admin/transfer'],
                 'coin-shop' => ['Coin shop', '/admin/coin-shop'],
@@ -736,6 +740,7 @@ CSS;
             ['Redeem (review)', '/admin/redeems?status=pending', 'Cash out requests', $pending['redeems']],
             ['Security signals', '/admin/alerts', 'Redeem abuse, hacks, transfers', $pending['alerts']],
             ['Coin transfer fee', '/admin/transfer', 'Fee % and limits', 0],
+            ['ZiniPay auto add', '/admin/zinipay', 'API key & WebView pay', 0],
             ['Players', '/admin/players', 'Search and edit accounts', 0],
             ['Economy', '/admin/economy', 'Stakes, fees, bonus', 0],
             ['Push message', '/admin/push', 'APK notifications', 0],
@@ -844,6 +849,13 @@ CSS;
         self::begin('Dashboard', 'dashboard');
         self::pageLead('Everything in one place — start with <b>Quick actions</b> below for daily approve and settings.');
         self::quickLinks();
+        if (is_file(__DIR__ . '/ZiniPay.php') && !ZiniPay::publicEnabled()) {
+            echo '<section class="section"><p class="muted"><strong>ZiniPay auto add is OFF.</strong> ',
+                'Open <a href="', self::e($base), '/admin/zinipay">ZiniPay (auto)</a> or ',
+                '<a href="', self::e($base), '/admin/deposits">Coin add</a> to enable API key.</p></section>';
+        } elseif (!is_file(__DIR__ . '/ZiniPay.php')) {
+            echo '<section class="section"><p class="muted"><strong>Missing ZiniPay.php on server.</strong> Upload <code>src/ZiniPay.php</code> from the latest backend package, then reload.</p></section>';
+        }
         $unreadAlerts = AdminAlert::unreadCount();
         if ($unreadAlerts > 0) {
             echo '<section class="section"><h2>Unread signals (', self::e($unreadAlerts), ')</h2><p class="muted">Suspicious redeem, transfer abuse, or game integrity.</p>',
@@ -1654,6 +1666,123 @@ CSS;
         self::back('/admin/deposits', 'Coin add settings saved.');
     }
 
+    private static function saveZiniPayConfig(): never
+    {
+        $prev = ZiniPay::config();
+        $key = trim((string) ($_POST['apiKey'] ?? ''));
+        if (($_POST['clearKey'] ?? '0') === '1') {
+            $key = '';
+        } elseif ($key === '') {
+            $key = (string) $prev['apiKey'];
+        }
+        $enabled = ($_POST['enabled'] ?? '0') === '1';
+        if ($enabled && $key === '') {
+            self::fail('API key is required when ZiniPay is enabled.', '/admin/zinipay');
+        }
+        ZiniPay::save([
+            'enabled' => $enabled,
+            'apiKey' => $key,
+        ]);
+        self::back('/admin/zinipay', 'ZiniPay settings saved.');
+    }
+
+    private static function ziniPayConfigBlock(string $csrf, string $base, bool $withUrls = true): void
+    {
+        if (!is_file(__DIR__ . '/ZiniPay.php')) {
+            echo '<section class="section"><h2>ZiniPay</h2><p class="pill bad">Upload <code>src/ZiniPay.php</code> to the server to enable this section.</p></section>';
+            return;
+        }
+        $z = ZiniPay::config();
+        $urls = ZiniPay::adminUrls();
+        $dep = CoinDeposit::config();
+        $ready = ZiniPay::publicEnabled();
+        echo '<section class="section"><h2>ZiniPay — auto coin add (WebView)</h2>',
+            '<p class="hint">Status in app: <strong>', $ready ? 'AUTO enabled' : 'AUTO off (enable below + API key)', '</strong>',
+            ' · Key: ', self::e(ZiniPay::maskedApiKey()), '</p>',
+            '<div class="card"><form method="post" action="', self::e($base), '/admin/zinipay/save">', self::csrfField($csrf),
+            '<label class="check"><input type="checkbox" name="enabled" value="1"', $z['enabled'] ? ' checked' : '', '> Enable ZiniPay in the app (ADD → AUTO)</label>',
+            '<p class="hint">Amount limits: ', self::e($dep['minBdt']), '–', self::e($dep['maxBdt']), ' BDT · ',
+            self::e($dep['coinPerBdt']), ' Pico coin per 1 BDT (same as manual coin add above).</p>',
+            '<label>Brand API key<input type="password" name="apiKey" value="" autocomplete="new-password" placeholder="Paste sandbox or live key"></label>',
+            '<p class="hint">ZiniPay dashboard → Menu → Brands → Brand key. Leave blank to keep current key.</p>',
+            '<label class="check"><input type="checkbox" name="clearKey" value="1"> Clear stored API key</label>',
+            '<button>Save ZiniPay</button></form></div>';
+        if ($withUrls) {
+            $appUrl = $urls['appUrl'];
+            echo '<div class="card grid" style="margin-top:12px"><p class="hint"><strong>APP_URL:</strong> ',
+                $appUrl !== '' ? self::e($appUrl) : '<span class="pill bad">Set APP_URL in server .env</span>',
+                '</p>';
+            foreach ([
+                'Webhook (paste in ZiniPay)' => $urls['webhookUrl'],
+                'Redirect example' => $urls['returnUrlExample'],
+            ] as $label => $url) {
+                echo '<label>', self::e($label), '<input readonly value="', self::e($url), '" onclick="this.select()"></label>';
+            }
+            echo '</div>';
+        }
+        echo '</section>';
+    }
+
+    private static function ziniPayPage(string $csrf): never
+    {
+        $base = self::base();
+        $urls = ZiniPay::adminUrls();
+        $appUrl = $urls['appUrl'];
+        $ready = ZiniPay::publicEnabled();
+        $rows = [];
+        try {
+            $rows = ZiniPay::listRecent(80);
+        } catch (\Throwable $e) {
+            error_log('[admin/zinipay] ' . $e->getMessage());
+        }
+        self::begin('ZiniPay (auto coin add)', 'zinipay');
+        self::pageLead('Players choose <b>AUTO</b> on the ADD tab — the app opens ZiniPay in WebView. API key never goes in the APK.');
+        echo '<section class="section"><h2>Status</h2><div class="stats">';
+        echo '<div class="stat"><b>', $ready ? 'ON' : 'OFF', '</b><span>Auto add in app</span></div>';
+        echo '<div class="stat"><b>', self::e(ZiniPay::maskedApiKey()), '</b><span>API key (masked)</span></div>';
+        echo '<div class="stat"><b>', $appUrl !== '' ? 'OK' : 'MISSING', '</b><span>APP_URL in .env</span></div>';
+        echo '</div>';
+        if ($appUrl === '') {
+            echo '<p class="muted">Set <code>APP_URL=https://your-domain.com</code> in server .env — required for redirect and webhook.</p>';
+        }
+        echo '</section>';
+
+        self::ziniPayConfigBlock($csrf, $base, true);
+
+        echo '<section class="section"><h2>API reference</h2><div class="card grid">';
+        foreach ([
+            'Create invoice' => $urls['apiCreate'],
+            'Verify invoice' => $urls['apiVerify'],
+        ] as $label => $url) {
+            echo '<label>', self::e($label), '<input readonly value="', self::e($url), '" onclick="this.select()"></label>';
+        }
+        echo '</div></section>';
+
+        echo '<section class="section"><h2>Recent auto payments</h2>', self::tableScrollOpen(),
+            '<table class="one"><tr><th>ID<th>Player<th>Phone<th>BDT<th>Pico coin<th>Invoice<th>Status<th>Credited<th>Time</tr>';
+        foreach ($rows as $r) {
+            $phone = isset($r['phone']) && $r['phone'] !== null && $r['phone'] !== '' ? Phone::display((string) $r['phone']) : '—';
+            $pill = ($r['credited'] ?? false)
+                ? '<span class="pill good">credited</span>'
+                : '<span class="pill">' . self::e((string) $r['status']) . '</span>';
+            echo '<tr><td>', self::e($r['id']),
+                '<td><a href="', self::e($base), '/admin/player?id=', self::e($r['userId']), '">', self::e($r['playerName']), '</a>',
+                '<td>', self::e($phone),
+                '<td>', self::e($r['bdt']),
+                '<td>', self::e($r['coins']),
+                '<td><code>', self::e((string) ($r['invoiceId'] ?? '—')), '</code>',
+                '<td>', $pill,
+                '<td>', ($r['credited'] ?? false) ? 'yes' : 'no',
+                '<td>', self::e((string) $r['createdAt']),
+                '</tr>';
+        }
+        if ($rows === []) {
+            echo '<tr><td colspan="9" class="muted">No ZiniPay payments yet.</td></tr>';
+        }
+        echo '</table>', self::tableScrollClose(), '</section>';
+        self::end();
+    }
+
     private static function reviewDeposit(bool $approve): never
     {
         $id = (int) ($_POST['id'] ?? 0);
@@ -1712,8 +1841,9 @@ CSS;
             '<option value="agent"', $c['paymentType'] === 'agent' ? ' selected' : '', '>Agent</option>',
             '<option value="merchant"', $c['paymentType'] === 'merchant' ? ' selected' : '', '>Merchant</option>',
             '</select></label>',
-            '</div><button>Save payment settings</button></form></div></section>',
-            '<section class="section"><h2>Deposit requests</h2>', self::tableScrollOpen(),
+            '</div><button>Save payment settings</button></form></div></section>';
+        self::ziniPayConfigBlock($csrf, $base, true);
+        echo '<section class="section"><h2>Deposit requests</h2>', self::tableScrollOpen(),
             '<table class="one"><tr><th>ID<th>Player<th>Phone<th>Method<th>From #<th>BDT<th>Pico coin<th>TrxID<th>Status<th>Time<th>Balance<th>Action</tr>';
         foreach ($rows as $r) {
             $prov = CoinDeposit::PROVIDERS[(string) $r['provider']] ?? $r['provider'];

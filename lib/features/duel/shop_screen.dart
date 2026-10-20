@@ -13,6 +13,7 @@ import 'duel_chrome.dart';
 import 'lobby_data.dart';
 import '../../l10n/strings.dart';
 import 'coin_transfer_tab.dart';
+import 'zini_pay_checkout.dart';
 
 /// Pico coin: buy packs, redeem to mobile wallet, full activity history.
 class ShopScreen extends ConsumerStatefulWidget {
@@ -65,10 +66,13 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
               children: [
                 TabBar(
                   controller: _tabs,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
                   indicatorColor: DuelColors.gold,
                   indicatorWeight: 4,
-                  labelStyle: AppText.label(22, weight: FontWeight.w900),
+                  labelStyle: AppText.label(24, weight: FontWeight.w900),
                   unselectedLabelStyle: AppText.label(22, color: DuelColors.dim, weight: FontWeight.w700),
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 14),
                   tabs: [
                     Tab(text: t.tabBuy),
                     Tab(text: t.tabAdd),
@@ -120,10 +124,10 @@ class _BuyTab extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(t.packsTitle, style: AppText.label(20, color: DuelColors.gold, weight: FontWeight.w900)),
+          Text(t.packsTitle, style: AppText.label(26, color: DuelColors.gold, weight: FontWeight.w900)),
           const SizedBox(height: 10),
           if (packs.isEmpty)
-            Text(t.noPacks, style: AppText.label(14, color: DuelColors.dim))
+            Text(t.noPacks, style: AppText.label(18, color: DuelColors.dim))
           else
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -173,14 +177,14 @@ class _ShopDoor extends StatelessWidget {
           onTap();
         },
         child: Container(
-          height: 96,
+          height: 104,
           decoration: duelPanel(radius: 16, rim: color, glow: true),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon, color: color, size: 36),
               const SizedBox(width: 12),
-              Text(label, style: AppText.label(20, color: Colors.white, weight: FontWeight.w900)),
+              Text(label, style: AppText.label(24, color: Colors.white, weight: FontWeight.w900)),
             ],
           ),
         ),
@@ -217,12 +221,15 @@ class _DepositTabState extends ConsumerState<_DepositTab> {
   String _provider = 'bkash';
   bool _busy = false;
   String? _error;
+  late bool _autoMode;
 
   @override
   void initState() {
     super.initState();
     final agents = widget.config.agents;
     if (agents.isNotEmpty) _provider = agents.first.id;
+    final cfg = widget.config;
+    _autoMode = cfg.autoEnabled && (!cfg.manualEnabled || cfg.agents.isEmpty);
     _syncPackAmount();
   }
 
@@ -271,7 +278,7 @@ class _DepositTabState extends ConsumerState<_DepositTab> {
   Future<void> _submit() async {
     final t = ref.read(stringsProvider);
     final cfg = widget.config;
-    if (!cfg.enabled) {
+    if (!cfg.manualEnabled || cfg.agents.isEmpty) {
       setState(() => _error = t.manualAddOff);
       return;
     }
@@ -339,6 +346,35 @@ class _DepositTabState extends ConsumerState<_DepositTab> {
     );
   }
 
+  Widget _addModePicker(AppStrings t, bool manualOk, bool autoOk) {
+    if (!manualOk || !autoOk) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 10,
+        children: [
+          ChoiceChip(
+            label: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Text(t.addCoinManual, style: AppText.label(22, weight: FontWeight.w900)),
+            ),
+            selected: !_autoMode,
+            onSelected: _busy ? null : (_) => setState(() => _autoMode = false),
+          ),
+          ChoiceChip(
+            label: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Text(t.addCoinAuto, style: AppText.label(22, weight: FontWeight.w900)),
+            ),
+            selected: _autoMode,
+            onSelected: _busy ? null : (_) => setState(() => _autoMode = true),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _stepButton(IconData icon, bool enabled, VoidCallback onTap) {
     return GestureDetector(
       onTap: enabled
@@ -361,10 +397,35 @@ class _DepositTabState extends ConsumerState<_DepositTab> {
   Widget build(BuildContext context) {
     final t = ref.watch(stringsProvider);
     final cfg = widget.config;
-    if (!cfg.enabled) {
+    final manualOk = cfg.manualEnabled && cfg.agents.isNotEmpty;
+    final autoOk = cfg.autoEnabled;
+    if (!manualOk && !autoOk) {
       return Center(child: Text(t.manualAddOffTitle, style: AppText.label(22, color: DuelColors.dim, weight: FontWeight.w800)));
     }
-    if (cfg.agents.isEmpty) {
+    if (_autoMode && autoOk) {
+      return SingleChildScrollView(
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(36, 28, 36, 32),
+          decoration: duelPanel(radius: 22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (manualOk && autoOk) _addModePicker(t, manualOk, autoOk),
+              ZiniPayAutoPanel(
+                config: cfg,
+                pack: widget.pack,
+                packs: widget.packs,
+                qty: widget.qty,
+                onPickPack: widget.onPickPack,
+                onQty: widget.onQty,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (!manualOk) {
       return Center(child: Text(t.paymentNumbersNotSet, style: AppText.label(18, color: DuelColors.dim)));
     }
     final input = AppText.label(28, color: Colors.white);
@@ -380,6 +441,7 @@ class _DepositTabState extends ConsumerState<_DepositTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (manualOk && autoOk) _addModePicker(t, manualOk, autoOk),
             Text(t.addCoinTitle, style: AppText.label(36, color: DuelColors.gold, weight: FontWeight.w900)),
             const SizedBox(height: 10),
             Text(t.addCoinSteps, style: AppText.label(20, color: DuelColors.dim)),
@@ -1036,37 +1098,37 @@ class _CoinPackCard extends ConsumerWidget {
         onTap();
       },
       child: Container(
-          width: 234,
-          height: 230,
+          width: 252,
+          height: 248,
           decoration: duelPanel(radius: 18, rim: Color.lerp(DuelColors.gold, Colors.black, 0.35)!),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const PikoCoinIcon(size: 84),
+              const PikoCoinIcon(size: 88),
               const SizedBox(height: 8),
               Text(formatCoins(pack.coins, compact: true),
-                  style: AppText.label(34, color: Colors.white, weight: FontWeight.w900)),
+                  style: AppText.label(38, color: Colors.white, weight: FontWeight.w900)),
               Text(t.youGetCoins(formatPicoCoins(pack.receiveCoins)),
-                  style: AppText.label(14, color: DuelColors.gold, weight: FontWeight.w800)),
+                  style: AppText.label(18, color: DuelColors.gold, weight: FontWeight.w800)),
               if (pack.name != '${pack.coins}')
-                Text(pack.name, style: AppText.label(12, color: DuelColors.dim, weight: FontWeight.w700)),
-              if (pack.discountPercent > 0 || pack.globalDiscountPercent > 0)
+                Text(pack.name, style: AppText.label(15, color: DuelColors.dim, weight: FontWeight.w700)),
+              if (pack.discountPercent > 0)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
-                    t.bonusPercent(pack.discountPercent + pack.globalDiscountPercent),
-                    style: AppText.label(10, color: DuelColors.green, weight: FontWeight.w800),
+                    t.bonusPercent(pack.discountPercent),
+                    style: AppText.label(16, color: DuelColors.green, weight: FontWeight.w800),
                   ),
                 ),
               const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: DuelColors.gold.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: DuelColors.gold),
                 ),
-                child: Text(t.tabAdd, style: AppText.label(12, color: DuelColors.gold, weight: FontWeight.w900)),
+                child: Text(t.tabAdd, style: AppText.label(16, color: DuelColors.gold, weight: FontWeight.w900)),
               ),
             ],
           ),

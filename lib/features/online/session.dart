@@ -150,6 +150,18 @@ class SessionNotifier extends Notifier<SessionState> {
     return ((await _api.get('/me/activity?limit=$limit'))['items'] as List).cast<Map<String, dynamic>>();
   }
 
+  Future<Map<String, dynamic>> startZiniPayDeposit(int bdt) async {
+    await ensureSignedIn();
+    return await _api.post('/deposit/zinipay/start', {'bdt': bdt});
+  }
+
+  Future<Map<String, dynamic>> finishZiniPayDeposit(int depositId) async {
+    await ensureSignedIn();
+    final r = await _api.post('/deposit/zinipay/finish', {'depositId': depositId});
+    _adopt(r['user'] as Map<String, dynamic>);
+    return r;
+  }
+
   Future<Map<String, dynamic>> submitDeposit({
     required int bdt,
     required String provider,

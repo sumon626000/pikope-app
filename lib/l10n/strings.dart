@@ -102,10 +102,10 @@ class AppStrings {
   String get picoCoin => _t('PICO COIN', 'পিকো কয়েন');
   String shopSub(int globalDiscount) => globalDiscount > 0
       ? _t('EXTRA $globalDiscount% ON PACKS · 1 COIN = 1 BDT', 'প্যাকে অতিরিক্ত $globalDiscount% · ১ কয়েন = ১ টাকা')
-      : _t('BUY · ADD · SEND · REDEEM · HISTORY', 'কিনুন · যোগ · পাঠান · রিডিম · ইতিহাস');
+      : _t('PACK BONUS 5%–30% · 1 COIN = 1 BDT', 'প্যাক বোনাস ৫%–৩০% · ১ কয়েন = ১ টাকা');
+  String get tabTransfer => _t('COIN TRANSFER', 'কয়েন ট্রান্সফার');
   String get tabBuy => _t('BUY', 'কিনুন');
   String get tabAdd => _t('ADD', 'যোগ');
-  String get tabTransfer => _t('SEND', 'পাঠান');
   String get tabRedeem => _t('REDEEM', 'রিডিম');
   String get tabHistory => _t('HISTORY', 'ইতিহাস');
   String get transferOff => _t('Coin transfer is off.', 'কয়েন পাঠানো বন্ধ।');
@@ -151,6 +151,17 @@ class AppStrings {
   String get paymentNumbersNotSet => _t('PAYMENT NUMBERS NOT SET', 'পেমেন্ট নম্বর সেট নেই');
   String get addCoinTitle => _t('ADD PICO COIN (bKash / Nagad)', 'পিকো কয়েন যোগ (bKash / Nagad)');
   String get addCoinSteps => _t('1. Send BDT to the number below · 2. Submit TrxID here', '১. নিচের নম্বরে টাকা পাঠান · ২. TrxID জমা দিন');
+  String get addCoinManual => _t('MANUAL', 'ম্যানুয়াল');
+  String get addCoinAuto => _t('AUTO (ZiniPay)', 'অটো (ZiniPay)');
+  String get autoAddTitle => _t('AUTO ADD COIN', 'অটো কয়েন যোগ');
+  String get autoAddSub => _t('Secure ZiniPay checkout', 'নিরাপদ ZiniPay চেকআউট');
+  String get autoAddSteps => _t('Choose amount · Pay with bKash/Nagad · Coin credits instantly', 'পরিমাণ বেছে নিন · bKash/Nagad দিয়ে পে · কয়েন সাথে সাথে যোগ');
+  String get payWithZiniPay => _t('PAY WITH ZINIPAY', 'ZINIPAY দিয়ে পে');
+  String get pleaseWait => _t('PLEASE WAIT…', 'অপেক্ষা করুন…');
+  String get autoAddSuccess => _t('PAYMENT OK', 'পেমেন্ট সফল');
+  String get autoAddSuccessBody => _t('Pico coin has been added to your wallet.', 'পিকো কয়েন ওয়ালেটে যোগ হয়েছে।');
+  String get autoAddPending => _t('PAYMENT PENDING', 'পেমেন্ট অপেক্ষমান');
+  String get autoAddWebHint => _t('Complete payment in this window. When done, you return to the app automatically.', 'এই উইন্ডোতে পেমেন্ট শেষ করুন। শেষ হলে অ্যাপে ফিরে আসবেন।');
   String get amountBdt => _t('Amount (BDT)', 'পরিমাণ (টাকা)');
   String youGetCoins(String c) => _t('You get: $c', 'পাবেন: $c');
   String get payerNumber => _t('Your number (sent payment from)', 'আপনার নম্বর (যেখান থেকে পাঠিয়েছেন)');

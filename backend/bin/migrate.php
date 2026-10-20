@@ -92,4 +92,5 @@ if (!str_contains($redeemStatus, 'cancelled')) {
 }
 App\AdminAlert::ensureTable();
 App\CoinTransfer::ensureTable();
+App\ZiniPay::ensureTable();
 echo "Schema is up to date.\n";

@@ -13,6 +13,14 @@ final class Api
 
     public static function handle(): never
     {
+        if (Http::method() === 'GET' && Http::path() === '/deposit/zinipay/return') {
+            ZiniPay::returnHtml();
+        }
+        if (Http::method() === 'POST' && Http::path() === '/webhooks/zinipay') {
+            $raw = file_get_contents('php://input') ?: '';
+            $body = json_decode($raw, true);
+            Http::json(ZiniPay::webhook(is_array($body) ? $body : []));
+        }
         $origin = trim(Config::get('CORS_ORIGIN', ''));
         if ($origin !== '') {
             header("Access-Control-Allow-Origin: $origin");
@@ -93,6 +101,8 @@ final class Api
             $method === 'GET' && $path === '/transfer/history' => self::transferHistory(),
             $method === 'POST' && $path === '/transfer/send' => self::throttled('transfer', 30, 3600, self::transferSend(...)),
             $method === 'POST' && $path === '/deposit/request' => self::throttled('deposit', 15, 3600, self::depositRequest(...)),
+            $method === 'POST' && $path === '/deposit/zinipay/start' => self::throttled('zini', 20, 3600, self::ziniPayStart(...)),
+            $method === 'POST' && $path === '/deposit/zinipay/finish' => self::throttled('zini', 40, 3600, self::ziniPayFinish(...)),
             $method === 'GET' && $path === '/notices' => self::notices(),
             $method === 'GET' && $path === '/me/notifications' => self::notifications(),
             $method === 'POST' && $path === '/me/notifications/read' => self::readNotifications(),
@@ -527,6 +537,16 @@ final class Api
             }
             throw $e;
         }
+    }
+
+    private static function ziniPayStart(): array
+    {
+        return ZiniPay::start((int) Auth::user()['id'], self::int(Http::body(), 'bdt'));
+    }
+
+    private static function ziniPayFinish(): array
+    {
+        return ZiniPay::finish((int) Auth::user()['id'], self::int(Http::body(), 'depositId'));
     }
 
     private static function depositRequest(): array
