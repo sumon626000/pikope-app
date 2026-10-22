@@ -57,6 +57,8 @@ final class Admin
                     self::saveCoinShopPack();
                 case '/admin/coin-shop/delete':
                     self::deleteCoinShopPack();
+                case '/admin/items/save':
+                    self::saveItemPrices();
                 case '/admin/otp-sms':
                     self::saveOtpSms();
                 case '/admin/redeem/save':
@@ -123,6 +125,7 @@ final class Admin
             '/admin/referrals' => self::referralsPage($csrf),
             '/admin/economy' => self::economyPage($csrf),
             '/admin/coin-shop' => self::coinShopPage($csrf),
+            '/admin/items' => self::itemsPage($csrf),
             '/admin/otp-sms' => self::otpSmsPage($csrf),
             '/admin/redeems' => self::redeemsPage($csrf),
             '/admin/deposits' => self::depositsPage($csrf),
@@ -402,6 +405,18 @@ final class Admin
         $wins = max(0, (int) ($_POST['wins'] ?? 0));
         $games = max(0, (int) ($_POST['games'] ?? 0));
         $nameSet = ($_POST['name_set'] ?? '') === '1' ? 1 : 0;
+        $gameIdRaw = trim((string) ($_POST['game_id'] ?? ''));
+        $referralCode = null;
+        if ($gameIdRaw !== '') {
+            if (preg_match('/^\d{6}$/', $gameIdRaw) !== 1) {
+                self::fail('Game ID must be exactly 6 digits.', $back);
+            }
+            $taken = Db::one('SELECT id FROM users WHERE referral_code = ? AND id <> ?', [$gameIdRaw, $id]);
+            if ($taken !== null) {
+                self::fail('That Game ID is already used by another player.', $back);
+            }
+            $referralCode = $gameIdRaw;
+        }
         $password = (string) ($_POST['new_password'] ?? '');
         if ($password !== '' && strlen($password) < 8) {
             self::fail('A new password must be at least 8 characters.', $back);
@@ -409,11 +424,18 @@ final class Admin
         if ($password !== '' && $phone === null) {
             self::fail('Set a mobile number before giving this player a password.', $back);
         }
-        Db::transaction(static function () use ($id, $name, $phone, $avatar, $skin, $xp, $wins, $games, $cue, $nameSet, $password): void {
-            Db::run(
-                'UPDATE users SET display_name = ?, phone = ?, avatar = ?, table_skin = ?, xp = ?, wins = ?, games = ?, cue = ?, name_set = ?, is_guest = ? WHERE id = ?',
-                [$name, $phone, $avatar, $skin, $xp, $wins, $games, $cue, $nameSet, $phone === null ? 1 : 0, $id]
-            );
+        Db::transaction(static function () use ($id, $name, $phone, $avatar, $skin, $xp, $wins, $games, $cue, $nameSet, $password, $referralCode): void {
+            if ($referralCode !== null) {
+                Db::run(
+                    'UPDATE users SET display_name = ?, phone = ?, avatar = ?, table_skin = ?, xp = ?, wins = ?, games = ?, cue = ?, name_set = ?, is_guest = ?, referral_code = ? WHERE id = ?',
+                    [$name, $phone, $avatar, $skin, $xp, $wins, $games, $cue, $nameSet, $phone === null ? 1 : 0, $referralCode, $id]
+                );
+            } else {
+                Db::run(
+                    'UPDATE users SET display_name = ?, phone = ?, avatar = ?, table_skin = ?, xp = ?, wins = ?, games = ?, cue = ?, name_set = ?, is_guest = ? WHERE id = ?',
+                    [$name, $phone, $avatar, $skin, $xp, $wins, $games, $cue, $nameSet, $phone === null ? 1 : 0, $id]
+                );
+            }
             Db::run('INSERT IGNORE INTO user_items (user_id, kind, item) VALUES (?, \'cue\', ?)', [$id, $cue]);
             if ($password !== '') {
                 Db::run('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash($password, PASSWORD_DEFAULT), $id]);
@@ -701,6 +723,7 @@ CSS;
                 'redeems' => ['Redeem', '/admin/redeems'],
                 'transfer' => ['Coin transfer', '/admin/transfer'],
                 'coin-shop' => ['Coin shop', '/admin/coin-shop'],
+                'items' => ['Item prices', '/admin/items'],
                 'referrals' => ['Referrals', '/admin/referrals'],
             ],
             'Security' => [
@@ -765,6 +788,7 @@ CSS;
             ['App update', '/admin/app-update', 'In-app APK update', 0],
             ['Landing page', '/admin/landing', 'pikope.com APK site', 0],
             ['Coin shop', '/admin/coin-shop', 'Packs and discount', 0],
+            ['Item prices', '/admin/items', 'Cues and board prices', 0],
             ['SMS OTP', '/admin/otp-sms', 'Forgot password SMS', 0],
         ];
         echo '<section class="section"><h2>Quick actions</h2><div class="quick-grid">';
@@ -957,6 +981,7 @@ CSS;
         $base = self::base();
         $id = (int) $u['id'];
         $html = '<tr><td>' . self::e($id)
+            . '<td>' . self::e($u['referral_code'] ?? '—')
             . '<td><a href="' . self::e($base) . '/admin/player?id=' . self::e($id) . '">' . self::e($u['display_name']) . '</a> '
             . (self::on($u['banned']) ? '<span class="pill bad">suspended</span>' : '')
             . '<td>' . self::e(self::loginLabel($u))
@@ -1006,11 +1031,15 @@ CSS;
                 $where .= ' OR id = ?';
                 $params[] = (int) $q;
             }
+            if (preg_match('/^\d{6}$/', $q) === 1) {
+                $where .= ' OR referral_code = ?';
+                $params[] = $q;
+            }
             $where .= ')';
         }
         $total = self::n("SELECT COUNT(*) AS n FROM users WHERE $where", $params);
         $rows = Db::all(
-            "SELECT id, display_name, phone, email, is_guest, banned, coins, gems, wins, games, created_at
+            "SELECT id, display_name, phone, email, is_guest, banned, coins, gems, wins, games, referral_code, created_at
              FROM users WHERE $where ORDER BY id DESC LIMIT " . self::PER . ' OFFSET ' . (($page - 1) * self::PER),
             $params
         );
@@ -1021,16 +1050,16 @@ CSS;
         self::begin('Players', 'players');
         self::pageLead('Search, edit profiles, adjust Pico coin / gems, suspend accounts.');
         echo '<div class="search-card"><form class="row" method="get" action="', self::e(self::base()), '/admin/players">',
-            '<label>Search name, mobile or id<input name="q" value="', self::e($q), '" placeholder="Search players"></label>',
+            '<label>Search name, mobile, id or game ID<input name="q" value="', self::e($q), '" placeholder="Search players"></label>',
             '<button>Search</button></form></div>',
             '<section class="section"><h2>Results</h2><p class="muted">', self::e($total), ' player(s).</p>',
             self::tableScrollOpen(),
-            '<table><tr><th>ID<th>Name<th>Mobile<th>Coins<th>Gems<th>Wins / games<th>Joined<th></tr>';
+            '<table><tr><th>ID<th>Game ID<th>Name<th>Mobile<th>Coins<th>Gems<th>Wins / games<th>Joined<th></tr>';
         foreach ($rows as $u) {
             echo self::playerRow($u, $csrf, $next);
         }
         if ($rows === []) {
-            echo '<tr><td colspan="8" class="muted">No players match.</td></tr>';
+            echo '<tr><td colspan="9" class="muted">No players match.</td></tr>';
         }
         echo '</table>', self::tableScrollClose(), self::pager('page', $page, $total, $keep), '</section>';
         self::end();
@@ -1056,7 +1085,7 @@ CSS;
             '<div class="stat"><b>', self::e((int) $u['xp']), '</b><span>xp</span></div>',
             '<div class="stat"><b>', self::e($u['wins']), ' / ', self::e($u['games']), '</b><span>wins / games</span></div>',
             '<div class="stat"><b>', self::on($u['banned']) ? 'Suspended' : 'Active', '</b><span>', self::e(self::on($u['is_guest']) ? 'guest' : 'account'), '</span></div>',
-            '<div class="stat"><b>', self::e($u['referral_code'] ?? '—'), '</b><span>invite code</span></div>',
+            '<div class="stat"><b>', self::e($u['referral_code'] ?? '—'), '</b><span>Game ID</span></div>',
             '</div></section>';
         if ($u['referred_by'] !== null) {
             $inviter = Db::one('SELECT id, display_name FROM users WHERE id = ?', [(int) $u['referred_by']]);
@@ -1073,6 +1102,7 @@ CSS;
         echo '<section class="section"><h2>Profile</h2><div class="card"><form method="post" action="', self::e($base), '/admin/player/save">',
             self::csrfField($csrf), '<input type="hidden" name="id" value="', self::e($id), '"><div class="grid">',
             '<label>Name<input name="display_name" maxlength="24" required value="', self::e($u['display_name']), '"></label>',
+            '<label>Game ID (6 digits)<input name="game_id" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" value="', self::e($u['referral_code'] ?? ''), '" placeholder="Coin transfer ID"></label>',
             '<label>Mobile (+880)<input name="phone" value="', self::e(isset($u['phone']) && $u['phone'] !== null && $u['phone'] !== '' ? substr((string) $u['phone'], 3) : ''), '" placeholder="10 digits, empty = guest"></label>',
             '<label>Avatar<select name="avatar">';
         for ($i = 1; $i <= 6; $i++) {
@@ -1397,6 +1427,67 @@ CSS;
         self::end();
     }
 
+    private static function saveItemPrices(): never
+    {
+        $cues = [];
+        foreach (Economy::CUES as $id => $meta) {
+            $cues[$id] = (int) ($_POST['cue_' . $id] ?? $meta['price']);
+        }
+        $boards = [];
+        foreach (Economy::BOARDS as $kind => $items) {
+            $boards[$kind] = [];
+            foreach ($items as $id => $default) {
+                $boards[$kind][$id] = (int) ($_POST['board_' . $kind . '_' . $id] ?? $default);
+            }
+        }
+        try {
+            ItemCatalog::save(['cues' => $cues, 'boards' => $boards]);
+        } catch (ApiError $e) {
+            self::fail($e->getMessage(), '/admin/items');
+        }
+        self::back('/admin/items', 'Item prices saved.');
+    }
+
+    private static function itemsPage(string $csrf): never
+    {
+        $base = self::base();
+        $cfg = ItemCatalog::config();
+        self::begin('Item prices', 'items');
+        self::pageLead(
+            'Pico coin prices for <b>cues</b> and <b>boards</b> (pool, carrom, ludo). '
+            . '0 = free. The app reads these from the lobby after save. Coin shop packs are on '
+            . '<a href="' . self::e($base) . '/admin/coin-shop">Coin shop</a>.'
+        );
+        echo '<form method="post" action="', self::e($base), '/admin/items/save">', self::csrfField($csrf),
+            '<section class="section"><h2>Cues</h2>', self::tableScrollOpen(),
+            '<table><tr><th>ID<th>Name<th>Price (Pico coin)</tr>';
+        foreach (Economy::CUES as $id => $meta) {
+            $price = $cfg['cues'][$id] ?? (int) $meta['price'];
+            echo '<tr><td>', self::e($id), '<td>', self::e($meta['name']),
+                '<td><input type="number" name="cue_', self::e($id), '" min="0" max="100000000" required value="', self::e($price), '" style="width:140px"></td></tr>';
+        }
+        echo '</table>', self::tableScrollClose(), '</section>';
+        foreach (Economy::BOARDS as $kind => $items) {
+            $title = match ($kind) {
+                'pool' => 'Pool tables',
+                'carrom' => 'Carrom boards',
+                'ludo' => 'Ludo boards',
+                default => ucfirst($kind),
+            };
+            echo '<section class="section"><h2>', self::e($title), '</h2>', self::tableScrollOpen(),
+                '<table><tr><th>ID<th>Price (Pico coin)</tr>';
+            foreach ($items as $id => $default) {
+                $price = $cfg['boards'][$kind][$id] ?? $default;
+                $field = 'board_' . $kind . '_' . $id;
+                echo '<tr><td>', self::e($id), '<td><input type="number" name="', self::e($field),
+                    '" min="0" max="100000000" required value="', self::e($price), '" style="width:140px"></td></tr>';
+            }
+            echo '</table>', self::tableScrollClose(), '</section>';
+        }
+        echo '<p></p><button>Save all item prices</button></form>';
+        self::end();
+    }
+
     private static function saveCoinShopGlobal(): never
     {
         $c = CoinShop::config();
@@ -1439,7 +1530,8 @@ CSS;
         } catch (ApiError $e) {
             self::fail($e->getMessage(), '/admin/coin-shop');
         }
-        self::back('/admin/coin-shop', 'Coin pack saved.');
+        $id = $pack['id'];
+        self::back('/admin/coin-shop?edit=' . rawurlencode($id) . '#pack-form', 'Coin pack saved.');
     }
 
     private static function deleteCoinShopPack(): never
@@ -1914,41 +2006,78 @@ CSS;
         $base = self::base();
         $c = CoinShop::config();
         $global = (int) $c['globalDiscountPercent'];
+        $editId = strtolower(trim((string) ($_GET['edit'] ?? '')));
+        $packs = $c['packs'];
+        usort($packs, static fn (array $a, array $b): int => ($a['sort'] <=> $b['sort']) ?: strcmp($a['id'], $b['id']));
+        $editPack = null;
+        if ($editId !== '') {
+            foreach ($packs as $p) {
+                if (($p['id'] ?? '') === $editId) {
+                    $editPack = $p;
+                    break;
+                }
+            }
+        }
+        $form = $editPack ?? [
+            'id' => '',
+            'name' => '',
+            'coins' => '',
+            'discountPercent' => 5,
+            'priceCoins' => 0,
+            'sort' => 0,
+            'active' => true,
+        ];
+        $editing = $editPack !== null;
         self::begin('Coin shop', 'coin-shop');
         self::pageLead(
             'Shop packs. <b>Base coins</b> = BDT for ZiniPay / add-coin (e.g. pay 100 BDT on the 100 pack). '
-            . '<b>Bonus %</b> = extra Pico on that deposit only (100 @ 3% → base × rate + 3% bonus). '
-            . 'ZiniPay auto add and manual approve use these % when BDT matches a pack. Re-save a pack to update.'
+            . '<b>Bonus %</b> = extra Pico on that deposit only. '
+            . '100–1000 base → 5% and 5000–10000 → 10% tier bonuses apply on the app when saved. '
+            . 'Click <b>Edit</b> on a row to change that pack.'
         );
         echo '<section class="section"><div class="card"><form class="row" method="post" action="', self::e($base), '/admin/coin-shop/global">', self::csrfField($csrf),
             '<label>Global discount on coins (%)<input type="number" name="globalDiscountPercent" min="0" max="100" required value="', self::e($global), '"></label>',
             '<button>Save global discount</button></form></div></section>',
             '<section class="section"><h2>Packs</h2>', self::tableScrollOpen(),
-            '<table><tr><th>Active<th>ID<th>Name<th>Base coins<th>Bonus %<th>Global %<th>Player gets<th>Price (coins)<th>Sort<th></tr>';
-        $packs = $c['packs'];
-        usort($packs, static fn (array $a, array $b): int => ($a['sort'] <=> $b['sort']) ?: strcmp($a['id'], $b['id']));
+            '<table><tr><th>Active<th>ID<th>Name<th>Base coins<th>Bonus %<th>Live bonus<th>Player gets<th>Price (coins)<th>Sort<th>Actions</tr>';
         foreach ($packs as $p) {
             $gets = CoinShop::receiveCoins($p, $global);
+            $liveBonus = CoinShop::effectiveBonusPercent($p);
             echo '<tr><td>', ($p['active'] ?? true) ? '<span class="pill good">yes</span>' : '<span class="pill">no</span>',
                 '<td>', self::e($p['id']), '<td>', self::e($p['name']),
                 '<td>', self::e($p['coins']), '<td>', self::e($p['discountPercent']), '%',
-                '<td>', self::e($global), '%<td><b>', self::e($gets), '</b>',
+                '<td>', self::e($liveBonus), '%<td><b>', self::e($gets), '</b>',
                 '<td>', self::e($p['priceCoins']),
-                '<td>', self::e($p['sort']), '<td>';
-            echo '<form method="post" action="', self::e($base), '/admin/coin-shop/delete" style="display:inline">', self::csrfField($csrf),
-                '<input type="hidden" name="id" value="', self::e($p['id']), '"><button type="submit">Delete</button></form></tr>';
+                '<td>', self::e($p['sort']), '<td class="row">';
+            echo '<a class="btn ghost" href="', self::e($base), '/admin/coin-shop?edit=', rawurlencode((string) $p['id']), '#pack-form">Edit</a> ';
+            echo '<form method="post" action="', self::e($base), '/admin/coin-shop/delete" style="display:inline" onsubmit="return confirm(\'Remove this pack?\');">', self::csrfField($csrf),
+                '<input type="hidden" name="id" value="', self::e($p['id']), '"><button type="submit" class="danger">Delete</button></form></tr>';
+        }
+        if ($packs === []) {
+            echo '<tr><td colspan="10" class="muted">No packs yet — add one below.</td></tr>';
         }
         echo '</table>', self::tableScrollClose(), '</section>',
-            '<section class="section"><h2>Add or update pack</h2><div class="card"><form method="post" action="', self::e($base), '/admin/coin-shop/pack">', self::csrfField($csrf),
-            '<div class="grid">',
-            '<label>Pack id (letters, numbers, _)<input name="id" maxlength="32" required pattern="[a-zA-Z0-9_-]+" placeholder="starter"></label>',
-            '<label>Name<input name="name" maxlength="32" required placeholder="STARTER"></label>',
-            '<label>Base coins<input type="number" name="coins" min="1" max="100000000" required></label>',
-            '<label>Bonus on deposit (%)<input type="number" name="discountPercent" min="0" max="100" value="5" title="Extra coins on top of base amount"></label>',
-            '<label>Price in coins (0 = free once)<input type="number" name="priceCoins" min="0" max="100000000" value="0"></label>',
-            '<label>Sort order<input type="number" name="sort" value="0"></label>',
-            '<label>Active<select name="active"><option value="1">yes</option><option value="0">no</option></select></label>',
-            '</div><p></p><button>Save pack</button></form></div></section>';
+            '<section class="section" id="pack-form"><h2>', $editing ? 'Edit pack' : 'Add pack', '</h2>';
+        if ($editing) {
+            echo '<p class="hint">Editing <b>', self::e($editId), '</b>. Pack id cannot be changed. <a href="', self::e($base), '/admin/coin-shop">Cancel</a></p>';
+        }
+        echo '<div class="card"><form method="post" action="', self::e($base), '/admin/coin-shop/pack">', self::csrfField($csrf),
+            '<div class="grid">';
+        if ($editing) {
+            echo '<label>Pack id<input value="', self::e($form['id']), '" readonly></label>',
+                '<input type="hidden" name="id" value="', self::e($form['id']), '">';
+        } else {
+            echo '<label>Pack id (letters, numbers, _)<input name="id" maxlength="32" required pattern="[a-zA-Z0-9_-]+" placeholder="pack100"></label>';
+        }
+        $active = (bool) ($form['active'] ?? true);
+        echo '<label>Name<input name="name" maxlength="32" required value="', self::e($form['name']), '"></label>',
+            '<label>Base coins<input type="number" name="coins" min="1" max="100000000" required value="', self::e($form['coins']), '"></label>',
+            '<label>Bonus on deposit (%)<input type="number" name="discountPercent" min="0" max="100" value="', self::e((int) $form['discountPercent']), '" title="Extra coins on top of base amount"></label>',
+            '<label>Price in coins (0 = free once)<input type="number" name="priceCoins" min="0" max="100000000" value="', self::e((int) $form['priceCoins']), '"></label>',
+            '<label>Sort order<input type="number" name="sort" value="', self::e((int) $form['sort']), '"></label>',
+            '<label>Active<select name="active"><option value="1"', $active ? ' selected' : '', '>yes</option>',
+            '<option value="0"', $active ? '' : ' selected', '>no</option></select></label>',
+            '</div><p></p><button>', $editing ? 'Save changes' : 'Add pack', '</button></form></div></section>';
         self::end();
     }
 

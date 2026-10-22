@@ -286,6 +286,7 @@ class LobbyData {
     required this.jackpot,
     required this.daily,
     required this.cues,
+    required this.boardPrices,
     required this.coinShop,
     required this.redeem,
     required this.coinDeposit,
@@ -301,12 +302,26 @@ class LobbyData {
   final List<int> jackpot;
   final DailyBonus daily;
   final List<CueOffer> cues;
+  final Map<String, Map<String, int>> boardPrices;
   final CoinShopInfo coinShop;
   final RedeemConfig redeem;
   final CoinDepositConfig coinDeposit;
   final CoinTransferConfig coinTransfer;
   final PushConfig push;
   final DateTime fetchedAt;
+
+  static Map<String, Map<String, int>> _boardPricesFromJson(Object? raw) {
+    if (raw is! Map) return const {};
+    final out = <String, Map<String, int>>{};
+    for (final entry in raw.entries) {
+      if (entry.value is! Map) continue;
+      out[entry.key.toString()] = {
+        for (final p in (entry.value as Map).entries)
+          p.key.toString(): (p.value as num).toInt(),
+      };
+    }
+    return out;
+  }
 
   factory LobbyData.fromJson(Map<String, dynamic> j) => LobbyData(
         levels: {
@@ -320,6 +335,7 @@ class LobbyData {
         jackpot: (j['jackpot'] as List).cast<int>(),
         daily: DailyBonus.fromJson(j['daily'] as Map<String, dynamic>),
         cues: [for (final c in (j['cues'] as List).cast<Map<String, dynamic>>()) CueOffer.fromJson(c)],
+        boardPrices: _boardPricesFromJson(j['boardPrices']),
         coinShop: CoinShopInfo.fromJson(j['coinShop'] as Map<String, dynamic>? ?? const {'globalDiscountPercent': 0, 'packs': []}),
         redeem: RedeemConfig.fromJson(j['redeem'] as Map<String, dynamic>? ?? const {'enabled': false}),
         coinDeposit: CoinDepositConfig.fromJson(j['coinDeposit'] as Map<String, dynamic>? ?? const {'enabled': false}),

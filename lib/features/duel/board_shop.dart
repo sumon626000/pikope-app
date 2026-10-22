@@ -14,6 +14,7 @@ import '../carrom/carrom_skins.dart';
 import '../game/widgets/table_art.dart';
 import '../ludo/ludo_board.dart';
 import 'duel_chrome.dart';
+import 'lobby_data.dart';
 import '../../l10n/strings.dart';
 
 enum BoardKind { pool, carrom, ludo }
@@ -34,7 +35,8 @@ class BoardShopScreen extends ConsumerWidget {
       BoardKind.carrom => t.carromTableBtn,
       BoardKind.ludo => t.ludoBoardBtn,
     };
-    final items = _items(kind);
+    final boardPrices = ref.watch(lobbyProvider).valueOrNull?.boardPrices;
+    final items = _items(kind, boardPrices);
     return DuelPage(
       title: title,
       expanded: true,
@@ -136,7 +138,12 @@ class _BoardItem {
   final Widget preview;
 }
 
-List<_BoardItem> _items(BoardKind kind) {
+int _boardPrice(Map<String, Map<String, int>>? catalog, String kind, String id, int fallback) {
+  return catalog?[kind]?[id] ?? fallback;
+}
+
+List<_BoardItem> _items(BoardKind kind, Map<String, Map<String, int>>? boardPrices) {
+  final kindKey = kind.name;
   switch (kind) {
     case BoardKind.pool:
       final skins = DemoData.tableSkins;
@@ -145,20 +152,20 @@ List<_BoardItem> _items(BoardKind kind) {
           _BoardItem(
             skins[i].id,
             skins[i].name,
-            i < 3 ? 0 : 2000 * (i - 2),
+            _boardPrice(boardPrices, kindKey, skins[i].id, i < 3 ? 0 : 2000 * (i - 2)),
             TableArt(skin: skins[i], width: 168),
           ),
       ];
       items.sort((a, b) => a.price.compareTo(b.price));
       return items;
     case BoardKind.carrom:
-      const prices = {'classic': 0, 'walnut': 0, 'royal': 4000, 'emerald': 6000, 'cherry': 8000, 'midnight': 12000};
+      const fallback = {'classic': 0, 'walnut': 0, 'royal': 4000, 'emerald': 6000, 'cherry': 8000, 'midnight': 12000};
       final items = [
         for (final b in boardSkins)
           _BoardItem(
             b.id,
             b.name,
-            prices[b.id] ?? 8000,
+            _boardPrice(boardPrices, kindKey, b.id, fallback[b.id] ?? 8000),
             CustomPaint(size: const Size(120, 120), painter: CarromBoardPainter(b)),
           ),
       ];
@@ -167,7 +174,12 @@ List<_BoardItem> _items(BoardKind kind) {
     case BoardKind.ludo:
       final items = [
         for (final theme in ludoBoardThemes)
-          _BoardItem(theme.id, theme.name, theme.price, _LudoSwatch(theme)),
+          _BoardItem(
+            theme.id,
+            theme.name,
+            _boardPrice(boardPrices, kindKey, theme.id, theme.price),
+            _LudoSwatch(theme),
+          ),
       ];
       items.sort((a, b) => a.price.compareTo(b.price));
       return items;

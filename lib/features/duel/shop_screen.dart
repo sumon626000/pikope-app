@@ -118,12 +118,6 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
   }
 }
 
-int _coinPackColumns(double width) {
-  if (width >= 900) return 3;
-  if (width >= 520) return 2;
-  return 1;
-}
-
 /// Shop tab content fills the tab area; panel stretches to at least full height.
 class _ShopPanel extends StatelessWidget {
   const _ShopPanel({required this.child});
@@ -173,16 +167,11 @@ class _BuyTab extends ConsumerWidget {
                 if (packs.isEmpty)
                   Text(t.noPacks, style: AppText.label(18, color: DuelColors.dim))
                 else
-                  GridView.builder(
+                  ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: _coinPackColumns(constraints.maxWidth),
-                      mainAxisSpacing: 10,
-                      crossAxisSpacing: 10,
-                      mainAxisExtent: 158,
-                    ),
                     itemCount: packs.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (context, i) => _CoinPackCard(
                       pack: packs[i],
                       onTap: () => onBuy(packs[i]),
@@ -1061,39 +1050,42 @@ class _CoinPackCard extends ConsumerWidget {
       },
       child: Container(
         width: double.infinity,
-        height: double.infinity,
-        decoration: duelPanel(radius: 16, rim: Color.lerp(DuelColors.gold, Colors.black, 0.35)!),
-        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        decoration: duelPanel(radius: 14, rim: Color.lerp(DuelColors.gold, Colors.black, 0.35)!),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        child: Row(
           children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const PikoCoinIcon(size: 44),
-                const SizedBox(height: 4),
-                Text(
-                  formatCoins(pack.coins, compact: true),
-                  style: AppText.label(26, color: Colors.white, weight: FontWeight.w900),
-                ),
-                Text(
-                  t.youGetCoins(formatPicoCoins(pack.receiveCoins)),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppText.label(13, color: DuelColors.gold, weight: FontWeight.w800),
-                ),
-                if (pack.discountPercent > 0)
+            const PikoCoinIcon(size: 42),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   Text(
-                    t.bonusPercent(pack.discountPercent),
-                    style: AppText.label(12, color: DuelColors.green, weight: FontWeight.w800),
+                    formatCoins(pack.coins, compact: true),
+                    style: AppText.label(24, color: Colors.white, weight: FontWeight.w900),
                   ),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    t.youGetCoins(formatPicoCoins(pack.receiveCoins)),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.label(13, color: DuelColors.gold, weight: FontWeight.w800),
+                  ),
+                  if (pack.discountPercent > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        t.bonusPercent(pack.discountPercent),
+                        style: AppText.label(12, color: DuelColors.green, weight: FontWeight.w800),
+                      ),
+                    ),
+                ],
+              ),
             ),
+            const SizedBox(width: 10),
             Container(
-              width: double.infinity,
-              height: 36,
-              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: DuelColors.gold.withValues(alpha: 0.16),
                 borderRadius: BorderRadius.circular(8),

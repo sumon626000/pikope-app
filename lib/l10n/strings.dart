@@ -80,6 +80,7 @@ class AppStrings {
 
   // —— Settings ——
   String get settingsTitle => _t('PROFILE & SETTINGS', 'প্রোফাইল ও সেটিংস');
+  String get settingsPrefsBlock => _t('LANGUAGE & GAME', 'ভাষা ও গেম');
   String get sectionPlayer => _t('PLAYER', 'প্লেয়ার');
   String get nicknameLabel => _t('Nickname (3-16: letters, numbers, _)', 'ডাকনাম (৩–১৬: অক্ষর, সংখ্যা, _)');
   String get phoneShown => _t('Mobile number', 'মোবাইল নম্বর');
@@ -658,7 +659,9 @@ class AppStrings {
   // —— Cues ——
   String get myItems => _t('MY ITEMS', 'আমার আইটেম');
   String get cuesSubOwned => _t('YOUR CUES - TAP ONE TO USE IT', 'আপনার কিউ — ব্যবহারে ট্যাপ');
-  String get cuesSubBuy => _t('EVERY CUE PLAYS THE SAME - BUY WITH PICO COIN', 'সব কিউ একই — পিকো কয়েনে কিনুন');
+  String get cuesSubBuy => _t('SAME POWER ON ALL CUES - DIFFERENT LOOKS ONLY', 'সব কিউতে একই পাওয়ার — শুধু ডিজাইন আলাদা');
+  String get cuesSamePlayHint =>
+      _t('Every cue hits the same. Only the body design changes.', 'সব কিউ একই — শুধু বডির ডিজাইন আলাদা।');
   String get notEnoughCueBody => _t('Win matches and collect your daily bonus to afford this cue.', 'ম্যাচ জিতুন ও দৈনিক বোনাস নিন।');
   String get useCue => _t('USE', 'ব্যবহার');
   String get shopTitleShort => _t('SHOP', 'শপ');

@@ -471,7 +471,7 @@ final class Economy
 
     public static function buyCue(array $user, string $id): void
     {
-        $cue = self::CUES[$id] ?? throw ApiError::notFound('No such cue');
+        $cue = ItemCatalog::cue($id);
         Db::transaction(static function () use ($user, $id, $cue): void {
             $uid = (int) $user['id'];
             Db::one('SELECT id FROM users WHERE id = ? FOR UPDATE', [$uid]);
@@ -536,7 +536,7 @@ final class Economy
     /** @return list<string> */
     public static function ownedBoards(int $uid, string $kind): array
     {
-        $catalog = self::BOARDS[$kind] ?? [];
+        $catalog = ItemCatalog::boards()[$kind] ?? [];
         $free = [];
         foreach ($catalog as $id => $price) {
             if ($price === 0) {
@@ -550,7 +550,7 @@ final class Economy
     /** A pool cloth the profile editor may save: known, and already paid for. */
     public static function poolBoardAllowed(int $uid, string $id): bool
     {
-        $price = self::BOARDS['pool'][$id] ?? null;
+        $price = ItemCatalog::boards()['pool'][$id] ?? null;
         if ($price === null) {
             return false;
         }
@@ -561,7 +561,7 @@ final class Economy
     public static function selectBoard(array $user, string $kind, string $id): void
     {
         self::ensureBoardColumns();
-        $price = self::BOARDS[$kind][$id] ?? throw ApiError::notFound('No such board');
+        $price = ItemCatalog::boardPrice($kind, $id);
         $column = match ($kind) {
             'pool' => 'table_skin',
             'carrom' => 'carrom_board',
@@ -607,8 +607,15 @@ final class Economy
         }
         $owned = self::ownedCues((int) $user['id']);
         $cues = [];
-        foreach (self::CUES as $id => $cue) {
-            $cues[] = ['id' => $id, 'owned' => in_array($id, $owned, true)] + $cue;
+        foreach (Economy::CUES as $id => $cue) {
+            $live = ItemCatalog::cue($id);
+            $cues[] = [
+                'id' => $id,
+                'name' => $live['name'],
+                'price' => $live['price'],
+                'currency' => $live['currency'],
+                'owned' => in_array($id, $owned, true),
+            ];
         }
         return [
             'user' => Auth::publicUser($user),
@@ -618,6 +625,7 @@ final class Economy
             'jackpot' => array_column(self::config()['jackpot'], 'x'),
             'daily' => self::dailyStatus($user),
             'cues' => $cues,
+            'boardPrices' => ItemCatalog::boards(),
             'coinShop' => [
                 'globalDiscountPercent' => 0,
                 'packs' => CoinShop::publicPacks((int) $user['id']),

@@ -112,6 +112,15 @@ class _CuesScreenState extends ConsumerState<CuesScreen> {
                   : const CircularProgressIndicator(color: DuelColors.silver))
           : Column(
               children: [
+                if (!widget.ownedOnly)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Text(
+                      t.cuesSamePlayHint,
+                      textAlign: TextAlign.center,
+                      style: AppText.label(14, color: DuelColors.silver, weight: FontWeight.w700),
+                    ),
+                  ),
                 Expanded(
                   child: GridView.count(
                     crossAxisCount: 4,
@@ -171,13 +180,12 @@ class _CueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = CueStyle.of(cue.id);
     return Container(
       decoration: duelPanel(radius: 16, rim: equipped ? DuelColors.green : DuelColors.rim, glow: equipped),
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       child: Column(
         children: [
-          Expanded(child: CustomPaint(size: Size.infinite, painter: _CuePreviewPainter(style))),
+          Expanded(child: CueStickPreview(cueId: cue.id)),
           const SizedBox(height: 6),
           Text(cue.name.toUpperCase(), maxLines: 1, style: AppText.label(17, color: Colors.white, weight: FontWeight.w900)),
           const SizedBox(height: 8),
@@ -228,20 +236,3 @@ class _CueCard extends StatelessWidget {
   }
 }
 
-class _CuePreviewPainter extends CustomPainter {
-  _CuePreviewPainter(this.style);
-
-  final CueStyle style;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Lying across the card, tip to the left, slightly raised.
-    final tip = Offset(size.width * 0.04, size.height * 0.72);
-    final end = Offset(size.width * 0.97, size.height * 0.26);
-    final v = end - tip;
-    paintCueStick(canvas, tip, v / v.distance, v.distance, 22, style);
-  }
-
-  @override
-  bool shouldRepaint(_CuePreviewPainter old) => old.style != style;
-}

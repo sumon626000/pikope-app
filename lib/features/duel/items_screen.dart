@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
 import '../../core/duel_ui.dart';
+import '../../data/cues.dart';
 import 'board_shop.dart';
 import 'cues_screen.dart';
 import 'duel_chrome.dart';
 import '../../l10n/strings.dart';
+import 'lobby_data.dart';
 
 /// Boards and cues only — no coin buy, redeem or transfer (those live in Shop).
 class ItemsScreen extends ConsumerWidget {
@@ -45,7 +47,61 @@ class ItemsScreen extends ConsumerWidget {
                     _ItemDoor(label: t.navCues, color: DuelColors.blue, icon: NavTile.cuesIcon, onTap: () => pushScreen(context, const CuesScreen(asShop: true))),
                   ],
                 ),
+                const SizedBox(height: 18),
+                Text(t.cuesSection, style: AppText.label(20, color: DuelColors.blue, weight: FontWeight.w900)),
+                const SizedBox(height: 4),
+                Text(t.cuesSamePlayHint, style: AppText.label(13, color: DuelColors.silver, weight: FontWeight.w600)),
+                const SizedBox(height: 10),
+                _CuePreviewStrip(
+                  cues: ref.watch(lobbyProvider).valueOrNull?.cues ?? [for (final s in CueStyle.all) CueOffer(id: s.id, name: s.name, price: 0, currency: 'coins', owned: s.id == 'classic')],
+                  onOpenShop: () => pushScreen(context, const CuesScreen(asShop: true)),
+                ),
               ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _CuePreviewStrip extends StatelessWidget {
+  const _CuePreviewStrip({required this.cues, required this.onOpenShop});
+
+  final List<CueOffer> cues;
+  final VoidCallback onOpenShop;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 118,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: cues.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
+        itemBuilder: (context, i) {
+          final cue = cues[i];
+          return GestureDetector(
+            onTap: () {
+              AudioService.tap();
+              onOpenShop();
+            },
+            child: Container(
+              width: 132,
+              decoration: duelPanel(radius: 12, rim: DuelColors.blue.withValues(alpha: 0.55)),
+              padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+              child: Column(
+                children: [
+                  Expanded(child: CueStickPreview(cueId: cue.id, stroke: 14)),
+                  const SizedBox(height: 2),
+                  Text(
+                    cue.name.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.label(11, color: Colors.white, weight: FontWeight.w800),
+                  ),
+                ],
+              ),
             ),
           );
         },

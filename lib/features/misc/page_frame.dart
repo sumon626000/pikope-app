@@ -39,7 +39,7 @@ class PageFrame extends StatelessWidget {
               ),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                  padding: const EdgeInsets.fromLTRB(14, 2, 14, 14),
                   child: Center(
                     child: ConstrainedBox(
                       constraints: BoxConstraints(maxWidth: maxWidth),
@@ -57,23 +57,24 @@ class PageFrame extends StatelessWidget {
 }
 
 class SectionCard extends StatelessWidget {
-  const SectionCard({super.key, required this.title, required this.child});
+  const SectionCard({super.key, required this.title, required this.child, this.compact = false});
 
   final String title;
   final Widget child;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      decoration: panelDecoration(radius: 16),
+      margin: EdgeInsets.only(bottom: compact ? 8 : 14),
+      padding: EdgeInsets.fromLTRB(compact ? 12 : 16, compact ? 8 : 12, compact ? 12 : 16, compact ? 8 : 12),
+      decoration: panelDecoration(radius: compact ? 12 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: AppText.label(13, color: AppColors.gold)),
-          const SizedBox(height: 8),
+          Text(title, style: AppText.label(compact ? 11 : 13, color: AppColors.gold, weight: FontWeight.w800)),
+          SizedBox(height: compact ? 4 : 8),
           child,
         ],
       ),
@@ -88,30 +89,34 @@ class ChoiceRow<T> extends StatelessWidget {
     required this.options,
     required this.value,
     required this.onChanged,
+    this.dense = false,
   });
 
   final Map<T, String> options;
   final T value;
   final ValueChanged<T> onChanged;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
     return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+      spacing: dense ? 5 : 8,
+      runSpacing: dense ? 5 : 8,
       children: [
         for (final e in options.entries)
           GestureDetector(
             onTap: () => onChanged(e.key),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: EdgeInsets.symmetric(horizontal: dense ? 10 : 16, vertical: dense ? 5 : 10),
               decoration: BoxDecoration(
                 color: e.key == value ? AppColors.active : AppColors.backgroundAlt,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: e.key == value ? AppColors.active : AppColors.frame, width: 2),
+                borderRadius: BorderRadius.circular(dense ? 8 : 12),
+                border: Border.all(color: e.key == value ? AppColors.active : AppColors.frame, width: dense ? 1.5 : 2),
               ),
-              child: Text(e.value,
-                  style: AppText.label(13, color: e.key == value ? Colors.black : AppColors.text)),
+              child: Text(
+                e.value,
+                style: AppText.label(dense ? 11 : 13, color: e.key == value ? Colors.black : AppColors.text),
+              ),
             ),
           ),
       ],
