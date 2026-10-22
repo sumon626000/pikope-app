@@ -219,7 +219,13 @@ class AppStrings {
   String get updateReady => _t('READY TO INSTALL', 'ইনস্টলের জন্য তৈরি');
   String get updateInstall => _t('INSTALL', 'ইনস্টল');
   String get updateLater => _t('LATER', 'পরে');
+  String get updateRequiredHint =>
+      _t('You must install this update to play.', 'খেলতে হলে এই আপডেট ইনস্টল করতে হবে।');
   String get updateFailed => _t('Could not download the update.', 'আপডেট নামেনি।');
+  String get updateFailed404 => _t('APK file not found on the server (404). Upload the file to the link in admin.', 'সার্ভারে APK নেই (404)। অ্যাডমিনের লিংকে ফাইল আপলোড করুন।');
+  String updateFailedHttp(String code) => _t('Server replied: HTTP $code', 'সার্ভার: HTTP $code');
+  String get updateFailedHash => _t('APK hash mismatch. Clear SHA-256 in admin or upload the correct file.', 'APK hash মিলেনি। অ্যাডমিনে SHA-256 খালি করুন বা সঠিক ফাইল দিন।');
+  String get updateFailedNotApk => _t('Download was not an APK (wrong link or login page).', 'ডাউনলোড APK নয় (ভুল লিংক বা লগইন পেজ)।');
   String get updateRetry => _t('TRY AGAIN', 'আবার চেষ্টা');
   String get updateAllow => _t('Allow PikoPe to install apps, then tap Install.', 'PikoPe-কে অ্যাপ ইনস্টলের অনুমতি দিন, তারপর ইনস্টল চাপুন।');
   String get sectionLegal => _t('LEGAL', 'আইনি');
