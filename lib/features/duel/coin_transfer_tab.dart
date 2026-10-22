@@ -99,14 +99,13 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> {
       setState(() => _error = t.transferNotEligible);
       return;
     }
-    final total = amount + _feeFor(amount);
+    final fee = _feeFor(amount);
+    final total = amount + fee;
     if (total > session.walletCoins) {
       setState(() => _error = t.notEnoughCoin);
       return;
     }
     final name = _profile?['name'] as String? ?? digits;
-    final fee = _feeFor(amount);
-    final total = amount + fee;
     final ok = await showDuelDialog<bool>(
       context,
       barrierDismissible: false,
