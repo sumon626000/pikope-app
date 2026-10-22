@@ -1,43 +1,36 @@
-PikoPe backend + admin — Hostinger (subdomain)
-==============================================
+PikoPe backend + admin — Hostinger
+==================================
 
-Subdomain: pikope.bet369win.com
+API + admin: https://adminnew.pikope.com  → public_html/pikope/public
+MAIN SITE:   https://pikope.com          → public_html/ (upload duelx/site-pikope.com/* ONLY here)
 
-1) Upload & extract this zip so you have:
-     .../public_html/pikope/public/index.php
-     .../public_html/pikope/.env.example
-     (not inside public_html root only — keep the pikope folder)
-
-2) hPanel → Subdomains → pikope
-     Document root MUST be:
+1) Git deploy or upload into:
+     .../public_html/pikope/
+     Document root for adminnew.pikope.com:
      .../public_html/pikope/public
 
-3) Copy .env.example → .env and set:
-     APP_URL=https://pikope.bet369win.com
+2) Copy .env.example → .env and set:
+     APP_URL=https://adminnew.pikope.com
      DB_* from hPanel → MySQL
      ADMIN_USER=...
      ADMIN_PASS=...   (12+ characters)
      APP_DEBUG=0
      APP_TEST_HOOKS=0
-     CORS_ORIGIN=   (leave empty; do not use *)
-     Optional: ADMIN_IP_ALLOWLIST=your.office.ip
-     Then SSH or cron: php bin/doctor.php  (all [ok] before go-live)
+     CORS_ORIGIN=   (leave empty)
+     Optional: FCM_SERVER_KEY=...
+     Then: php bin/migrate.php && php bin/doctor.php
 
-4) phpMyAdmin → Import → pikope/sql/schema.sql
-     OR Terminal: cd .../pikope && php bin/migrate.php
+3) ZiniPay dashboard → Brand website:
+     https://adminnew.pikope.com
+     Webhook: https://adminnew.pikope.com/webhooks/zinipay
 
-5) Test:
-     https://pikope.bet369win.com/health
-     https://pikope.bet369win.com/admin
+4) Test:
+     https://adminnew.pikope.com/health
+     https://adminnew.pikope.com/admin
+
+5) APK (local):
+     duelx/.env → API_BASE_URL=https://adminnew.pikope.com
+     flutter build apk --release --dart-define-from-file=.env
 
 6) Cron every 5 min:
      php .../pikope/bin/cleanup.php
-     (watch "wallet drift" in output; should stay 0)
-
-   Optional daily (alert if exit code 1):
-     php .../pikope/bin/reconcile_wallet.php
-
-7) APK:
-     flutter build apk --release --dart-define=API_BASE_URL=https://pikope.bet369win.com
-
-Admin is English only at /admin (HTTP Basic = ADMIN_USER / ADMIN_PASS).

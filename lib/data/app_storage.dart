@@ -42,11 +42,18 @@ class PrefsStorage implements AppStorage {
         map = {};
       }
     }
-    var token = await _secure.read(key: _tokenKey) ?? '';
     final legacy = map.remove('authToken');
+    var token = '';
+    try {
+      token = await _secure.read(key: _tokenKey) ?? '';
+    } catch (_) {
+      token = legacy is String ? legacy : '';
+    }
     if (token.isEmpty && legacy is String && legacy.isNotEmpty) {
       token = legacy;
-      await _secure.write(key: _tokenKey, value: token);
+      try {
+        await _secure.write(key: _tokenKey, value: token);
+      } catch (_) {}
       await _prefs.setString(_profileKey, jsonEncode(map));
     }
     map['authToken'] = token;

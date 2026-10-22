@@ -114,7 +114,7 @@ final class RoomService
         } elseif ($needsLevel) {
             throw ApiError::badRequest('Pick a bet level');
         }
-        return Db::transaction(static function () use ($user, $game, $seats, $level, $bet): array {
+        $result = Db::transaction(static function () use ($user, $game, $seats, $level, $bet): array {
             $uid = (int) $user['id'];
             $candidates = Db::all(
                 "SELECT id FROM rooms WHERE status = 'waiting' AND is_private = 0 AND game = ? AND level <=> ?
@@ -138,6 +138,24 @@ final class RoomService
             $roomId = Db::lastId();
             Db::run('INSERT INTO room_players (room_id, user_id, seat) VALUES (?, ?, 0)', [$roomId, $uid]);
             return self::view($roomId);
+        });
+        if (($result['status'] ?? '') === 'waiting' && empty($result['isPrivate'])) {
+            ChallengeService::broadcastOpenMatch($user, $result);
+        }
+        return $result;
+    }
+
+    /** Accept an open-table challenge: take a seat in the host's waiting room. */
+    public static function joinOpenChallenge(int $roomId, array $user): array
+    {
+        return Db::transaction(static function () use ($roomId, $user): array {
+            $room = Db::one('SELECT id, status, is_private FROM rooms WHERE id = ? FOR UPDATE', [$roomId]);
+            if ($room === null || $room['status'] !== 'waiting' || (int) $room['is_private'] === 1) {
+                throw ApiError::conflict('That table is no longer open', 'expired');
+            }
+            self::pruneStale($roomId, (int) $user['id']);
+            self::leaveWaitingRooms((int) $user['id'], $roomId);
+            return self::seat($roomId, $user);
         });
     }
 
@@ -276,6 +294,7 @@ final class RoomService
         ], $seated), (int) $room['shot_seconds'], $meta);
         Db::run("UPDATE rooms SET status = 'playing', game = ?, game_id = ?, prize = ?, multiplier = ? WHERE id = ?",
             [$game, $gameId, $meta['prize'], $meta['multiplier'], $roomId]);
+        ChallengeService::cancelPendingForRoom($roomId);
     }
 
     /**
@@ -339,7 +358,11 @@ final class RoomService
             if ($room['status'] === 'waiting') {
                 self::pruneStale($roomId, $uid);
             }
-            return self::view($roomId);
+            $view = self::view($roomId);
+            if (($view['status'] ?? '') === 'waiting') {
+                ChallengeService::maybeRebroadcastOpenMatch($user, $view);
+            }
+            return $view;
         });
     }
 
@@ -355,6 +378,10 @@ final class RoomService
                 Db::one('SELECT id FROM rooms WHERE id = ? FOR UPDATE', [$roomId]);
                 self::removeFromWaiting($roomId, $uid);
             });
+            $left = (int) Db::one('SELECT COUNT(*) AS n FROM room_players WHERE room_id = ?', [$roomId])['n'];
+            if ($left === 0) {
+                ChallengeService::cancelPendingForRoom($roomId);
+            }
         } elseif ($room['status'] === 'playing' && $room['game_id'] !== null) {
             GameService::act((int) $room['game_id'], $uid, ['type' => 'leave']);
         }

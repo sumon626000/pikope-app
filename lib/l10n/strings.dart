@@ -55,7 +55,8 @@ class AppStrings {
           'মোবাইল সাইন আপ/লগ ইনের জন্য সার্ভার দরকার। অতিথি অফলাইনে খেলতে পারবেন।',
         );
   String get fieldMobile => _t('Mobile number', 'মোবাইল নম্বর');
-  String get fieldPassword => _t('Password (8+ for sign up)', 'পাসওয়ার্ড (সাইন আপ ৮+ অক্ষর)');
+  String get fieldPassword => _t('Password (6+ for sign up)', 'পাসওয়ার্ড (সাইন আপ ৬+ অক্ষর)');
+  String get signupReferralHint => _t('Friend ID / referral (optional)', 'বন্ধুর আইডি / রেফার (ঐচ্ছিক)');
   String get fieldNickname => _t('Nickname (for sign up)', 'ডাকনাম (সাইন আপ)');
   String get fieldInvite => _t('Invite code (optional)', 'ইনভাইট কোড (ঐচ্ছিক)');
   String get logIn => _t('LOG IN', 'লগ ইন');
@@ -64,6 +65,8 @@ class AppStrings {
   String get playAsGuest => _t('PLAY AS GUEST', 'অতিথি হিসেবে খেলুন');
   String get enterPassword => _t('Enter your password.', 'পাসওয়ার্ড লিখুন।');
   String get passwordMin8 => _t('Password must be at least 8 characters.', 'পাসওয়ার্ড কমপক্ষে ৮ অক্ষর।');
+  String get passwordMin6 => _t('Password must be at least 6 characters.', 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষর।');
+  String get referralCodeInvalid => _t('Referral code must be 6 digits, or leave empty.', 'রেফার কোড ৬ সংখ্যা, না থাকলে খালি রাখুন।');
   String get phoneEmpty => _t('Enter your mobile number.', 'মোবাইল নম্বর লিখুন।');
   String get phoneInvalid => _t('Use a valid Bangladesh number (10 digits after +880).', '+880 এর পর ১০ ডিজিটের সঠিক নম্বর দিন।');
 
@@ -114,6 +117,12 @@ class AppStrings {
   String transferFeeHint(int pct, String fee, String total) =>
       _t('Fee $pct% ($fee) · Total deducted $total', 'ফি $pct% ($fee) · মোট কাটা $total');
   String get transferConfirmTap => _t('TAP AGAIN TO SEND', 'পাঠাতে আবার ট্যাপ করুন');
+  String get transferConfirmTitle => _t('SEND COINS?', 'কয়েন পাঠাবেন?');
+  String transferConfirmBody(String name, int amount, int fee, int total) => _t(
+        'Send ${formatCoinsDisplay(amount)} to $name?\nFee ${formatCoinsDisplay(fee)} — total ${formatCoinsDisplay(total)} from your wallet.',
+        '$name কে ${formatCoinsDisplay(amount)} পাঠাবেন?\nফি ${formatCoinsDisplay(fee)} — মোট ${formatCoinsDisplay(total)} কাটা হবে।',
+      );
+  String get itemsScreenSub => _t('BOARDS & CUES — BUY WITH PICO COIN', 'বোর্ড ও কিউ — পিকো কয়েনে কিনুন');
   String get transferSendBtn => _t('SEND COIN', 'কয়েন পাঠান');
   String get transferGuestOnly => _t('Only registered accounts can send coin.', 'শুধু রেজিস্টার্ড অ্যাকাউন্ট পাঠাতে পারবে।');
   String get transferInvalidId => _t('No player with this game ID.', 'এই গেম আইডিতে কেউ নেই।');
@@ -133,6 +142,9 @@ class AppStrings {
   String get openShop => _t('OPEN  >', 'খুলুন  >');
   String get poolTableBtn => _t('POOL TABLE', 'পুল টেবিল');
   String get carromTableBtn => _t('CARROM TABLE', 'ক্যারাম টেবিল');
+  String get carromGearShopTitle => _t('CARROM STRIKER & PIECES', 'ক্যারাম স্ট্রাইকার ও গুটি');
+  String get carromCoinLobbySub => _t('ONLINE FOR PICO COINS — CUSTOMIZE GEAR IN SHOP', 'পিকো কয়েনে অনলাইন — গিয়ার শপ থেকে');
+  String get shopItemsSection => _t('TABLES, CUES & GEAR', 'টেবিল, কিউ ও গিয়ার');
   String get ludoBoardBtn => _t('LUDO BOARD', 'লুডো বোর্ড');
   String get freeBoard => _t('FREE', 'ফ্রি');
   String get useBoard => _t('USE', 'ব্যবহার');
@@ -325,6 +337,8 @@ class AppStrings {
   // —— Bet / practice ——
   String get practice => _t('PRACTICE', 'অভ্যাস');
   String get practiceSub => _t('FREE - BOTS OR PASS & PLAY', 'ফ্রি — বট বা পাস অ্যান্ড প্লে');
+  String get practiceSubLudo => _t('FREE — VS BOTS', 'ফ্রি — বটের বিপক্ষে');
+  String get practiceSubCarrom => _t('FREE — VS BOT', 'ফ্রি — বটের বিপক্ষে');
   String buyIn(int n) => _t('BUY IN: $n', 'বাই ইন: $n');
   String entryFee(int n) => _t('ENTRY: $n', 'এন্ট্রি: $n');
   String stakeAmount(int n) => _t('STAKE $n', 'স্টেক $n');
@@ -353,6 +367,24 @@ class AppStrings {
   String get accept => _t('ACCEPT', 'গ্রহণ');
   String get decline => _t('DECLINE', 'প্রত্যাখ্যান');
   String get challengeBtn => _t('CHALLENGE', 'চ্যালেঞ্জ');
+  String get sectionChallenges => _t('1V1 CHALLENGES', '১ বনাম ১ চ্যালেঞ্জ');
+  String get challengesOffShort => _t('CHALLENGES OFF', 'চ্যালেঞ্জ বন্ধ');
+  String get challengesSettingHint => _t(
+        'Choose which games can send you a 1v1 invite while you are online in the app.',
+        'অ্যাপে অনলাইন থাকলে কোন গেম থেকে ১ বনাম ১ চ্যালেঞ্জ নেবেন সেটি বেছে নিন।',
+      );
+  String get challengeReceivePool => _t('Pool challenges', 'পুল চ্যালেঞ্জ');
+  String get challengeReceiveLudo => _t('Ludo challenges', 'লুডু চ্যালেঞ্জ');
+  String get challengeReceiveCarrom => _t('Carrom challenges', 'ক্যারাম চ্যালেঞ্জ');
+  String get challengePickGame => _t('Game mode', 'গেম মোড');
+  String get challengePickStake => _t('Pick a buy-in level', 'বাই-ইন লেভেল বেছে নিন');
+  String challengeTableLevel(int level) => _t('Table level $level', 'টেবিল লেভেল $level');
+  String challengeExpiresSec(int sec) => _t('${sec}s left', '$sec সেকেন্ড বাকি');
+  String playerActivityLabel(String game, bool busy) {
+    if (busy) return _t('IN MATCH', 'ম্যাচে');
+    if (game.isEmpty) return _t('ONLINE', 'অনলাইন');
+    return _t('PLAYING ${game.toUpperCase()}', '${game.toUpperCase()} খেলছে');
+  }
 
   // —— Game overlays ——
   String get passDeviceTo => _t('PASS THE DEVICE TO', 'ডিভাইস দিন');

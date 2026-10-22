@@ -92,6 +92,20 @@ final class Admin
                     self::back('/admin/alerts', 'All alerts marked read.');
                 case '/admin/transfer/save':
                     self::saveTransferConfig();
+                case '/admin/landing/save':
+                    self::saveLandingPage();
+                case '/admin/landing/upload':
+                    self::uploadLandingShot();
+                case '/admin/landing/remove':
+                    self::removeLandingShot();
+                case '/admin/landing/apk':
+                    self::uploadLandingApk();
+                case '/admin/landing/hero':
+                    self::uploadLandingHero();
+                case '/admin/landing/apk-clear':
+                    self::clearLandingApk();
+                case '/admin/landing/hero-clear':
+                    self::clearLandingHero();
             }
             throw ApiError::notFound('No such endpoint');
         }
@@ -121,6 +135,7 @@ final class Admin
             '/admin/alerts' => self::alertsPage($csrf),
             '/admin/transfer' => self::transferPage($csrf),
             '/admin/zinipay' => self::ziniPayPage($csrf),
+            '/admin/landing' => self::landingPage($csrf),
             default => throw ApiError::notFound('No such endpoint'),
         };
     }
@@ -699,6 +714,7 @@ CSS;
                 'notices' => ['Notices', '/admin/notices'],
                 'support' => ['Support links', '/admin/support'],
                 'app-update' => ['App update', '/admin/app-update'],
+                'landing' => ['Landing page', '/admin/landing'],
                 'account' => ['Admin password', '/admin/account'],
             ],
         ];
@@ -747,6 +763,7 @@ CSS;
             ['Notices', '/admin/notices', 'In-app news / banner', 0],
             ['Support links', '/admin/support', 'Facebook and Telegram', 0],
             ['App update', '/admin/app-update', 'In-app APK update', 0],
+            ['Landing page', '/admin/landing', 'pikope.com APK site', 0],
             ['Coin shop', '/admin/coin-shop', 'Packs and discount', 0],
             ['SMS OTP', '/admin/otp-sms', 'Forgot password SMS', 0],
         ];
@@ -1759,25 +1776,29 @@ CSS;
         echo '</div></section>';
 
         echo '<section class="section"><h2>Recent auto payments</h2>', self::tableScrollOpen(),
-            '<table class="one"><tr><th>ID<th>Player<th>Phone<th>BDT<th>Pico coin<th>Invoice<th>Status<th>Credited<th>Time</tr>';
+            '<table class="one"><tr><th>ID<th>Player<th>Phone<th>BDT<th>Base<th>Bonus<th>Total coin<th>Pack<th>Invoice<th>Status<th>Time</tr>';
         foreach ($rows as $r) {
             $phone = isset($r['phone']) && $r['phone'] !== null && $r['phone'] !== '' ? Phone::display((string) $r['phone']) : '—';
             $pill = ($r['credited'] ?? false)
                 ? '<span class="pill good">credited</span>'
                 : '<span class="pill">' . self::e((string) $r['status']) . '</span>';
+            $coinBase = (int) ($r['baseCoins'] ?? 0);
+            $coinBonus = (int) ($r['bonusCoins'] ?? 0);
             echo '<tr><td>', self::e($r['id']),
                 '<td><a href="', self::e($base), '/admin/player?id=', self::e($r['userId']), '">', self::e($r['playerName']), '</a>',
                 '<td>', self::e($phone),
                 '<td>', self::e($r['bdt']),
-                '<td>', self::e($r['coins']),
+                '<td>', self::e($coinBase),
+                '<td>', self::e($coinBonus),
+                '<td><strong>', self::e($r['coins']), '</strong>',
+                '<td>', self::e((string) ($r['packId'] ?? '—')),
                 '<td><code>', self::e((string) ($r['invoiceId'] ?? '—')), '</code>',
                 '<td>', $pill,
-                '<td>', ($r['credited'] ?? false) ? 'yes' : 'no',
                 '<td>', self::e((string) $r['createdAt']),
                 '</tr>';
         }
         if ($rows === []) {
-            echo '<tr><td colspan="9" class="muted">No ZiniPay payments yet.</td></tr>';
+            echo '<tr><td colspan="11" class="muted">No ZiniPay payments yet.</td></tr>';
         }
         echo '</table>', self::tableScrollClose(), '</section>';
         self::end();
@@ -1895,9 +1916,9 @@ CSS;
         $global = (int) $c['globalDiscountPercent'];
         self::begin('Coin shop', 'coin-shop');
         self::pageLead(
-            'Shop packs. <b>Base coins</b> = BDT amount on the add-coin page. '
-            . '<b>Bonus %</b> = extra Pico coins on top (100 at 5% → player gets 105). '
-            . 'Global % adds to every pack. Re-save a pack with the same ID to update it.'
+            'Shop packs. <b>Base coins</b> = BDT for ZiniPay / add-coin (e.g. pay 100 BDT on the 100 pack). '
+            . '<b>Bonus %</b> = extra Pico on that deposit only (100 @ 3% → base × rate + 3% bonus). '
+            . 'ZiniPay auto add and manual approve use these % when BDT matches a pack. Re-save a pack to update.'
         );
         echo '<section class="section"><div class="card"><form class="row" method="post" action="', self::e($base), '/admin/coin-shop/global">', self::csrfField($csrf),
             '<label>Global discount on coins (%)<input type="number" name="globalDiscountPercent" min="0" max="100" required value="', self::e($global), '"></label>',
@@ -2011,6 +2032,8 @@ CSS;
             'depositRejected' => ($_POST['depositRejected'] ?? '0') === '1',
             'redeemApproved' => ($_POST['redeemApproved'] ?? '0') === '1',
             'redeemRejected' => ($_POST['redeemRejected'] ?? '0') === '1',
+            'coinTransfer' => ($_POST['coinTransfer'] ?? '0') === '1',
+            'walletActivity' => ($_POST['walletActivity'] ?? '0') === '1',
             'challenge' => ($_POST['challenge'] ?? '0') === '1',
             'adminBroadcast' => ($_POST['adminBroadcast'] ?? '0') === '1',
             'channelId' => trim((string) ($_POST['channelId'] ?? '')),
@@ -2064,15 +2087,17 @@ CSS;
             '<section class="section"><h2>Automatic events</h2><div class="card"><form method="post" action="', self::e($base), '/admin/push/save">', self::csrfField($csrf),
             '<label class="check"><input type="checkbox" name="enabled" value="1"', $c['enabled'] ? ' checked' : '', '> Enable push (master switch)</label>',
             '<div class="grid">',
-            '<label class="check"><input type="checkbox" name="depositApproved" value="1"', $c['depositApproved'] ? ' checked' : '', '> Coin add approved</label>',
+            '<label class="check"><input type="checkbox" name="depositApproved" value="1"', $c['depositApproved'] ? ' checked' : '', '> Coin add (manual approve + ZiniPay)</label>',
             '<label class="check"><input type="checkbox" name="depositRejected" value="1"', $c['depositRejected'] ? ' checked' : '', '> Coin add rejected</label>',
-            '<label class="check"><input type="checkbox" name="redeemApproved" value="1"', $c['redeemApproved'] ? ' checked' : '', '> Redeem approved</label>',
+            '<label class="check"><input type="checkbox" name="redeemApproved" value="1"', $c['redeemApproved'] ? ' checked' : '', '> Redeem approved / cancelled</label>',
             '<label class="check"><input type="checkbox" name="redeemRejected" value="1"', $c['redeemRejected'] ? ' checked' : '', '> Redeem rejected</label>',
+            '<label class="check"><input type="checkbox" name="coinTransfer" value="1"', ($c['coinTransfer'] ?? true) ? ' checked' : '', '> Coin transfer sent / received</label>',
+            '<label class="check"><input type="checkbox" name="walletActivity" value="1"', ($c['walletActivity'] ?? true) ? ' checked' : '', '> Match prize, stake, shop, redeem submit</label>',
             '<label class="check"><input type="checkbox" name="challenge" value="1"', $c['challenge'] ? ' checked' : '', '> 1v1 challenge received</label>',
             '<label class="check"><input type="checkbox" name="adminBroadcast" value="1"', $c['adminBroadcast'] ? ' checked' : '', '> Admin broadcast / notice push</label>',
             '<label>Android channel id<input name="channelId" maxlength="40" value="', self::e($c['channelId']), '"></label>',
             '<label>Android channel name<input name="channelName" maxlength="40" value="', self::e($c['channelName']), '"></label>',
-            '</div><p class="hint">Players also see messages in the in-app notification list when the app is open.</p>',
+            '</div><p class="hint">Each event is stored once (no duplicate push for the same transaction). In-app list always shows the same message.</p>',
             '<button>Save push settings</button></form></div></section>',
             '<section class="section"><h2>Broadcast to all</h2><div class="card"><form method="post" action="', self::e($base), '/admin/push/broadcast">', self::csrfField($csrf),
             '<div class="grid"><label class="span2">Title<input name="title" maxlength="80" required></label>',
@@ -2190,7 +2215,7 @@ CSS;
         $base = self::base();
         $c = SupportLinks::config();
         self::begin('Support links', 'support');
-        self::pageLead('These two buttons appear in the app Settings. Leave a box empty to hide that button. Paste a full link, such as https://facebook.com/yourpage or https://t.me/yourchannel.');
+        self::pageLead('Same links as on <b>pikope.com</b> (Landing page admin) and in app Settings. Leave empty to hide that button.');
         echo '<section class="section"><div class="card"><form method="post" action="', self::e($base), '/admin/support">', self::csrfField($csrf),
             '<div class="grid">',
             '<label class="span2">Facebook link<input name="facebook" maxlength="300" value="', self::e($c['facebook']), '" placeholder="https://facebook.com/yourpage"></label>',
@@ -2229,10 +2254,221 @@ CSS;
             '<label class="check"><input type="checkbox" name="required" value="1"', $c['required'] ? ' checked' : '', '> Players must install it</label>',
             '<label>Version code<input type="number" name="versionCode" min="1" max="999999" value="', self::e((int) $c['versionCode']), '" placeholder="3"></label>',
             '<label>Version name<input name="versionName" maxlength="40" value="', self::e($c['versionName']), '" placeholder="1.0.2"></label>',
-            '<label class="span2">APK link<input name="apkUrl" maxlength="400" value="', self::e($c['apkUrl']), '" placeholder="https://pikope.bet369win.com/pikope.apk"></label>',
+            '<label class="span2">APK link<input name="apkUrl" maxlength="400" value="', self::e($c['apkUrl']), '" placeholder="https://adminnew.pikope.com/pikope-release.apk"></label>',
             '<label class="span2">APK SHA-256 (optional)<input name="apkSha256" maxlength="64" value="', self::e($c['apkSha256'] ?? ''), '" placeholder="64 hex chars; app rejects a mismatch"></label>',
             '<label class="span2">Note for players<textarea name="notes" rows="3" maxlength="400">', self::e($c['notes']), '</textarea></label>',
             '</div><button>Save app update</button></form></div></section>';
+        self::end();
+    }
+
+    private static function saveLandingPage(): never
+    {
+        $c = LandingPage::config();
+        try {
+            LandingPage::save([
+                'enabled' => ($_POST['enabled'] ?? '0') === '1',
+                'defaultLang' => ($_POST['defaultLang'] ?? 'bn') === 'en' ? 'en' : 'bn',
+                'apkUrl' => trim((string) ($_POST['apkUrl'] ?? '')),
+                'statRating' => trim((string) ($_POST['statRating'] ?? '')),
+                'statReviews' => trim((string) ($_POST['statReviews'] ?? '')),
+                'statDownloads' => trim((string) ($_POST['statDownloads'] ?? '')),
+                'statRated' => trim((string) ($_POST['statRated'] ?? '')),
+                'updatedLabel' => trim((string) ($_POST['updatedLabel'] ?? '')),
+                'screenshots' => $c['screenshots'],
+                'apkFile' => $c['apkFile'],
+                'heroImage' => $c['heroImage'],
+                'bn' => self::landingLocaleFromPost('bn'),
+                'en' => self::landingLocaleFromPost('en'),
+            ]);
+            SupportLinks::save([
+                'facebook' => trim((string) ($_POST['support_facebook'] ?? '')),
+                'telegram' => trim((string) ($_POST['support_telegram'] ?? '')),
+            ]);
+        } catch (ApiError $e) {
+            self::back('/admin/landing', null, $e->getMessage());
+        }
+        self::back('/admin/landing', 'Landing page settings saved.');
+    }
+
+    /** @return array<string,mixed> */
+    private static function landingLocaleFromPost(string $lang): array
+    {
+        $features = [];
+        for ($i = 0; $i < 3; $i++) {
+            $t = trim((string) ($_POST[$lang . '_feature' . $i] ?? ''));
+            if ($t !== '') {
+                $features[] = $t;
+            }
+        }
+        return [
+            'headline' => trim((string) ($_POST[$lang . '_headline'] ?? '')),
+            'tagline' => trim((string) ($_POST[$lang . '_tagline'] ?? '')),
+            'apkLabel' => trim((string) ($_POST[$lang . '_apkLabel'] ?? '')),
+            'aboutBody' => trim((string) ($_POST[$lang . '_aboutBody'] ?? '')),
+            'features' => $features,
+        ];
+    }
+
+    private static function uploadLandingApk(): never
+    {
+        try {
+            if (!isset($_FILES['apk']) || !is_array($_FILES['apk'])) {
+                throw ApiError::badRequest('Choose an APK file.', 'upload');
+            }
+            $rel = LandingPage::storeApk($_FILES['apk']);
+            LandingPage::save(['apkFile' => $rel]);
+        } catch (ApiError $e) {
+            self::back('/admin/landing', null, $e->getMessage());
+        }
+        self::back('/admin/landing', 'APK uploaded for landing download.');
+    }
+
+    private static function uploadLandingHero(): never
+    {
+        try {
+            if (!isset($_FILES['hero']) || !is_array($_FILES['hero'])) {
+                throw ApiError::badRequest('Choose a background image.', 'upload');
+            }
+            $rel = LandingPage::storeHeroImage($_FILES['hero']);
+            LandingPage::save(['heroImage' => $rel]);
+        } catch (ApiError $e) {
+            self::back('/admin/landing', null, $e->getMessage());
+        }
+        self::back('/admin/landing', 'Hero background uploaded.');
+    }
+
+    private static function clearLandingApk(): never
+    {
+        LandingPage::clearApkFile();
+        self::back('/admin/landing', 'Uploaded APK removed.');
+    }
+
+    private static function clearLandingHero(): never
+    {
+        LandingPage::clearHeroImage();
+        self::back('/admin/landing', 'Hero background removed.');
+    }
+
+    private static function uploadLandingShot(): never
+    {
+        $c = LandingPage::config();
+        $shots = $c['screenshots'];
+        try {
+            if (count($shots) >= LandingPage::MAX_SHOTS) {
+                throw ApiError::badRequest('Maximum ' . LandingPage::MAX_SHOTS . ' screenshots.', 'upload');
+            }
+            if (!isset($_FILES['screenshot']) || !is_array($_FILES['screenshot'])) {
+                throw ApiError::badRequest('Choose an image file.', 'upload');
+            }
+            $rel = LandingPage::storeScreenshot($_FILES['screenshot']);
+            $shots[] = $rel;
+            LandingPage::save(['screenshots' => $shots]);
+        } catch (ApiError $e) {
+            self::back('/admin/landing', null, $e->getMessage());
+        }
+        self::back('/admin/landing', 'Screenshot uploaded.');
+    }
+
+    private static function removeLandingShot(): never
+    {
+        $c = LandingPage::config();
+        $idx = (int) ($_POST['index'] ?? -1);
+        $shots = $c['screenshots'];
+        if ($idx >= 0 && $idx < count($shots)) {
+            LandingPage::removeScreenshot((string) $shots[$idx]);
+            array_splice($shots, $idx, 1);
+            LandingPage::save(['screenshots' => $shots]);
+        }
+        self::back('/admin/landing', 'Screenshot removed.');
+    }
+
+    private static function landingPage(string $csrf): never
+    {
+        $base = self::base();
+        $c = LandingPage::config();
+        $pub = LandingPage::publicPayload();
+        $bn = $c['bn'];
+        $en = $c['en'];
+        $support = SupportLinks::config();
+        self::begin('Landing page (pikope.com)', 'landing');
+        self::pageLead(
+            '<b>pikope.com</b> loads <code>/landing/public</code> (default language: Bangla). '
+            . 'Upload APK, hero background, screenshots, and live support links (Facebook / Telegram) here.'
+        );
+
+        echo '<section class="section"><div class="card"><form method="post" action="', self::e($base), '/admin/landing/save">', self::csrfField($csrf),
+            '<label class="check"><input type="checkbox" name="enabled" value="1"', $c['enabled'] ? ' checked' : '', '> Landing data active</label>',
+            '<label>Default site language<select name="defaultLang">',
+            '<option value="bn"', ($c['defaultLang'] ?? 'bn') === 'bn' ? ' selected' : '', '>Bangla (বাংলা)</option>',
+            '<option value="en"', ($c['defaultLang'] ?? 'bn') === 'en' ? ' selected' : '', '>English</option>',
+            '</select></label>',
+            '<label class="span2">Optional APK URL (https) if no upload<input name="apkUrl" maxlength="400" value="', self::e($c['apkUrl']), '" placeholder="Leave empty: use uploaded APK, else App update"></label>',
+            '<p class="hint">Live download: ', self::e($pub['apkUrl'] ?: '(none yet)'), '</p>',
+            '<h3>Live support (pikope.com + app Settings)</h3><div class="grid">',
+            '<label class="span2">Facebook link<input name="support_facebook" maxlength="300" value="', self::e($support['facebook']), '" placeholder="https://facebook.com/yourpage"></label>',
+            '<label class="span2">Telegram link<input name="support_telegram" maxlength="300" value="', self::e($support['telegram']), '" placeholder="https://t.me/yourchannel"></label>',
+            '</div><p class="hint">Empty = button hidden on landing and in app.</p>',
+            '<h3>Store stats (Play-style row)</h3><div class="grid">',
+            '<label>Rating<input name="statRating" maxlength="8" value="', self::e($c['statRating'] ?? ''), '"></label>',
+            '<label>Reviews<input name="statReviews" maxlength="16" value="', self::e($c['statReviews'] ?? ''), '"></label>',
+            '<label>Downloads<input name="statDownloads" maxlength="16" value="', self::e($c['statDownloads'] ?? ''), '"></label>',
+            '<label>Rated badge<input name="statRated" maxlength="12" value="', self::e($c['statRated'] ?? ''), '"></label>',
+            '<label class="span2">Last updated label (optional)<input name="updatedLabel" maxlength="40" value="', self::e($c['updatedLabel'] ?? ''), '" placeholder="Jan 5, 2025"></label>',
+            '</div><h3>Bangla copy</h3><div class="grid">',
+            '<label>Headline (BN)<input name="bn_headline" maxlength="60" value="', self::e($bn['headline']), '"></label>',
+            '<label>Button (BN)<input name="bn_apkLabel" maxlength="40" value="', self::e($bn['apkLabel']), '"></label>',
+            '<label class="span2">Tagline (BN)<textarea name="bn_tagline" rows="2" maxlength="220">', self::e($bn['tagline']), '</textarea></label>',
+            '<label class="span2">About app (BN)<textarea name="bn_aboutBody" rows="4" maxlength="600">', self::e($bn['aboutBody'] ?? ''), '</textarea></label>';
+        for ($i = 0; $i < 3; $i++) {
+            echo '<label>Feature ', $i + 1, ' (BN)<input name="bn_feature', $i, '" maxlength="80" value="', self::e($bn['features'][$i] ?? ''), '"></label>';
+        }
+        echo '</div><h3>English copy</h3><div class="grid">',
+            '<label>Headline (EN)<input name="en_headline" maxlength="60" value="', self::e($en['headline']), '"></label>',
+            '<label>Button (EN)<input name="en_apkLabel" maxlength="40" value="', self::e($en['apkLabel']), '"></label>',
+            '<label class="span2">Tagline (EN)<textarea name="en_tagline" rows="2" maxlength="220">', self::e($en['tagline']), '</textarea></label>',
+            '<label class="span2">About app (EN)<textarea name="en_aboutBody" rows="4" maxlength="600">', self::e($en['aboutBody'] ?? ''), '</textarea></label>';
+        for ($i = 0; $i < 3; $i++) {
+            echo '<label>Feature ', $i + 1, ' (EN)<input name="en_feature', $i, '" maxlength="80" value="', self::e($en['features'][$i] ?? ''), '"></label>';
+        }
+        echo '</div><button>Save text</button></form></div></section>';
+
+        echo '<section class="section"><h2>APK file</h2><div class="card"><p class="hint">Upload official release (.apk, max 160 MB). Served from admin host for download button.</p>',
+            '<form method="post" action="', self::e($base), '/admin/landing/apk" enctype="multipart/form-data">', self::csrfField($csrf),
+            '<label>APK<input type="file" name="apk" accept=".apk,application/vnd.android.package-archive" required></label>',
+            '<button>Upload APK</button></form>';
+        if ((string) ($c['apkFile'] ?? '') !== '') {
+            echo '<form method="post" action="', self::e($base), '/admin/landing/apk-clear" style="margin-top:12px">', self::csrfField($csrf),
+                '<button type="submit">Remove uploaded APK</button></form>';
+        }
+        echo '</div></section>';
+
+        echo '<section class="section"><h2>Hero background</h2><div class="card"><p class="hint">Wide JPG/PNG/WebP, max 5 MB. Replaces default pool image on site.</p>';
+        if ((string) ($c['heroImage'] ?? '') !== '') {
+            $hUrl = $base . '/' . ltrim((string) $c['heroImage'], '/');
+            echo '<img src="', self::e($hUrl), '" alt="" style="max-width:100%;max-height:200px;border-radius:8px;margin-bottom:12px">';
+        }
+        echo '<form method="post" action="', self::e($base), '/admin/landing/hero" enctype="multipart/form-data">', self::csrfField($csrf),
+            '<label>Background<input type="file" name="hero" accept="image/jpeg,image/png,image/webp" required></label>',
+            '<button>Upload background</button></form>';
+        if ((string) ($c['heroImage'] ?? '') !== '') {
+            echo '<form method="post" action="', self::e($base), '/admin/landing/hero-clear" style="margin-top:12px">', self::csrfField($csrf),
+                '<button type="submit">Remove background</button></form>';
+        }
+        echo '</div></section>';
+
+        echo '<section class="section"><h2>Screenshots</h2><p class="hint">Portrait JPG/PNG/WebP, max 3 MB. Up to ', LandingPage::MAX_SHOTS, ' images.</p>',
+            '<div class="card"><form method="post" action="', self::e($base), '/admin/landing/upload" enctype="multipart/form-data">', self::csrfField($csrf),
+            '<label>Add screenshot<input type="file" name="screenshot" accept="image/jpeg,image/png,image/webp" required></label>',
+            '<button>Upload</button></form></div><div class="grid" style="margin-top:16px">';
+        foreach ($c['screenshots'] as $i => $rel) {
+            $url = $base . '/' . ltrim((string) $rel, '/');
+            echo '<div class="card"><img src="', self::e($url), '" alt="" style="max-width:100%;border-radius:8px">',
+                '<form method="post" action="', self::e($base), '/admin/landing/remove">', self::csrfField($csrf),
+                '<input type="hidden" name="index" value="', $i, '"><button type="submit">Remove</button></form></div>';
+        }
+        echo '</div></section>';
+
+        echo '<section class="section"><h2>API</h2><div class="card"><code>', self::e($base), '/landing/public</code></div></section>';
         self::end();
     }
 

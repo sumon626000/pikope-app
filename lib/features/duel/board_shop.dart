@@ -13,7 +13,6 @@ import '../carrom/carrom_board.dart';
 import '../carrom/carrom_skins.dart';
 import '../game/widgets/table_art.dart';
 import '../ludo/ludo_board.dart';
-import 'cues_screen.dart';
 import 'duel_chrome.dart';
 import '../../l10n/strings.dart';
 
@@ -44,10 +43,6 @@ class BoardShopScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (kind == BoardKind.pool) ...[
-              const _SmallCueShop(),
-              const SizedBox(height: 18),
-            ],
             Wrap(
               spacing: 16,
               runSpacing: 16,
@@ -176,43 +171,6 @@ List<_BoardItem> _items(BoardKind kind) {
       ];
       items.sort((a, b) => a.price.compareTo(b.price));
       return items;
-  }
-}
-
-class _SmallCueShop extends ConsumerWidget {
-  const _SmallCueShop();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = ref.watch(stringsProvider);
-    return GestureDetector(
-      onTap: () {
-        AudioService.tap();
-        pushScreen(context, const CuesScreen());
-      },
-      child: Container(
-        width: 280,
-        height: 88,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: duelPanel(radius: 16, rim: DuelColors.blue),
-        child: Row(
-          children: [
-            const CrossedCuesIcon(size: 48, color: Color(0xFF9CC2FF)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(t.cueShop, style: AppText.label(18, color: Colors.white, weight: FontWeight.w900)),
-                  Text(t.openShop, style: AppText.label(13, color: const Color(0xFF9CC2FF), weight: FontWeight.w800)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 

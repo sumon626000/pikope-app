@@ -26,6 +26,10 @@ class AppSettings {
     this.ownedCarromBoards = const ['classic', 'walnut'],
     this.ownedLudoBoards = const ['classic'],
     this.languageCode = 'en',
+    this.challengesEnabled = true,
+    this.challengePoolEnabled = true,
+    this.challengeLudoEnabled = true,
+    this.challengeCarromEnabled = true,
   });
 
   final String name;
@@ -63,6 +67,14 @@ class AppSettings {
   /// `en` (default) or `bn` — full app language.
   final String languageCode;
 
+  /// Legacy flag synced with any of [challengePoolEnabled], [challengeLudoEnabled], [challengeCarromEnabled].
+  final bool challengesEnabled;
+
+  /// Incoming 1v1 invites per game family (Settings).
+  final bool challengePoolEnabled;
+  final bool challengeLudoEnabled;
+  final bool challengeCarromEnabled;
+
   double get botSkill => const [0.25, 0.6, 0.92][botLevel.clamp(0, 2)];
 
   AppSettings copyWith({
@@ -85,6 +97,10 @@ class AppSettings {
     List<String>? ownedCarromBoards,
     List<String>? ownedLudoBoards,
     String? languageCode,
+    bool? challengesEnabled,
+    bool? challengePoolEnabled,
+    bool? challengeLudoEnabled,
+    bool? challengeCarromEnabled,
   }) =>
       AppSettings(
         name: name ?? this.name,
@@ -106,6 +122,10 @@ class AppSettings {
         ownedCarromBoards: ownedCarromBoards ?? this.ownedCarromBoards,
         ownedLudoBoards: ownedLudoBoards ?? this.ownedLudoBoards,
         languageCode: languageCode ?? this.languageCode,
+        challengesEnabled: challengesEnabled ?? this.challengesEnabled,
+        challengePoolEnabled: challengePoolEnabled ?? this.challengePoolEnabled,
+        challengeLudoEnabled: challengeLudoEnabled ?? this.challengeLudoEnabled,
+        challengeCarromEnabled: challengeCarromEnabled ?? this.challengeCarromEnabled,
       );
 
   factory AppSettings.fromJson(Map<String, dynamic> j) {
@@ -130,6 +150,10 @@ class AppSettings {
       ownedCarromBoards: _owned(j['ownedCarromBoards'], const ['classic', 'walnut'], j['carromBoard'] as String? ?? d.carromBoard),
       ownedLudoBoards: _owned(j['ownedLudoBoards'], const ['classic'], j['ludoBoard'] as String? ?? d.ludoBoard),
       languageCode: _normalizeLang(j['languageCode'] as String? ?? d.languageCode),
+      challengesEnabled: j['challengesEnabled'] as bool? ?? d.challengesEnabled,
+      challengePoolEnabled: j['challengePoolEnabled'] as bool? ?? j['challengesEnabled'] as bool? ?? d.challengePoolEnabled,
+      challengeLudoEnabled: j['challengeLudoEnabled'] as bool? ?? j['challengesEnabled'] as bool? ?? d.challengeLudoEnabled,
+      challengeCarromEnabled: j['challengeCarromEnabled'] as bool? ?? j['challengesEnabled'] as bool? ?? d.challengeCarromEnabled,
     );
   }
 
@@ -160,6 +184,10 @@ class AppSettings {
         'ownedCarromBoards': ownedCarromBoards,
         'ownedLudoBoards': ownedLudoBoards,
         'languageCode': languageCode,
+        'challengesEnabled': challengesEnabled,
+        'challengePoolEnabled': challengePoolEnabled,
+        'challengeLudoEnabled': challengeLudoEnabled,
+        'challengeCarromEnabled': challengeCarromEnabled,
       };
 }
 

@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/duel_ui.dart';
 import '../../l10n/strings.dart';
 import 'bet_level_screen.dart';
-import 'cues_screen.dart';
 import 'duel_chrome.dart';
 import 'duel_home_screen.dart' show GameCard, HomeBanner, PokerArt;
 import 'lobby_data.dart';
@@ -94,30 +93,9 @@ class PoolHubScreen extends ConsumerWidget {
             ),
           ),
           Positioned(
-            left: 1178,
-            top: 518,
-            child: HomeBanner(
-              title: t.practiceFreeTitle,
-              sub: t.practiceBannerSubPass,
-              colors: const [Color(0xFF0E3A22), Color(0xFF07140D)],
-              rim: const Color(0xFF2E8B57),
-              titleColor: const Color(0xFF9BF2B5),
-              icon: const Icon(Icons.smart_toy_rounded, color: Color(0xFF9BF2B5), size: 84),
-              onTap: () => showPoolPracticeDialog(context, open: (screen) => _open(context, ref, screen)),
-            ),
-          ),
-          Positioned(
             left: 42,
             bottom: 34,
-            child: Row(
-              children: [
-                NavTile(icon: Icons.reply_rounded, label: t.back, onTap: () => Navigator.of(context).pop()),
-                const SizedBox(width: 19),
-                NavTile(icon: NavTile.cuesIcon, label: t.navCues, onTap: () => _open(context, ref, const CuesScreen())),
-                const SizedBox(width: 19),
-                NavTile(icon: Icons.backpack_rounded, label: t.myCues, onTap: () => _open(context, ref, const CuesScreen(ownedOnly: true))),
-              ],
-            ),
+            child: NavTile(icon: Icons.reply_rounded, label: t.back, onTap: () => Navigator.of(context).pop()),
           ),
         ],
       ),

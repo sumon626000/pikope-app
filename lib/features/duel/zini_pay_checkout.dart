@@ -19,6 +19,8 @@ Future<void> openZiniPayDeposit(
   WidgetRef ref, {
   required CoinDepositConfig config,
   required int bdt,
+  String? packId,
+  int qty = 1,
 }) async {
   final t = ref.read(stringsProvider);
   if (bdt < config.minBdt || bdt > config.maxBdt) {
@@ -41,7 +43,7 @@ Future<void> openZiniPayDeposit(
     return;
   }
   try {
-    final r = await ref.read(sessionProvider.notifier).startZiniPayDeposit(bdt);
+    final r = await ref.read(sessionProvider.notifier).startZiniPayDeposit(bdt, packId: packId, qty: qty);
     final url = r['paymentUrl'] as String;
     final deposit = r['deposit'] as Map<String, dynamic>;
     final returnPath = r['returnPath'] as String? ?? '/deposit/zinipay/return';
@@ -244,7 +246,14 @@ class _ZiniPayAutoPanelState extends ConsumerState<ZiniPayAutoPanel> {
       _error = null;
     });
     try {
-      await openZiniPayDeposit(context, ref, config: widget.config, bdt: bdt);
+      await openZiniPayDeposit(
+        context,
+        ref,
+        config: widget.config,
+        bdt: bdt,
+        packId: widget.pack?.id,
+        qty: widget.qty,
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }

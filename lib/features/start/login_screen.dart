@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_state.dart';
@@ -31,6 +32,7 @@ Widget _legalLink(BuildContext context, String label, LegalDoc doc) => GestureDe
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _phone = TextEditingController();
   final _password = TextEditingController();
+  final _referral = TextEditingController();
   bool _busy = false;
   String? _error;
 
@@ -38,6 +40,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void dispose() {
     _phone.dispose();
     _password.dispose();
+    _referral.dispose();
     super.dispose();
   }
 
@@ -75,13 +78,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       setState(() => _error = err);
       return;
     }
-    if (_password.text.length < 8) {
-      setState(() => _error = l10n.passwordMin8);
+    if (_password.text.length < 6) {
+      setState(() => _error = l10n.passwordMin6);
+      return;
+    }
+    final refCode = _referral.text.trim();
+    if (refCode.isNotEmpty && !RegExp(r'^\d{6}$').hasMatch(refCode)) {
+      setState(() => _error = l10n.referralCodeInvalid);
       return;
     }
     await _run(() => ref.read(sessionProvider.notifier).register(
           _phone.text.trim(),
           _password.text,
+          referralCode: refCode,
         ));
   }
 
@@ -211,6 +220,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       obscureText: true,
                       decoration: _field(s.fieldPassword, Icons.lock_rounded),
                     ),
+                    if (Env.hasBackend) ...[
+                      const SizedBox(height: 20),
+                      TextField(
+                        controller: _referral,
+                        style: input,
+                        maxLength: 6,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        decoration: _field(s.signupReferralHint, Icons.card_giftcard_rounded),
+                      ),
+                    ],
                     const SizedBox(height: 28),
                     Row(
                       children: [

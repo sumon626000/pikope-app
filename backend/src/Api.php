@@ -56,6 +56,7 @@ final class Api
             $method === 'GET' && $path === '/health' => ['ok' => true, 'time' => GameService::nowMs()],
             // Where the app finds the WebSocket server; null means it polls instead.
             $method === 'GET' && $path === '/app/update' => AppUpdate::published(),
+            $method === 'GET' && $path === '/landing/public' => self::landingPublic(),
             $method === 'GET' && $path === '/config' => [
                 'ws' => Config::get('WS_PUBLIC_URL') ?: null,
                 'facebook' => SupportLinks::config()['facebook'],
@@ -182,8 +183,8 @@ final class Api
         RateLimit::hit('register:' . RateLimit::ip(), 20, 3600);
         $phone = Phone::normalize(Http::str('phone', 20));
         $password = Http::str('password', 200);
-        if (strlen($password) < 8) {
-            throw ApiError::badRequest('Password must be at least 8 characters', 'weak_password');
+        if (strlen($password) < 6) {
+            throw ApiError::badRequest('Password must be at least 6 characters', 'weak_password');
         }
         if (Db::one('SELECT id FROM users WHERE phone = ?', [$phone]) !== null) {
             throw ApiError::conflict('That mobile number is already registered', 'phone_taken');
@@ -311,7 +312,20 @@ final class Api
     {
         $user = Auth::user();
         Auth::ensureNameChangedColumn();
+        Auth::ensureChallengesEnabledColumn();
+        Auth::ensureChallengeGameColumns();
         $name = Http::str('displayName', 40, false);
+        $body = Http::body();
+        $challenges = array_key_exists('challengesEnabled', $body) ? (bool) $body['challengesEnabled'] : null;
+        $pool = array_key_exists('challengePoolEnabled', $body) ? (bool) $body['challengePoolEnabled'] : null;
+        $ludo = array_key_exists('challengeLudoEnabled', $body) ? (bool) $body['challengeLudoEnabled'] : null;
+        $carrom = array_key_exists('challengeCarromEnabled', $body) ? (bool) $body['challengeCarromEnabled'] : null;
+        $poolVal = $pool ?? (bool) ($user['challenge_pool'] ?? 1);
+        $ludoVal = $ludo ?? (bool) ($user['challenge_ludo'] ?? 1);
+        $carromVal = $carrom ?? (bool) ($user['challenge_carrom'] ?? 1);
+        if ($pool !== null || $ludo !== null || $carrom !== null) {
+            $challenges = $poolVal || $ludoVal || $carromVal;
+        }
         $avatar = self::cleanAvatar(Http::str('avatar', 255, false));
         $skin = Http::str('tableSkin', 32, false);
         if ($skin !== '' && !Economy::poolBoardAllowed((int) $user['id'], $skin)) {
@@ -328,13 +342,18 @@ final class Api
             }
         }
         Db::run(
-            'UPDATE users SET display_name = ?, avatar = ?, table_skin = ?, name_set = ?, name_changed_at = ? WHERE id = ?',
+            'UPDATE users SET display_name = ?, avatar = ?, table_skin = ?, name_set = ?, name_changed_at = ?,
+             challenges_enabled = ?, challenge_pool = ?, challenge_ludo = ?, challenge_carrom = ? WHERE id = ?',
             [
                 $rename ? $name : $user['display_name'],
                 $avatar ?? $user['avatar'],
                 $skin === '' ? $user['table_skin'] : $skin,
                 $rename ? 1 : $user['name_set'],
                 $rename ? date('Y-m-d H:i:s') : ($user['name_changed_at'] ?? null),
+                $challenges === null ? (int) ($user['challenges_enabled'] ?? 1) : ($challenges ? 1 : 0),
+                $poolVal ? 1 : 0,
+                $ludoVal ? 1 : 0,
+                $carromVal ? 1 : 0,
                 $user['id'],
             ]
         );
@@ -541,7 +560,15 @@ final class Api
 
     private static function ziniPayStart(): array
     {
-        return ZiniPay::start((int) Auth::user()['id'], self::int(Http::body(), 'bdt'));
+        $body = Http::body();
+        $packId = trim((string) ($body['packId'] ?? ''));
+        $qty = (int) ($body['qty'] ?? 1);
+        return ZiniPay::start(
+            (int) Auth::user()['id'],
+            self::int($body, 'bdt'),
+            $packId !== '' ? $packId : null,
+            $qty
+        );
     }
 
     private static function ziniPayFinish(): array
@@ -559,6 +586,13 @@ final class Api
     }
 
     /** Active operator announcements shown in the app (home banner / inbox). */
+    private static function landingPublic(): array
+    {
+        header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Allow-Methods: GET, OPTIONS');
+        return LandingPage::publicPayload();
+    }
+
     private static function notices(): array
     {
         Auth::user(); // signed-in only

@@ -27,6 +27,19 @@ extension DuelModeInfo on DuelMode {
   bool get isPoker => this == DuelMode.poker;
 }
 
+/// API game key from a waiting room or challenge payload.
+DuelMode? duelModeFromApi(String game) => switch (game) {
+      'poker' => DuelMode.poker,
+      'eight' => DuelMode.eight,
+      'nine' => DuelMode.nine,
+      'ten' => DuelMode.ten,
+      'billiard' => DuelMode.billiard,
+      'ludo2' => DuelMode.ludo2,
+      'ludo4' => DuelMode.ludo4,
+      'carrom' => DuelMode.carrom,
+      _ => null,
+    };
+
 int _asInt(Object? value, [int fallback = 0]) {
   if (value is int) return value;
   if (value is num) return value.round();

@@ -276,8 +276,10 @@ CREATE TABLE IF NOT EXISTS user_notifications (
   kind       VARCHAR(32)     NOT NULL,
   title      VARCHAR(80)     NOT NULL,
   body       VARCHAR(500)    NOT NULL,
+  event_key  VARCHAR(80)     NULL,
   read_at    DATETIME        NULL,
   created_at DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_notif_event (user_id, event_key),
   KEY idx_notif_user (user_id, read_at, id),
   CONSTRAINT fk_notif_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -292,4 +294,52 @@ CREATE TABLE IF NOT EXISTS notices (
   created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   expires_at DATETIME     NULL,
   KEY idx_notices_active (active, kind)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ZiniPay auto coin add (WebView checkout).
+CREATE TABLE IF NOT EXISTS zinipay_deposits (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL,
+  bdt_amount INT NOT NULL,
+  coins INT NOT NULL,
+  invoice_id VARCHAR(64) NULL,
+  zini_status VARCHAR(24) NOT NULL DEFAULT 'pending',
+  zini_transaction_id VARCHAR(64) NULL,
+  credited TINYINT(1) NOT NULL DEFAULT 0,
+  pack_id VARCHAR(32) NULL,
+  base_coins INT NOT NULL DEFAULT 0,
+  bonus_coins INT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  completed_at DATETIME NULL,
+  KEY idx_zini_user (user_id, created_at),
+  KEY idx_zini_invoice (invoice_id),
+  CONSTRAINT fk_zini_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Player-to-player Pico coin transfer by game ID.
+CREATE TABLE IF NOT EXISTS coin_transfers (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  from_user_id BIGINT UNSIGNED NOT NULL,
+  to_user_id BIGINT UNSIGNED NOT NULL,
+  amount INT NOT NULL,
+  fee INT NOT NULL,
+  received INT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_transfer_from (from_user_id, created_at),
+  KEY idx_transfer_to (to_user_id, created_at),
+  CONSTRAINT fk_transfer_from FOREIGN KEY (from_user_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_transfer_to FOREIGN KEY (to_user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Admin security / abuse signals.
+CREATE TABLE IF NOT EXISTS admin_alerts (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  kind VARCHAR(32) NOT NULL,
+  title VARCHAR(120) NOT NULL,
+  detail TEXT NULL,
+  user_id BIGINT UNSIGNED NULL,
+  read_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_admin_alerts_unread (read_at, created_at),
+  KEY idx_admin_alerts_kind (kind, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

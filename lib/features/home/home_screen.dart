@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/duel_ui.dart';
+import '../../core/icon_motion.dart';
 import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
@@ -110,31 +111,35 @@ class HomeScreen extends ConsumerWidget {
               Positioned(
                 right: 50,
                 top: 46,
-                child: GameButton(
-                  label: t.rejoinMatch,
-                  icon: Icons.login_rounded,
-                  color: AppColors.gold,
-                  width: 420,
-                  height: 70,
-                  fontSize: 21,
-                  onPressed: () async {
-                    final navigator = Navigator.of(context);
-                    final api = ref.read(apiProvider)!;
-                    final wsUrl = await ref.read(sessionProvider.notifier).realtimeUrl();
-                    await openOnlineMatch(
-                      navigator,
-                      api,
-                      gameId: match['gameId'] as int,
-                      roomId: match['roomId'] as int?,
-                      gameKey: match['game'] as String,
-                      seat: match['seat'] as int,
-                      shotSeconds: match['shotSeconds'] as int,
-                      players: (match['players'] as List).cast<Map<String, dynamic>>(),
-                      wsUrl: wsUrl,
-                      replace: false,
-                    );
-                    ref.invalidate(activeMatchProvider);
-                  },
+                child: HighlightPulse(
+                  highlightColor: AppColors.gold,
+                  borderRadius: 14,
+                  child: GameButton(
+                    label: t.rejoinMatch,
+                    icon: Icons.login_rounded,
+                    color: AppColors.gold,
+                    width: 420,
+                    height: 70,
+                    fontSize: 21,
+                    onPressed: () async {
+                      final navigator = Navigator.of(context);
+                      final api = ref.read(apiProvider)!;
+                      final wsUrl = await ref.read(sessionProvider.notifier).realtimeUrl();
+                      await openOnlineMatch(
+                        navigator,
+                        api,
+                        gameId: match['gameId'] as int,
+                        roomId: match['roomId'] as int?,
+                        gameKey: match['game'] as String,
+                        seat: match['seat'] as int,
+                        shotSeconds: match['shotSeconds'] as int,
+                        players: (match['players'] as List).cast<Map<String, dynamic>>(),
+                        wsUrl: wsUrl,
+                        replace: false,
+                      );
+                      ref.invalidate(activeMatchProvider);
+                    },
+                  ),
                 ),
               ),
             if (Env.isDemo)

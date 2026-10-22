@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
 import '../../core/duel_ui.dart';
@@ -10,12 +11,51 @@ import '../../core/widgets.dart';
 import '../../data/api_client.dart';
 import '../online/online_screens.dart';
 import '../online/session.dart';
+import 'challenge_inbox_pulse.dart';
+import 'challenge_incoming_banner.dart';
+import 'challenge_prefs.dart';
 import 'duel_chrome.dart';
 import 'lobby_data.dart';
+import 'matchmaking_screen.dart';
 import '../../l10n/strings.dart';
 
-/// Opens the match for a room returned by a challenge accept / status poll.
+BetLevel _betFromRoom(WidgetRef ref, DuelMode mode, Map<String, dynamic> room) {
+  final levelIdx = room['level'] as int?;
+  final lobby = ref.read(lobbyProvider).valueOrNull;
+  if (levelIdx != null && lobby != null) {
+    for (final b in lobby.levelsFor(mode)) {
+      if (b.level == levelIdx) return b;
+    }
+  }
+  final stake = (room['stake'] as int?) ?? 0;
+  final fee = (room['fee'] as int?) ?? 0;
+  return BetLevel(
+    level: levelIdx ?? 0,
+    name: stake > 0 ? '$stake' : '',
+    stake: stake,
+    fee: fee,
+    buyIn: stake + fee,
+    players: mode.seats,
+    prize: room['prize'] as int?,
+  );
+}
+
+/// After accept: join matchmaking or go straight into a live match.
 Future<void> openChallengeRoom(BuildContext context, WidgetRef ref, Map<String, dynamic> room, {bool replace = false}) async {
+  final gameKey = room['game'] as String;
+  final mode = duelModeFromApi(gameKey);
+  if (mode == null) return;
+  final playing = room['status'] == 'playing' && room['gameId'] != null;
+  if (!playing) {
+    final bet = _betFromRoom(ref, mode, room);
+    final route = MaterialPageRoute<void>(builder: (_) => MatchmakingScreen(mode: mode, level: bet, initialRoom: room));
+    if (replace) {
+      await Navigator.of(context).pushReplacement(route);
+    } else {
+      await Navigator.of(context).push(route);
+    }
+    return;
+  }
   final navigator = Navigator.of(context);
   final wsUrl = await ref.read(sessionProvider.notifier).realtimeUrl();
   final myId = ref.read(sessionProvider).userId;
@@ -26,124 +66,19 @@ Future<void> openChallengeRoom(BuildContext context, WidgetRef ref, Map<String, 
     ref.read(apiProvider)!,
     gameId: room['gameId'] as int,
     roomId: room['id'] as int,
-    gameKey: room['game'] as String,
+    gameKey: gameKey,
     seat: me['seat'] as int,
     shotSeconds: room['shotSeconds'] as int,
     players: players,
     wsUrl: wsUrl,
-    bet: {'mode': room['game'], 'stake': room['stake'], 'prize': room['prize'], 'multiplier': room['multiplier']},
+    bet: {'mode': gameKey, 'stake': room['stake'], 'prize': room['prize'], 'multiplier': room['multiplier']},
     replace: replace,
   );
 }
 
-/// Shows an incoming challenge; on accept, opens the match.
+/// Top banner (not full-screen) for an incoming challenge.
 Future<void> showIncomingChallenge(BuildContext context, WidgetRef ref, Map<String, dynamic> ch) async {
-  final from = ch['from'] as Map<String, dynamic>;
-  final game = (ch['game'] as String);
-  final title = game.startsWith('ludo') ? 'LUDO' : (game == 'carrom' ? 'CARROM' : 'BILLIARD');
-  final buyIn = (ch['stake'] as int?) ?? ch['buyIn'] as int;
-  await showDuelDialog<void>(
-    context,
-    barrierColor: const Color(0xCC000000),
-    builder: (dialog) => _IncomingDialog(ch: ch, from: from, title: title, buyIn: buyIn),
-  );
-}
-
-class _IncomingDialog extends ConsumerStatefulWidget {
-  const _IncomingDialog({required this.ch, required this.from, required this.title, required this.buyIn});
-
-  final Map<String, dynamic> ch;
-  final Map<String, dynamic> from;
-  final String title;
-  final int buyIn;
-
-  @override
-  ConsumerState<_IncomingDialog> createState() => _IncomingDialogState();
-}
-
-class _IncomingDialogState extends ConsumerState<_IncomingDialog> {
-  bool _busy = false;
-  String? _error;
-
-  Future<void> _accept() async {
-    setState(() => _busy = true);
-    try {
-      final room = await ref.read(sessionProvider.notifier).acceptChallenge(widget.ch['id'] as int);
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      await openChallengeRoom(context, ref, room);
-    } on ApiException catch (e) {
-      if (mounted) setState(() => _error = e.message);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _decline() async {
-    try {
-      await ref.read(sessionProvider.notifier).declineChallenge(widget.ch['id'] as int);
-    } on ApiException {
-      // ignore
-    }
-    if (mounted) Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = ref.watch(stringsProvider);
-    return Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          width: 480,
-          padding: const EdgeInsets.all(24),
-          decoration: duelPanel(rim: DuelColors.gold, glow: true),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(t.challengeTitle, style: AppText.label(24, color: DuelColors.gold, weight: FontWeight.w900)),
-              const SizedBox(height: 16),
-              Container(
-                width: 96,
-                height: 96,
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(colors: [Color(0xFF5C8BFF), Color(0xFFFF3B4E)])),
-                child: ClipOval(child: AvatarImage(widget.from['avatar'] as String, size: 88)),
-              ),
-              const SizedBox(height: 10),
-              Text((widget.from['name'] as String).toUpperCase(), style: AppText.label(22, weight: FontWeight.w900)),
-              const SizedBox(height: 6),
-              Text(t.challengesYou(widget.title), style: AppText.label(15, color: DuelColors.silver)),
-              const SizedBox(height: 8),
-              if (widget.buyIn > 0)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const PikoCoinIcon(size: 26),
-                    const SizedBox(width: 6),
-                    Text(t.buyInWin(widget.buyIn, formatCoins(widget.ch['prize'] as int)),
-                        style: AppText.label(16, color: DuelColors.gold, weight: FontWeight.w800)),
-                  ],
-                )
-              else
-                Text(t.friendlyNoStake, style: AppText.label(14, color: DuelColors.dim)),
-              if (_error != null) ...[
-                const SizedBox(height: 10),
-                Text(_error!.toUpperCase(), style: AppText.label(13, color: DuelColors.red)),
-              ],
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  DuelButton(label: _busy ? '...' : t.accept, width: 180, height: 52, onPressed: _busy ? null : _accept),
-                  const SizedBox(width: 12),
-                  DuelButton(label: t.decline, width: 150, height: 52, color: DuelColors.rimLight, onPressed: _busy ? null : _decline),
-                ],
-              ),
-            ],
-          ),
-        ),
-      );
-  }
+  await showIncomingChallengeBanner(context, ref, ch);
 }
 
 /// See who is online and challenge them to a 1v1.
@@ -165,7 +100,7 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
   void initState() {
     super.initState();
     _refresh();
-    _timer = Timer.periodic(const Duration(seconds: 3), (_) => _refresh());
+    _timer = Timer.periodic(const Duration(milliseconds: 1500), (_) => _refresh());
   }
 
   @override
@@ -191,8 +126,9 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
     try {
       final inbox = await notifier.challengeInbox();
       final incoming = (inbox['incoming'] as List).cast<Map<String, dynamic>>();
-      if (mounted && !_dialogOpen && incoming.isNotEmpty) {
-        final ch = incoming.first;
+      final visible = incoming.where((c) => acceptsIncomingChallenge(ref.read(settingsProvider), c['game'] as String)).toList();
+      if (mounted && !_dialogOpen && visible.isNotEmpty) {
+        final ch = visible.first;
         final id = ch['id'] as int;
         if (!_handled.contains(id)) {
           _handled.add(id);
@@ -252,6 +188,17 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
   }
 }
 
+String _shortGame(String key) {
+  if (key.startsWith('ludo')) return 'Ludo';
+  if (key == 'carrom') return 'Carrom';
+  if (key == 'poker') return 'Poker';
+  if (key == 'eight') return '8-Ball';
+  if (key == 'nine') return '9-Ball';
+  if (key == 'ten') return '10-Ball';
+  if (key.isEmpty) return '';
+  return 'Pool';
+}
+
 class _PlayerRow extends ConsumerWidget {
   const _PlayerRow({required this.player, required this.onChallenge});
 
@@ -262,6 +209,9 @@ class _PlayerRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
     final busy = player['busy'] as bool? ?? false;
+    final accepts = player['acceptsChallenges'] as bool? ?? true;
+    final gameKey = player['game'] as String? ?? '';
+    final activity = t.playerActivityLabel(_shortGame(gameKey), busy);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: duelPanel(radius: 14),
@@ -277,6 +227,7 @@ class _PlayerRow extends ConsumerWidget {
                 Text((player['name'] as String).toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.label(18, weight: FontWeight.w800)),
                 const SizedBox(height: 3),
                 Text('LV ${player['level']}  -  ${player['rank']}  -  ${formatCoins(player['coins'] as int)}', style: AppText.label(12, color: DuelColors.dim)),
+                Text(activity, style: AppText.label(11, color: busy ? DuelColors.red : DuelColors.green, weight: FontWeight.w700)),
               ],
             ),
           ),
@@ -285,6 +236,12 @@ class _PlayerRow extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(color: const Color(0xFF2A2F4A), borderRadius: BorderRadius.circular(10)),
               child: Text(t.inMatch, style: AppText.label(13, color: DuelColors.dim, weight: FontWeight.w800)),
+            )
+          else if (!accepts)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(color: const Color(0xFF2A2F4A), borderRadius: BorderRadius.circular(10)),
+              child: Text(t.challengesOffShort, style: AppText.label(12, color: DuelColors.dim, weight: FontWeight.w800)),
             )
           else
             DuelButton(label: t.challengeBtn, width: 170, height: 46, fontSize: 15, color: DuelColors.gold, onPressed: onChallenge),
@@ -305,12 +262,22 @@ class _SendDialog extends ConsumerStatefulWidget {
 }
 
 class _SendDialogState extends ConsumerState<_SendDialog> {
-  String _game = 'billiard';
-  int? _level; // null = free
+  String _game = 'eight';
+  int? _level;
   bool _busy = false;
   String? _error;
   int? _sentId;
   Timer? _poll;
+
+  static const _poolGames = ['eight', 'nine', 'ten', 'billiard'];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.levels.isNotEmpty) {
+      _level = widget.levels.first.level;
+    }
+  }
 
   @override
   void dispose() {
@@ -319,12 +286,18 @@ class _SendDialogState extends ConsumerState<_SendDialog> {
   }
 
   Future<void> _send() async {
+    final level = _level;
+    if (level == null) {
+      setState(() => _error = ref.read(stringsProvider).challengePickStake);
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      final ch = await ref.read(sessionProvider.notifier).sendChallenge(widget.player['id'] as int, _game, _level);
+      final ch = await ref.read(sessionProvider.notifier).sendChallenge(widget.player['id'] as int, _game, level);
+      requestChallengeInboxPoll();
       _sentId = ch['id'] as int;
       // Wait for acceptance.
       _poll = Timer.periodic(const Duration(seconds: 2), (_) => _checkAccepted());
@@ -401,13 +374,15 @@ class _SendDialogState extends ConsumerState<_SendDialog> {
               const SizedBox(height: 20),
               DuelButton(label: t.cancel, width: 180, height: 48, color: DuelColors.rimLight, onPressed: _cancel),
             ] else ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              Text(t.challengePickGame, style: AppText.label(13, color: DuelColors.dim)),
+              const SizedBox(height: 8),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  _gameChip(t.billiardTitle, 'billiard'),
-                  const SizedBox(width: 12),
+                  for (final g in _poolGames) _gameChip(_poolLabel(t, g), g),
                   _gameChip(t.ludoTitle, 'ludo2'),
-                  const SizedBox(width: 12),
                   _gameChip(t.carromTitle, 'carrom'),
                 ],
               ),
@@ -422,8 +397,7 @@ class _SendDialogState extends ConsumerState<_SendDialog> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      _stakeChip(t.freeStake, null),
-                      for (final l in widget.levels) _stakeChip('${l.stake}', l.level),
+                      for (final l in widget.levels) _stakeChip(l.displayName, l.level),
                     ],
                   ),
                 ),
@@ -448,6 +422,13 @@ class _SendDialogState extends ConsumerState<_SendDialog> {
     );
   }
 
+  String _poolLabel(AppStrings t, String game) => switch (game) {
+        'eight' => t.eightBallTitle,
+        'nine' => t.nineBallTitle,
+        'ten' => t.tenBallTitle,
+        _ => t.billiardTitle,
+      };
+
   Widget _gameChip(String label, String game) {
     final on = _game == game;
     return GestureDetector(
@@ -456,8 +437,9 @@ class _SendDialogState extends ConsumerState<_SendDialog> {
         setState(() => _game = game);
       },
       child: Container(
-        width: 150,
-        height: 52,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        height: 48,
+        constraints: const BoxConstraints(minWidth: 88),
         alignment: Alignment.center,
         decoration: duelPanel(radius: 12, rim: on ? DuelColors.green : DuelColors.rim, glow: on, fill: on ? const Color(0xE60C2414) : const Color(0xCC0B0E1C)),
         child: Text(label, style: AppText.label(17, color: on ? DuelColors.green : DuelColors.silver, weight: FontWeight.w900)),

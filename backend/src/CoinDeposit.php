@@ -70,6 +70,56 @@ final class CoinDeposit
         ];
     }
 
+    /**
+     * Coins to credit for a BDT deposit (ZiniPay or manual).
+     * Uses Admin → Coin shop pack “Bonus on deposit %” (e.g. 100 @ 3% → base + 3%).
+     *
+     * @return array{coins:int,base:int,bonus:int,packId:?string}
+     */
+    public static function creditCoinsForBdt(int $bdt, ?string $packId = null, int $qty = 1): array
+    {
+        $rate = max(1, (int) self::config()['coinPerBdt']);
+        $qty = max(1, min(50, $qty));
+        $base = $bdt * $rate;
+        $pack = null;
+        $packId = $packId !== null ? trim($packId) : '';
+        if ($packId !== '') {
+            $candidate = CoinShop::packById($packId);
+            if ($candidate !== null && (bool) ($candidate['active'] ?? true) && (int) $candidate['coins'] * $qty === $bdt) {
+                $pack = $candidate;
+            }
+        }
+        if ($pack === null) {
+            $pack = CoinShop::packForBdt($bdt, $qty);
+        }
+        if ($pack !== null) {
+            $discount = max(0, min(100, (int) $pack['discountPercent']));
+            $bonus = intdiv($base * $discount, 100);
+            $coins = $base + $bonus;
+            return [
+                'coins' => $coins,
+                'base' => $base,
+                'bonus' => $bonus,
+                'packId' => (string) ($pack['id'] ?? ''),
+            ];
+        }
+        $coins = Promotions::depositCoins($bdt, $rate);
+        return [
+            'coins' => $coins,
+            'base' => $base,
+            'bonus' => max(0, $coins - $base),
+            'packId' => null,
+        ];
+    }
+
+    public static function depositCreditMessage(int $bdt, int $coins, int $base, int $bonus): string
+    {
+        if ($bonus <= 0) {
+            return "$coins Pico coin credited ($bdt BDT).";
+        }
+        return "$coins Pico coin credited ($bdt BDT, base $base + bonus $bonus).";
+    }
+
     /** @return array<string,mixed> */
     public static function create(int $userId, string $provider, int $bdt, string $trxId, string $payerNumber): array
     {
@@ -95,9 +145,8 @@ final class CoinDeposit
         }
         $trxId = self::normalizeTrx($trxId);
         $payer = self::normalizePayer($payerNumber);
-        $rate = max(1, (int) $c['coinPerBdt']);
-        // Promo bonus (if any) is fixed here — approve credits exactly this row, never twice.
-        $coins = Promotions::depositCoins($bdt, $rate);
+        $credit = self::creditCoinsForBdt($bdt);
+        $coins = $credit['coins'];
 
         $maxPending = (int) $c['maxPendingPerUser'];
 
@@ -156,11 +205,18 @@ final class CoinDeposit
                 'UPDATE coin_deposit_requests SET status = \'approved\', admin_note = ?, reviewed_at = NOW() WHERE id = ?',
                 [trim($note) === '' ? null : trim($note), $id]
             );
+            $bdt = (int) $r['bdt_amount'];
+            $coins = (int) $r['coins'];
+            $rate = max(1, (int) self::config()['coinPerBdt']);
+            $base = $bdt * $rate;
+            $bonus = max(0, $coins - $base);
             Push::notifyUser(
                 (int) $r['user_id'],
                 'deposit_approved',
                 'Coin add approved',
-                '+' . (int) $r['coins'] . ' Pico coin added to your wallet.'
+                self::depositCreditMessage($bdt, $coins, $base, $bonus),
+                [],
+                'deposit_req:' . $id
             );
         });
     }
@@ -177,7 +233,7 @@ final class CoinDeposit
                 [trim($note) === '' ? null : trim($note), $id]
             );
             $msg = trim($note) !== '' ? trim($note) : 'Your manual coin add request was rejected.';
-            Push::notifyUser((int) $r['user_id'], 'deposit_rejected', 'Coin add rejected', $msg);
+            Push::notifyUser((int) $r['user_id'], 'deposit_rejected', 'Coin add rejected', $msg, [], 'deposit_req_rej:' . $id);
         });
     }
 

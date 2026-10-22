@@ -137,7 +137,9 @@ final class Redeem
                 (int) $r['user_id'],
                 'redeem_approved',
                 'Redeem approved',
-                (int) $r['bdt_amount'] . ' BDT will be sent to your wallet.'
+                (int) $r['bdt_amount'] . ' BDT will be sent to your wallet.',
+                [],
+                'redeem_appr:' . $id
             );
         });
     }
@@ -159,6 +161,14 @@ final class Redeem
                 ['Cancelled by player', $id]
             );
             $row = Db::one('SELECT * FROM redeem_requests WHERE id = ?', [$id]);
+            Push::notifyUser(
+                $userId,
+                'redeem_cancelled',
+                'Redeem cancelled',
+                (int) $row['coins'] . ' Pico coin returned to your wallet.',
+                [],
+                'redeem_cancel:' . $id
+            );
             return [
                 'request' => self::publicRow($row),
                 'user' => Auth::publicUser(Db::one('SELECT * FROM users WHERE id = ?', [$userId])),
@@ -179,7 +189,7 @@ final class Redeem
                 [trim($note) === '' ? null : trim($note), $id]
             );
             $msg = trim($note) !== '' ? trim($note) : 'Your redeem request was rejected and Pico coin was refunded.';
-            Push::notifyUser((int) $r['user_id'], 'redeem_rejected', 'Redeem rejected', $msg);
+            Push::notifyUser((int) $r['user_id'], 'redeem_rejected', 'Redeem rejected', $msg, [], 'redeem_rej:' . $id);
         });
     }
 

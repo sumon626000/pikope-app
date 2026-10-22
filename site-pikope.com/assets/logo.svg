@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 48" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="220" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFC928"/>
+      <stop offset="1" stop-color="#2EE84F"/>
+    </linearGradient>
+  </defs>
+  <circle cx="24" cy="24" r="20" fill="#15151A" stroke="url(#g)" stroke-width="3"/>
+  <text x="24" y="30" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="14" fill="#FFC928">P</text>
+  <text x="56" y="33" font-family="system-ui,sans-serif" font-weight="800" font-size="28" fill="#F2F2F5">Piko</text>
+  <text x="128" y="33" font-family="system-ui,sans-serif" font-weight="800" font-size="28" fill="url(#g)">Pe</text>
+</svg>

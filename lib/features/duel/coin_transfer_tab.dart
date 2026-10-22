@@ -30,9 +30,6 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> {
   bool _lookupBusy = false;
   bool _busy = false;
   String? _error;
-  DateTime? _confirmUntil;
-  int _confirmAmount = 0;
-  String _confirmGameId = '';
 
   @override
   void dispose() {
@@ -107,34 +104,73 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> {
       setState(() => _error = t.notEnoughCoin);
       return;
     }
-    final now = DateTime.now();
-    if (_confirmUntil == null ||
-        _confirmAmount != amount ||
-        _confirmGameId != digits ||
-        now.isAfter(_confirmUntil!)) {
-      setState(() {
-        _confirmUntil = now.add(const Duration(seconds: 4));
-        _confirmAmount = amount;
-        _confirmGameId = digits;
-        _error = null;
-      });
-      return;
-    }
+    final name = _profile?['name'] as String? ?? digits;
+    final fee = _feeFor(amount);
+    final total = amount + fee;
+    final ok = await showDuelDialog<bool>(
+      context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: 460,
+          padding: const EdgeInsets.all(24),
+          decoration: duelPanel(rim: DuelColors.gold),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(t.transferConfirmTitle, textAlign: TextAlign.center, style: AppText.label(22, color: DuelColors.gold, weight: FontWeight.w900)),
+              const SizedBox(height: 14),
+              Text(t.transferConfirmBody(name, amount, fee, total), textAlign: TextAlign.center, style: AppText.label(16, color: Colors.white, weight: FontWeight.w700)),
+              const SizedBox(height: 22),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  DuelButton(label: t.cancel, width: 150, height: 48, color: DuelColors.rimLight, onPressed: () => Navigator.of(ctx).pop(false)),
+                  const SizedBox(width: 12),
+                  DuelButton(label: t.transferSendBtn, width: 170, height: 48, color: DuelColors.gold, onPressed: () => Navigator.of(ctx).pop(true)),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (ok != true || !mounted) return;
+
     setState(() {
       _busy = true;
       _error = null;
-      _confirmUntil = null;
     });
     try {
       await ref.read(sessionProvider.notifier).sendCoinTransfer(gameId: digits, amount: amount);
-      await ref.read(lobbyProvider.notifier).refresh();
-      if (mounted) {
-        final name = _profile?['name'] as String? ?? digits;
-        showDuelMessage(context,
-            title: t.transferSent, body: t.transferSentBody(name, amount), icon: Icons.check_circle_rounded);
-        _amount.clear();
-        setState(() => _profile = null);
-      }
+      if (!mounted) return;
+      _amount.clear();
+      setState(() => _profile = null);
+      await showDuelDialog<void>(
+        context,
+        barrierDismissible: true,
+        builder: (ctx) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: 440,
+            padding: const EdgeInsets.all(26),
+            decoration: duelPanel(rim: DuelColors.green, glow: true),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.check_circle_rounded, color: DuelColors.green, size: 56),
+                const SizedBox(height: 12),
+                Text(t.transferSent, style: AppText.label(24, color: DuelColors.green, weight: FontWeight.w900)),
+                const SizedBox(height: 10),
+                Text(t.transferSentBody(name, amount), textAlign: TextAlign.center, style: AppText.label(16, color: DuelColors.silver)),
+                const SizedBox(height: 18),
+                DuelButton(label: t.ok, width: 160, height: 46, color: DuelColors.gold, onPressed: () => Navigator.of(ctx).pop()),
+              ],
+            ),
+          ),
+        ),
+      );
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = t.maybeApi(e.message));
     } finally {
@@ -156,13 +192,6 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> {
     final amount = _amountInt ?? 0;
     final fee = amount > 0 ? _feeFor(amount) : 0;
     final total = amount + fee;
-    final confirmReady = _confirmUntil != null &&
-        !_busy &&
-        _confirmAmount == amount &&
-        _confirmGameId == _gameId.text.replaceAll(RegExp(r'\D'), '') &&
-        DateTime.now().isBefore(_confirmUntil!);
-    final btnLabel = confirmReady ? t.transferConfirmTap : t.transferSendBtn;
-
     return SingleChildScrollView(
       child: Container(
         width: double.infinity,
@@ -191,10 +220,7 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> {
                 labelStyle: AppText.label(20, color: DuelColors.dim),
               ),
               onChanged: (_) {
-                setState(() {
-                  _error = null;
-                  _confirmUntil = null;
-                });
+                setState(() => _error = null);
                 _scheduleLookup();
               },
             ),
@@ -219,10 +245,7 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 22),
                 labelStyle: AppText.label(20, color: DuelColors.dim),
               ),
-              onChanged: (_) => setState(() {
-                _error = null;
-                _confirmUntil = null;
-              }),
+              onChanged: (_) => setState(() => _error = null),
             ),
             if (_error != null) ...[
               const SizedBox(height: 10),
@@ -230,10 +253,10 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> {
             ],
             const SizedBox(height: 24),
             GameButton(
-              label: _busy ? t.sending : btnLabel,
+              label: _busy ? t.sending : t.transferSendBtn,
               height: 88,
-              fontSize: confirmReady ? 22 : 26,
-              color: confirmReady ? DuelColors.green : DuelColors.gold,
+              fontSize: 26,
+              color: DuelColors.gold,
               onPressed: _busy ? null : _send,
             ),
           ],

@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_state.dart';
 import '../../core/env.dart';
 import 'app_update.dart';
+import 'loading_screen.dart';
 import 'login_screen.dart';
-import 'start_route.dart';
 
 /// Saved account opens the lobby. A new install still starts on sign-up.
 /// The choice is made once, so signing in does not swap this widget out
@@ -18,18 +18,24 @@ class AppStartGate extends ConsumerStatefulWidget {
 }
 
 class _AppStartGateState extends ConsumerState<AppStartGate> {
-  late final bool _signedIn;
+  bool? _signedIn;
 
   @override
   void initState() {
     super.initState();
-    // Saved token only skips login when this build talks to the server.
-    _signedIn = Env.hasBackend && ref.read(settingsProvider).authToken.isNotEmpty;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) checkForAppUpdate(context, ref);
     });
   }
 
   @override
-  Widget build(BuildContext context) => _signedIn ? homeScreenFor() : const LoginScreen();
+  Widget build(BuildContext context) {
+    // Lock route once so login fields are not replaced mid-typing on rebuild.
+    _signedIn ??= Env.hasBackend && ref.read(settingsProvider).authToken.isNotEmpty;
+    if (_signedIn!) {
+      // Restore session and warm assets before the lobby.
+      return const LoadingScreen();
+    }
+    return const LoginScreen();
+  }
 }

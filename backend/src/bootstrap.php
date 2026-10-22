@@ -16,3 +16,8 @@ spl_autoload_register(static function (string $class): void {
 ini_set('serialize_precision', '-1');
 
 App\Config::load(dirname(__DIR__) . '/.env');
+try {
+    App\CatalogSeed::apply();
+} catch (\Throwable) {
+    // A missing database must not take down pages that do not need it yet.
+}

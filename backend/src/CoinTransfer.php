@@ -132,8 +132,22 @@ final class CoinTransfer
             $id = Db::lastId();
             $from = Auth::publicUser(Db::one('SELECT * FROM users WHERE id = ?', [$fromId]));
             $toName = (string) Db::one('SELECT display_name FROM users WHERE id = ?', [$toId])['display_name'];
-            Push::notifyUser($toId, 'coin_received', 'Pico coin received', $from['name'] . " sent you $amount Pico coin.");
-            Push::notifyUser($fromId, 'coin_sent', 'Transfer sent', "You sent $amount to $toName (fee $fee).");
+            Push::notifyUser(
+                $toId,
+                'coin_received',
+                'Pico coin received',
+                $from['name'] . " sent you $amount Pico coin.",
+                [],
+                'transfer_in:' . $id
+            );
+            Push::notifyUser(
+                $fromId,
+                'coin_sent',
+                'Transfer sent',
+                "You sent $amount to $toName (fee $fee).",
+                [],
+                'transfer_out:' . $id
+            );
             $row = Db::one(
                 'SELECT t.*, fu.display_name AS from_name, fu.referral_code AS from_code,
                         tu.display_name AS to_name, tu.referral_code AS to_code

@@ -10,6 +10,7 @@ import 'core/brand.dart';
 import 'core/perf.dart';
 import 'data/app_storage.dart';
 import 'core/push_service.dart';
+import 'features/duel/challenge_inbox_host.dart';
 import 'features/start/app_start_gate.dart';
 
 Future<void> main() async {
@@ -41,7 +42,12 @@ Future<void> main() async {
       [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   if (const bool.fromEnvironment('PERF_LOG')) _logFrameTimings();
-  final storage = await PrefsStorage.open();
+  AppStorage storage;
+  try {
+    storage = await PrefsStorage.open();
+  } catch (_) {
+    storage = MemoryStorage();
+  }
   runApp(ProviderScope(
     overrides: [storageProvider.overrideWithValue(storage)],
     child: const BilliardPokerApp(),
@@ -66,6 +72,7 @@ class BilliardPokerApp extends ConsumerWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       home: const AppStartGate(),
+      builder: (context, child) => ChallengeInboxHost(child: child ?? const SizedBox.shrink()),
     );
   }
 }

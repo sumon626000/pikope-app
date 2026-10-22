@@ -1,22 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
 import '../../core/duel_ui.dart';
-import '../../data/demo_data.dart';
 import '../duel/bet_level_screen.dart';
 import '../duel/duel_chrome.dart';
 import '../duel/lobby_data.dart';
-import '../game/game_controller.dart' show SeatConfig;
 import 'ludo_board.dart';
-import 'ludo_controller.dart';
 import '../../l10n/strings.dart';
-import 'ludo_screen.dart';
 
-/// Ludo entry: pick 2 or 4 players and your colour, then practice for free or
-/// play for coins (same bet ladder as the pool games).
+/// Ludo coin play: pick 2 or 4 players, then the stake tables (practice is on home only).
 class LudoLobbyScreen extends ConsumerStatefulWidget {
   const LudoLobbyScreen({super.key});
 
@@ -26,32 +20,7 @@ class LudoLobbyScreen extends ConsumerStatefulWidget {
 
 class _LudoLobbyScreenState extends ConsumerState<LudoLobbyScreen> {
   int _players = 2;
-  int _colour = 0; // your colour slot (practice only)
-
-  List<int> _coloursForPractice() {
-    // You take [_colour]; bots fill the rest. 2 players sit opposite.
-    if (_players == 2) {
-      final opposite = (_colour + 2) % 4;
-      return [_colour, opposite];
-    }
-    final rest = [for (var c = 0; c < 4; c++) if (c != _colour) c];
-    return [_colour, ...rest];
-  }
-
-  void _practice() {
-    final s = ref.read(settingsProvider);
-    final colours = _coloursForPractice();
-    final seats = [
-      SeatConfig(name: s.name, avatar: s.avatar),
-      for (var i = 1; i < _players; i++) SeatConfig(name: DemoData.botNames[(i - 1) % 3], avatar: DemoData.botAvatars[(i - 1) % 3], isBot: true),
-    ];
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => LudoScreen(
-        config: LudoMatchConfig(seats: _players, players: seats, shotSeconds: s.shotSeconds, humanSeats: 1),
-        colours: colours,
-      ),
-    ));
-  }
+  int _colour = 0;
 
   void _playForCoins() {
     Navigator.of(context).push(MaterialPageRoute<void>(
@@ -123,20 +92,12 @@ class _LudoLobbyScreenState extends ConsumerState<LudoLobbyScreen> {
               ),
             ),
           ),
-          // Actions.
           Positioned(
             left: 0,
             right: 0,
             top: 616,
             child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DuelButton(label: t.practiceFreeBtn, width: 320, height: 66, color: DuelColors.green, onPressed: _practice),
-                  const SizedBox(width: 24),
-                  DuelButton(label: t.playForCoin, width: 320, height: 66, color: DuelColors.gold, onPressed: _playForCoins),
-                ],
-              ),
+              child: DuelButton(label: t.playForCoin, width: 420, height: 72, color: DuelColors.gold, onPressed: _playForCoins),
             ),
           ),
           Positioned(

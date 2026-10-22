@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_state.dart';
+import '../duel/challenge_prefs.dart';
 import '../../core/app_theme.dart';
 import '../../core/widgets.dart';
 import '../../data/demo_data.dart';
@@ -193,6 +194,49 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ref.read(settingsProvider.notifier).update(change);
     // Signed in: the server keeps the same name, avatar and table.
     ref.read(sessionProvider.notifier).pushProfile();
+  }
+
+  Widget _challengeSwitch(String label, bool value, ValueChanged<bool> onChanged) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(color: const Color(0xFF1A2038), borderRadius: BorderRadius.circular(12)),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(label, style: const TextStyle(fontFamily: 'sans-serif', fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.text)),
+          ),
+          Switch.adaptive(value: value, activeColor: AppColors.gold, onChanged: onChanged),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _setChallengeFamily(ChallengeFamily family, bool on) async {
+    AppSettings next(AppSettings s) {
+      final patched = switch (family) {
+        ChallengeFamily.pool => s.copyWith(challengePoolEnabled: on),
+        ChallengeFamily.ludo => s.copyWith(challengeLudoEnabled: on),
+        ChallengeFamily.carrom => s.copyWith(challengeCarromEnabled: on),
+      };
+      final any = anyChallengeReceiveEnabled(patched);
+      return patched.copyWith(challengesEnabled: any);
+    }
+
+    _update(next);
+    if (!Env.hasBackend) return;
+    final s = ref.read(settingsProvider);
+    try {
+      await ref.read(sessionProvider.notifier).ensureSignedIn();
+      final r = await ref.read(apiProvider)!.patch('/me', {
+        'challengesEnabled': s.challengesEnabled,
+        'challengePoolEnabled': s.challengePoolEnabled,
+        'challengeLudoEnabled': s.challengeLudoEnabled,
+        'challengeCarromEnabled': s.challengeCarromEnabled,
+      });
+      ref.read(sessionProvider.notifier).adopt(r['user'] as Map<String, dynamic>);
+    } on ApiException {
+      // Local preference still applies for popups on this device.
+    }
   }
 
   /// With a game server the photo is stored there; otherwise on Cloudinary
@@ -440,6 +484,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               onChanged: (v) => _update((s) => s.copyWith(soundOn: v)),
             ),
           ),
+          if (Env.hasBackend)
+            SectionCard(
+              title: t.sectionChallenges,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(t.challengesSettingHint, style: const TextStyle(fontFamily: 'sans-serif', fontSize: 13, height: 1.35, color: AppColors.textDim)),
+                  const SizedBox(height: 12),
+                  _challengeSwitch(t.challengeReceivePool, s.challengePoolEnabled, (v) => _setChallengeFamily(ChallengeFamily.pool, v)),
+                  const SizedBox(height: 8),
+                  _challengeSwitch(t.challengeReceiveLudo, s.challengeLudoEnabled, (v) => _setChallengeFamily(ChallengeFamily.ludo, v)),
+                  const SizedBox(height: 8),
+                  _challengeSwitch(t.challengeReceiveCarrom, s.challengeCarromEnabled, (v) => _setChallengeFamily(ChallengeFamily.carrom, v)),
+                ],
+              ),
+            ),
           SectionCard(
             title: t.sectionShotClock,
             child: ChoiceRow<int>(

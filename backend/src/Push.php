@@ -11,9 +11,14 @@ final class Push
 {
     public const KINDS = [
         'deposit_approved',
+        'deposit_ok',
         'deposit_rejected',
         'redeem_approved',
         'redeem_rejected',
+        'redeem_cancelled',
+        'coin_received',
+        'coin_sent',
+        'wallet',
         'challenge',
         'admin_broadcast',
     ];
@@ -24,6 +29,8 @@ final class Push
         'depositRejected' => true,
         'redeemApproved' => true,
         'redeemRejected' => true,
+        'coinTransfer' => true,
+        'walletActivity' => true,
         'challenge' => true,
         'adminBroadcast' => true,
         'channelId' => 'pikope_default',
@@ -94,21 +101,64 @@ final class Push
         Db::run('DELETE FROM push_tokens WHERE user_id = ? AND token = ?', [$userId, trim($token)]);
     }
 
-    public static function notifyUser(int $userId, string $kind, string $title, string $body, array $data = []): void
-    {
+    public static function notifyUser(
+        int $userId,
+        string $kind,
+        string $title,
+        string $body,
+        array $data = [],
+        ?string $eventKey = null
+    ): void {
         if (!self::deliveryEnabled($kind)) {
             return;
+        }
+        if ($kind === 'challenge') {
+            Auth::ensureChallengesEnabledColumn();
+            Auth::ensureChallengeGameColumns();
+            $row = Db::one(
+                'SELECT challenges_enabled, challenge_pool, challenge_ludo, challenge_carrom FROM users WHERE id = ?',
+                [$userId]
+            );
+            $game = (string) ($data['game'] ?? '');
+            if ($row === null || !ChallengeService::userAcceptsGame($row, $game !== '' ? $game : 'billiard')) {
+                return;
+            }
         }
         $title = mb_substr(trim($title), 0, 80);
         $body = mb_substr(trim($body), 0, 500);
         if ($title === '' || $body === '') {
             return;
         }
-        Db::run(
-            'INSERT INTO user_notifications (user_id, kind, title, body) VALUES (?, ?, ?, ?)',
-            [$userId, $kind, $title, $body]
-        );
-        self::sendFcmToUser($userId, $title, $body, $data + ['kind' => $kind]);
+        if ($eventKey !== null) {
+            $eventKey = mb_substr(trim($eventKey), 0, 80);
+            if ($eventKey === '') {
+                $eventKey = null;
+            }
+        }
+        if ($eventKey !== null && self::eventAlreadyNotified($userId, $eventKey)) {
+            return;
+        }
+        self::insertInbox($userId, $kind, $title, $body, $eventKey);
+        self::sendFcmToUser($userId, $title, $body, $data + ['kind' => $kind] + ($eventKey !== null ? ['eventKey' => $eventKey] : []));
+    }
+
+    /** Wallet ledger hook — one push per wallet_tx reason (deduped). */
+    public static function notifyWalletChange(int $userId, int $amount, string $reason, ?int $roomId): void
+    {
+        if (!self::deliveryEnabled('wallet')) {
+            return;
+        }
+        if ($amount === 0) {
+            return;
+        }
+        if (self::walletReasonSkipped($reason)) {
+            return;
+        }
+        $parsed = self::walletMessage($amount, $reason, $roomId);
+        if ($parsed === null) {
+            return;
+        }
+        self::notifyUser($userId, 'wallet', $parsed['title'], $parsed['body'], [], 'wallet:' . $reason);
     }
 
     /** @return array{sent:int,failed:int,inbox:int} */
@@ -124,11 +174,14 @@ final class Push
         }
         $users = Db::all('SELECT id FROM users WHERE is_bot = 0 AND banned = 0');
         $inbox = 0;
+        $stamp = date('YmdHis');
         foreach ($users as $u) {
-            Db::run(
-                'INSERT INTO user_notifications (user_id, kind, title, body) VALUES (?, ?, ?, ?)',
-                [(int) $u['id'], 'admin_broadcast', $title, $body]
-            );
+            $uid = (int) $u['id'];
+            $key = 'broadcast:' . $stamp . ':' . $uid;
+            if (self::eventAlreadyNotified($uid, $key)) {
+                continue;
+            }
+            self::insertInbox($uid, 'admin_broadcast', $title, $body, $key);
             $inbox++;
         }
         $tokens = Db::all('SELECT token FROM push_tokens');
@@ -140,12 +193,12 @@ final class Push
     /** @return array{sent:int,failed:int} */
     public static function sendTest(int $userId, string $title, string $body): array
     {
-        self::notifyUser($userId, 'admin_broadcast', $title, $body, ['test' => '1']);
+        self::notifyUser($userId, 'admin_broadcast', $title, $body, ['test' => '1'], 'test:' . $userId . ':' . time());
         $tokens = Db::all('SELECT token FROM push_tokens WHERE user_id = ?', [$userId]);
         if ($tokens === []) {
             return ['sent' => 0, 'failed' => 0];
         }
-        return self::sendFcmMulticast(array_column($tokens, 'token'), $title, $body, ['kind' => 'admin_broadcast', 'test' => '1']);
+        return ['sent' => count($tokens), 'failed' => 0];
     }
 
     /** @return list<array<string,mixed>> */
@@ -188,14 +241,91 @@ final class Push
             return false;
         }
         return match ($kind) {
-            'deposit_approved' => (bool) $c['depositApproved'],
+            'deposit_approved', 'deposit_ok' => (bool) $c['depositApproved'],
             'deposit_rejected' => (bool) $c['depositRejected'],
-            'redeem_approved' => (bool) $c['redeemApproved'],
+            'redeem_approved', 'redeem_cancelled' => (bool) $c['redeemApproved'],
             'redeem_rejected' => (bool) $c['redeemRejected'],
+            'coin_received', 'coin_sent' => (bool) $c['coinTransfer'],
+            'wallet' => (bool) $c['walletActivity'],
             'challenge' => (bool) $c['challenge'],
             'admin_broadcast' => (bool) $c['adminBroadcast'],
-            default => false,
+            default => true,
         };
+    }
+
+    private static function walletReasonSkipped(string $reason): bool
+    {
+        foreach (['deposit:', 'zinipay:', 'transfer_out', 'transfer_in', 'redeem_refund:', 'welcome', 'daily'] as $skip) {
+            if ($reason === $skip || str_starts_with($reason, $skip)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** @return array{title:string,body:string}|null */
+    private static function walletMessage(int $amount, string $reason, ?int $roomId): ?array
+    {
+        $abs = abs($amount);
+        $sign = $amount >= 0 ? '+' : '−';
+        if ($reason === 'prize') {
+            return ['title' => 'Match prize', 'body' => "$sign$abs Pico coin added to your wallet."];
+        }
+        if ($reason === 'buy_in') {
+            return ['title' => 'Match stake', 'body' => "$sign$abs Pico coin entry fee."];
+        }
+        if ($reason === 'referral') {
+            return ['title' => 'Referral bonus', 'body' => "$sign$abs Pico coin referral reward."];
+        }
+        if (str_starts_with($reason, 'redeem:')) {
+            return ['title' => 'Redeem submitted', 'body' => "$sign$abs Pico coin held for redeem."];
+        }
+        if (str_starts_with($reason, 'admin:')) {
+            return ['title' => 'Balance update', 'body' => "$sign$abs Pico coin (admin adjustment)."];
+        }
+        if (str_starts_with($reason, 'coin_shop')) {
+            return ['title' => 'Coin shop', 'body' => "$sign$abs Pico coin from shop."];
+        }
+        if (str_starts_with($reason, 'coin_shop_buy')) {
+            return ['title' => 'Coin shop purchase', 'body' => "$sign$abs Pico coin pack purchase."];
+        }
+        return ['title' => 'Wallet update', 'body' => "$sign$abs Pico coin · $reason"];
+    }
+
+    private static function eventAlreadyNotified(int $userId, string $eventKey): bool
+    {
+        self::ensureEventKeyColumn();
+        return Db::one(
+            'SELECT id FROM user_notifications WHERE user_id = ? AND event_key = ? LIMIT 1',
+            [$userId, $eventKey]
+        ) !== null;
+    }
+
+    private static function insertInbox(int $userId, string $kind, string $title, string $body, ?string $eventKey): void
+    {
+        self::ensureEventKeyColumn();
+        Db::run(
+            'INSERT INTO user_notifications (user_id, kind, title, body, event_key) VALUES (?, ?, ?, ?, ?)',
+            [$userId, $kind, $title, $body, $eventKey]
+        );
+    }
+
+    private static function ensureEventKeyColumn(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+        $pdo = Db::pdo();
+        $have = $pdo->query("SHOW COLUMNS FROM user_notifications LIKE 'event_key'")->fetch();
+        if ($have === false) {
+            $pdo->exec('ALTER TABLE user_notifications ADD COLUMN event_key VARCHAR(80) NULL');
+        }
+        $idx = $pdo->query("SHOW INDEX FROM user_notifications WHERE Key_name = 'uq_notif_event'")->fetch();
+        if ($idx === false) {
+            $pdo->exec('CREATE UNIQUE INDEX uq_notif_event ON user_notifications (user_id, event_key)');
+        }
     }
 
     /** @param array<string,string> $data */
@@ -309,6 +439,8 @@ final class Push
             'depositRejected' => (bool) ($raw['depositRejected'] ?? true),
             'redeemApproved' => (bool) ($raw['redeemApproved'] ?? true),
             'redeemRejected' => (bool) ($raw['redeemRejected'] ?? true),
+            'coinTransfer' => (bool) ($raw['coinTransfer'] ?? true),
+            'walletActivity' => (bool) ($raw['walletActivity'] ?? true),
             'challenge' => (bool) ($raw['challenge'] ?? true),
             'adminBroadcast' => (bool) ($raw['adminBroadcast'] ?? true),
             'channelId' => preg_replace('/[^a-zA-Z0-9_]/', '', (string) ($raw['channelId'] ?? self::DEFAULTS['channelId'])) ?: 'pikope_default',

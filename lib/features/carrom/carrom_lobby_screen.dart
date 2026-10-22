@@ -5,39 +5,15 @@ import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
 import '../../core/duel_ui.dart';
-import '../../data/demo_data.dart';
 import '../duel/bet_level_screen.dart';
 import '../duel/duel_chrome.dart';
 import '../duel/lobby_data.dart';
-import '../game/game_controller.dart' show SeatConfig;
-import 'carrom_controller.dart';
-import '../../l10n/strings.dart';
-import 'carrom_screen.dart';
 import 'carrom_skins.dart';
+import '../../l10n/strings.dart';
 
-/// Carrom entry: pick your striker, piece set and board, then practice against a
-/// bot for free or play for coins (same bet ladder as the pool games, winner
-/// takes the pot).
+/// Carrom coin play: pick striker and pieces here, then stake tables (boards in Items shop).
 class CarromLobbyScreen extends ConsumerWidget {
   const CarromLobbyScreen({super.key});
-
-  void _practice(BuildContext context, WidgetRef ref) {
-    final s = ref.read(settingsProvider);
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => CarromScreen(
-        config: CarromMatchConfig(
-          seats: [
-            SeatConfig(name: s.name, avatar: s.avatar),
-            SeatConfig(name: DemoData.botNames[0], avatar: DemoData.botAvatars[0], isBot: true, botSkill: s.botSkill),
-          ],
-          shotSeconds: s.shotSeconds,
-          strikerSkin: s.carromStriker,
-          pieceSkin: s.carromPieces,
-          boardSkin: s.carromBoard,
-        ),
-      ),
-    ));
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -50,7 +26,6 @@ class CarromLobbyScreen extends ConsumerWidget {
         children: [
           const Positioned(left: 0, right: 0, top: 6, child: DuelTopBar(showProfile: false, showShortcuts: false)),
           Positioned(left: 0, right: 0, top: 96, child: DuelTitle(t.carromTitle, size: 48, sub: t.carromLobbySub)),
-          // Striker choice.
           Positioned(
             left: 0,
             right: 0,
@@ -70,7 +45,6 @@ class CarromLobbyScreen extends ConsumerWidget {
               ),
             ),
           ),
-          // Piece set choice.
           Positioned(
             left: 0,
             right: 0,
@@ -95,19 +69,12 @@ class CarromLobbyScreen extends ConsumerWidget {
             right: 0,
             top: 540,
             child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DuelButton(label: t.practiceFreeBtn, width: 320, height: 66, color: DuelColors.green, onPressed: () => _practice(context, ref)),
-                  const SizedBox(width: 24),
-                  DuelButton(
-                    label: t.playForCoin,
-                    width: 320,
-                    height: 66,
-                    color: DuelColors.gold,
-                    onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BetLevelScreen(mode: DuelMode.carrom))),
-                  ),
-                ],
+              child: DuelButton(
+                label: t.playForCoin,
+                width: 420,
+                height: 72,
+                color: DuelColors.gold,
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BetLevelScreen(mode: DuelMode.carrom))),
               ),
             ),
           ),
@@ -169,7 +136,6 @@ class _Swatch extends StatelessWidget {
       );
 }
 
-/// A row of discs drawn with the given skins (for the pickers).
 class _DiscPreview extends CustomPainter {
   const _DiscPreview(this.kinds, this.striker, this.pieces);
 

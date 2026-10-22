@@ -13,8 +13,8 @@ Backend and web admin for the PikoPe / DuelX Android app. Works on **shared host
 
 3. **Environment:** copy `.env.example` → `.env` in the `pikope` folder (next to `public/`, not inside it). Set `DB_*`, `APP_URL`, `ADMIN_USER`, `ADMIN_PASS`. Use `APP_DEBUG=0` in production.
 4. **Database:** phpMyAdmin → import `sql/schema.sql`, or SSH: `php bin/migrate.php`
-5. **Test:** `https://pikope.bet369win.com/health` → JSON `ok`
-6. **Admin:** `https://pikope.bet369win.com/admin` (HTTP Basic)
+5. **Test:** `https://adminnew.pikope.com/health` → JSON `ok`
+6. **Admin:** `https://adminnew.pikope.com/admin` (HTTP Basic)
 7. **Cron (every 5 min):** `php .../pikope/bin/cleanup.php`
 
 See `deploy/HOSTINGER-PIKOPE.txt` for the full checklist.
@@ -24,7 +24,7 @@ See `deploy/HOSTINGER-PIKOPE.txt` for the full checklist.
 Release builds need `android/key.properties` (see `duelx/android/key.properties.example` in the Flutter repo).
 
 ```bash
-flutter build apk --release --dart-define=API_BASE_URL=https://pikope.bet369win.com
+flutter build apk --release --dart-define-from-file=.env
 ```
 
 ## Requirements

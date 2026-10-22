@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../data/api_client.dart';
+import '../features/duel/challenge_inbox_pulse.dart';
 import '../firebase_options.dart';
 
 @pragma('vm:entry-point')
@@ -13,7 +14,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 }
 
-/// APK push: FCM when configured + local notifications for foreground / poll.
+/// APK push: FCM when configured. Inbox poll updates badge only (no duplicate tray alerts).
 final class PushService {
   PushService._();
 
@@ -22,7 +23,9 @@ final class PushService {
   static bool _firebaseReady = false;
   static String _channelId = 'pikope_default';
   static String _channelName = 'PikoPe';
-  static int _lastNotifiedId = 0;
+  static int _lastSeenInboxId = 0;
+  static bool _inboxBootstrapped = false;
+  static final Set<String> _shownEventKeys = {};
   static ApiClient? _api;
 
   static Future<void> initLocal() async {
@@ -81,14 +84,24 @@ final class PushService {
           await _api!.post('/me/push-token', {'token': t, 'platform': 'android'});
         }
       });
-      FirebaseMessaging.onMessage.listen((m) {
-        final n = m.notification;
-        show(title: n?.title ?? 'PikoPe', body: n?.body ?? '');
-      });
+      FirebaseMessaging.onMessage.listen(_onForegroundMessage);
       _firebaseReady = true;
     } on Object catch (e, st) {
       debugPrint('FCM not ready (use real google-services.json): $e\n$st');
     }
+  }
+
+  static void _onForegroundMessage(RemoteMessage m) {
+    final key = m.data['eventKey'] as String? ?? m.messageId;
+    if (key != null && key.isNotEmpty) {
+      if (_shownEventKeys.contains(key)) return;
+      _shownEventKeys.add(key);
+    }
+    if (m.data['kind'] == 'challenge') {
+      requestChallengeInboxPoll();
+    }
+    final n = m.notification;
+    show(title: n?.title ?? 'PikoPe', body: n?.body ?? '');
   }
 
   static Future<void> show({required String title, required String body}) async {
@@ -108,26 +121,22 @@ final class PushService {
     );
   }
 
-  /// Returns unread count; shows a local notification for new inbox rows.
+  /// Updates unread badge. Does not re-show tray alerts (FCM handles those).
   static Future<int> pollInbox(ApiClient api) async {
     try {
       final j = await api.get('/me/notifications?limit=25');
       final unread = j['unread'] as int? ?? 0;
       final items = (j['items'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
-      for (final item in items.reversed) {
-        final id = item['id'] as int? ?? 0;
-        final read = item['read'] as bool? ?? true;
-        if (id > _lastNotifiedId && !read) {
-          _lastNotifiedId = id;
-          await show(
-            title: item['title'] as String? ?? 'PikoPe',
-            body: item['body'] as String? ?? '',
-          );
-        }
-      }
       if (items.isNotEmpty) {
         final top = items.first['id'] as int? ?? 0;
-        if (top > _lastNotifiedId) _lastNotifiedId = top;
+        if (!_inboxBootstrapped) {
+          _lastSeenInboxId = top;
+          _inboxBootstrapped = true;
+          return unread;
+        }
+        if (top > _lastSeenInboxId) {
+          _lastSeenInboxId = top;
+        }
       }
       return unread;
     } on Object {

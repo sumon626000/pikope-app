@@ -25,6 +25,10 @@ $columns = [
         'referred_by' => 'BIGINT UNSIGNED NULL',
         'phone' => 'CHAR(13) NULL',
         'name_changed_at' => 'DATETIME NULL',
+        'challenges_enabled' => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'challenge_pool' => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'challenge_ludo' => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'challenge_carrom' => 'TINYINT(1) NOT NULL DEFAULT 1',
     ],
     'room_players' => [
         'joined_at' => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
@@ -46,6 +50,14 @@ $columns = [
     'wallet_tx' => [
         'ref_user_id' => 'BIGINT UNSIGNED NULL',
     ],
+    'user_notifications' => [
+        'event_key' => 'VARCHAR(80) NULL',
+    ],
+    'zinipay_deposits' => [
+        'pack_id' => 'VARCHAR(32) NULL',
+        'base_coins' => 'INT NOT NULL DEFAULT 0',
+        'bonus_coins' => 'INT NOT NULL DEFAULT 0',
+    ],
 ];
 $pdo = App\Db::pdo();
 foreach ($columns as $table => $defs) {
@@ -61,7 +73,7 @@ $enumFixes = [
     'rooms' => ["ENUM('poker','eight','nine','ten','billiard','ludo2','ludo4','carrom') NOT NULL", 'carrom'],
     'games' => ["ENUM('poker','eight','nine','ten','ludo2','ludo4','carrom') NOT NULL", 'carrom'],
     'match_results' => ["ENUM('poker','eight','nine','ten','ludo2','ludo4','carrom') NOT NULL", 'carrom'],
-    'challenges' => ["ENUM('eight','nine','ten','billiard','ludo2','carrom') NOT NULL", 'carrom'],
+    'challenges' => ["ENUM('eight','nine','ten','billiard','ludo2','ludo4','carrom') NOT NULL", 'carrom'],
 ];
 foreach ($enumFixes as $table => [$def, $needle]) {
     $type = $pdo->query("SHOW COLUMNS FROM `$table` LIKE 'game'")->fetch(PDO::FETCH_ASSOC)['Type'];
@@ -93,4 +105,12 @@ if (!str_contains($redeemStatus, 'cancelled')) {
 App\AdminAlert::ensureTable();
 App\CoinTransfer::ensureTable();
 App\ZiniPay::ensureTable();
+$notifIdx = $pdo->query("SHOW INDEX FROM user_notifications WHERE Key_name = 'uq_notif_event'")->fetch();
+if ($notifIdx === false) {
+    $hasKey = $pdo->query("SHOW COLUMNS FROM user_notifications LIKE 'event_key'")->fetch();
+    if ($hasKey !== false) {
+        $pdo->exec('CREATE UNIQUE INDEX uq_notif_event ON user_notifications (user_id, event_key)');
+        echo "added user_notifications.uq_notif_event\n";
+    }
+}
 echo "Schema is up to date.\n";

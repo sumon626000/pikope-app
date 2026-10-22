@@ -28,6 +28,9 @@ final class ZiniPay
                 zini_status VARCHAR(24) NOT NULL DEFAULT \'pending\',
                 zini_transaction_id VARCHAR(64) NULL,
                 credited TINYINT(1) NOT NULL DEFAULT 0,
+                pack_id VARCHAR(32) NULL,
+                base_coins INT NOT NULL DEFAULT 0,
+                bonus_coins INT NOT NULL DEFAULT 0,
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 completed_at DATETIME NULL,
                 KEY idx_zini_user (user_id, created_at),
@@ -35,6 +38,27 @@ final class ZiniPay
                 CONSTRAINT fk_zini_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
         );
+        self::ensureColumns();
+    }
+
+    private static function ensureColumns(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+        $pdo = Db::pdo();
+        $cols = $pdo->query('SHOW COLUMNS FROM zinipay_deposits')->fetchAll(\PDO::FETCH_COLUMN);
+        foreach ([
+            'pack_id' => 'VARCHAR(32) NULL',
+            'base_coins' => 'INT NOT NULL DEFAULT 0',
+            'bonus_coins' => 'INT NOT NULL DEFAULT 0',
+        ] as $name => $def) {
+            if (!in_array($name, $cols, true)) {
+                $pdo->exec("ALTER TABLE zinipay_deposits ADD COLUMN `$name` $def");
+            }
+        }
     }
 
     /** @return array<string,mixed> */
@@ -66,7 +90,7 @@ final class ZiniPay
     }
 
     /** @return array<string,mixed> */
-    public static function start(int $userId, int $bdt): array
+    public static function start(int $userId, int $bdt, ?string $packId = null, int $qty = 1): array
     {
         if (!self::publicEnabled()) {
             throw ApiError::badRequest('Auto pay is not available yet.', 'zini_disabled');
@@ -77,8 +101,7 @@ final class ZiniPay
         if ($bdt < $min || $bdt > $max) {
             throw ApiError::badRequest("Amount must be between $min and $max BDT.", 'bad_amount');
         }
-        $rate = max(1, (int) $dep['coinPerBdt']);
-        $coins = Promotions::depositCoins($bdt, $rate);
+        $credit = CoinDeposit::creditCoinsForBdt($bdt, $packId, $qty);
         $user = Db::one('SELECT id, display_name, email FROM users WHERE id = ?', [$userId]);
         if ($user === null) {
             throw ApiError::notFound('User not found');
@@ -86,8 +109,8 @@ final class ZiniPay
 
         self::ensureTable();
         Db::run(
-            'INSERT INTO zinipay_deposits (user_id, bdt_amount, coins) VALUES (?, ?, ?)',
-            [$userId, $bdt, $coins]
+            'INSERT INTO zinipay_deposits (user_id, bdt_amount, coins, pack_id, base_coins, bonus_coins) VALUES (?, ?, ?, ?, ?, ?)',
+            [$userId, $bdt, $credit['coins'], $credit['packId'], $credit['base'], $credit['bonus']]
         );
         $depositId = Db::lastId();
         $base = rtrim(Config::get('APP_URL', ''), '/');
@@ -168,7 +191,23 @@ final class ZiniPay
                 [$depositId]
             );
             $row = Db::one('SELECT * FROM zinipay_deposits WHERE id = ?', [$depositId]);
-            Push::notifyUser($userId, 'deposit_ok', 'Pico coin added', (int) $row['coins'] . ' Pico coin credited.');
+            $bdt = (int) $row['bdt_amount'];
+            $coins = (int) $row['coins'];
+            $base = (int) ($row['base_coins'] ?? 0);
+            $bonus = (int) ($row['bonus_coins'] ?? 0);
+            if ($base <= 0) {
+                $rate = max(1, (int) CoinDeposit::config()['coinPerBdt']);
+                $base = $bdt * $rate;
+                $bonus = max(0, $coins - $base);
+            }
+            Push::notifyUser(
+                $userId,
+                'deposit_ok',
+                'Pico coin added',
+                CoinDeposit::depositCreditMessage($bdt, $coins, $base, $bonus),
+                [],
+                'zinipay:' . $depositId
+            );
             return [
                 'deposit' => self::publicRow($row),
                 'user' => Auth::publicUser(Db::one('SELECT * FROM users WHERE id = ?', [$userId])),
@@ -308,6 +347,9 @@ final class ZiniPay
             'id' => (int) $r['id'],
             'bdt' => (int) $r['bdt_amount'],
             'coins' => (int) $r['coins'],
+            'baseCoins' => (int) ($r['base_coins'] ?? 0),
+            'bonusCoins' => (int) ($r['bonus_coins'] ?? 0),
+            'packId' => $r['pack_id'] ?? null,
             'status' => (string) $r['zini_status'],
             'credited' => (bool) $r['credited'],
             'createdAt' => strtotime((string) $r['created_at']) * 1000,
@@ -357,6 +399,9 @@ final class ZiniPay
             'phone' => $r['phone'],
             'bdt' => (int) $r['bdt_amount'],
             'coins' => (int) $r['coins'],
+            'baseCoins' => (int) ($r['base_coins'] ?? 0),
+            'bonusCoins' => (int) ($r['bonus_coins'] ?? 0),
+            'packId' => $r['pack_id'],
             'invoiceId' => $r['invoice_id'],
             'status' => $r['zini_status'],
             'transactionId' => $r['zini_transaction_id'],

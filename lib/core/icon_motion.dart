@@ -183,3 +183,63 @@ class _PopCelebrationState extends State<PopCelebration> with SingleTickerProvid
     );
   }
 }
+
+/// Pulsing scale + gold glow for urgent CTAs (e.g. rejoin an active match).
+class HighlightPulse extends StatefulWidget {
+  const HighlightPulse({
+    super.key,
+    required this.child,
+    this.onTap,
+    this.highlightColor = const Color(0xFFD9B45A),
+    this.borderRadius = 20,
+  });
+
+  final Widget child;
+  final VoidCallback? onTap;
+  final Color highlightColor;
+  final double borderRadius;
+
+  @override
+  State<HighlightPulse> createState() => _HighlightPulseState();
+}
+
+class _HighlightPulseState extends State<HighlightPulse> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1300))..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final inner = widget.onTap != null
+        ? PressScale(onTap: widget.onTap, playTapSound: false, child: widget.child)
+        : widget.child;
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (_, child) {
+        final t = Curves.easeInOut.transform(_c.value);
+        final scale = 1 + 0.028 * t;
+        final glow = 10 + 22 * t;
+        final spread = 1 + 4 * t;
+        final alpha = 0.32 + 0.5 * t;
+        return Transform.scale(
+          scale: scale,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(widget.borderRadius),
+              boxShadow: [
+                BoxShadow(color: widget.highlightColor.withValues(alpha: alpha), blurRadius: glow, spreadRadius: spread),
+                BoxShadow(color: widget.highlightColor.withValues(alpha: alpha * 0.45), blurRadius: glow * 1.6, spreadRadius: 0),
+              ],
+            ),
+            child: child,
+          ),
+        );
+      },
+      child: inner,
+    );
+  }
+}

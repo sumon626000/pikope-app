@@ -327,13 +327,19 @@ final class Server
                 if (!isset($c->games[$gameId])) {
                     return;
                 }
-                $aim = ['t' => 'aim', 'gameId' => $gameId, 's' => (int) ($msg['s'] ?? -1)];
+                $aim = ['t' => 'aim', 'gameId' => $gameId, 's' => (int) ($c->seats[$gameId] ?? -1)];
                 foreach (['a', 'p', 'x', 'y'] as $key) {
                     $value = $msg[$key] ?? null;
+                    if ($value === null) {
+                        continue;
+                    }
                     if (!is_int($value) && !is_float($value) || !is_finite((float) $value)) {
                         return;
                     }
                     $aim[$key] = round((float) $value, 4);
+                }
+                if (!isset($aim['a']) && !isset($aim['x'])) {
+                    return;
                 }
                 foreach ($this->clients as $other) {
                     if ($other !== $c && isset($other->games[$gameId])) {

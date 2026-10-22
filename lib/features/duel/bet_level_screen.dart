@@ -6,9 +6,14 @@ import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
 import '../../core/duel_ui.dart';
 import '../../data/app_game.dart';
+import '../../data/demo_data.dart';
+import '../carrom/carrom_controller.dart';
+import '../carrom/carrom_screen.dart';
+import '../game/game_controller.dart' show SeatConfig;
 import '../lobby/lobby_screen.dart';
+import '../ludo/ludo_controller.dart';
+import '../ludo/ludo_screen.dart';
 import '../misc/leaderboard_screen.dart';
-import 'cues_screen.dart';
 import 'duel_chrome.dart';
 import 'lobby_data.dart';
 import '../online/online_screens.dart';
@@ -79,7 +84,71 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
     _open(MatchmakingScreen(mode: widget.mode, level: level));
   }
 
-  void _practice() => showPoolPracticeDialog(context, open: _open);
+  AppGame? _poolGameForMode(DuelMode mode) => switch (mode) {
+        DuelMode.eight => AppGame.eightBall,
+        DuelMode.nine => AppGame.nineBall,
+        DuelMode.ten => AppGame.tenBall,
+        DuelMode.poker => AppGame.poker,
+        _ => null,
+      };
+
+  void _practiceLudo(int players) {
+    final s = ref.read(settingsProvider);
+    const colour = 0;
+    final colours = players == 2 ? [colour, (colour + 2) % 4] : [colour, 1, 2, 3];
+    final seats = [
+      SeatConfig(name: s.name, avatar: s.avatar),
+      for (var i = 1; i < players; i++)
+        SeatConfig(
+          name: DemoData.botNames[(i - 1) % DemoData.botNames.length],
+          avatar: DemoData.botAvatars[(i - 1) % DemoData.botAvatars.length],
+          isBot: true,
+        ),
+    ];
+    _open(LudoScreen(
+      config: LudoMatchConfig(seats: players, players: seats, shotSeconds: s.shotSeconds, humanSeats: 1),
+      colours: colours,
+    ));
+  }
+
+  void _practiceCarrom() {
+    final s = ref.read(settingsProvider);
+    _open(CarromScreen(
+      config: CarromMatchConfig(
+        seats: [
+          SeatConfig(name: s.name, avatar: s.avatar),
+          SeatConfig(
+            name: DemoData.botNames[0],
+            avatar: DemoData.botAvatars[0],
+            isBot: true,
+            botSkill: s.botSkill,
+          ),
+        ],
+        shotSeconds: s.shotSeconds,
+        strikerSkin: s.carromStriker,
+        pieceSkin: s.carromPieces,
+        boardSkin: s.carromBoard,
+      ),
+    ));
+  }
+
+  void _practice() {
+    final mode = widget.mode;
+    if (mode == DuelMode.ludo2) {
+      _practiceLudo(2);
+      return;
+    }
+    if (mode == DuelMode.ludo4) {
+      _practiceLudo(4);
+      return;
+    }
+    if (mode == DuelMode.carrom) {
+      _practiceCarrom();
+      return;
+    }
+    final game = _poolGameForMode(mode);
+    showPoolPracticeDialog(context, open: _open, game: game);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -162,46 +231,11 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
               ),
             ),
           ],
-          // Bottom row, as on the home screen but with BACK.
-          if (!widget.friendsRoom)
           Positioned(
             left: 42,
             top: 722,
-            child: GestureDetector(
-              onTap: () {
-                AudioService.tap();
-                _practice();
-              },
-              child: Container(
-                width: 430,
-                height: 132,
-                decoration: duelPanel(radius: 20, rim: const Color(0xFF2E8B57), fill: const Color(0xCC07140D)),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.smart_toy_rounded, color: Color(0xFF9BF2B5), size: 54),
-                    const SizedBox(width: 14),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(t.practice, style: AppText.label(24, color: const Color(0xFF9BF2B5), weight: FontWeight.w900)),
-                        const SizedBox(height: 4),
-                        Text(t.practiceSub, style: AppText.label(12, color: DuelColors.dim)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 498,
-            top: 722,
             child: Row(
               children: [
-                NavTile(icon: NavTile.cuesIcon, label: t.navCues, onTap: () => _open(const CuesScreen())),
-                const SizedBox(width: 19),
                 NavTile(
                   icon: Icons.local_police_rounded,
                   label: t.navClub,
@@ -217,8 +251,6 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
                       body: t.friendsNavBody,
                       icon: Icons.groups_rounded),
                 ),
-                const SizedBox(width: 19),
-                NavTile(icon: Icons.backpack_rounded, label: t.navItems, onTap: () => _open(const CuesScreen(ownedOnly: true))),
                 const SizedBox(width: 19),
                 NavTile(icon: Icons.leaderboard_rounded, label: t.navRankings, onTap: () => _open(const LeaderboardScreen())),
                 const SizedBox(width: 19),
@@ -362,22 +394,8 @@ class _LevelCard extends ConsumerWidget {
         children: [
           Column(
             children: [
-              const SizedBox(height: 28),
-              SizedBox(
-                height: 104,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 34),
-                    child: Text(headline,
-                        style: AppText.label(52, color: poker ? DuelColors.gold : Colors.white, weight: FontWeight.w900).copyWith(
-                          shadows: [Shadow(color: color.withValues(alpha: 0.8), blurRadius: 24)],
-                        )),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(t.stakeAmount(level.stake), style: AppText.label(22, color: DuelColors.gold, weight: FontWeight.w800)),
+              const SizedBox(height: 36),
+              Text(t.stakeAmount(level.stake), style: AppText.label(26, color: DuelColors.gold, weight: FontWeight.w800)),
               const SizedBox(height: 14),
               // The glowing rule under the prize.
               Container(
@@ -389,11 +407,14 @@ class _LevelCard extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              Text(poker ? t.winUpTo : t.prize, style: AppText.label(16, color: DuelColors.silver, weight: FontWeight.w800)),
-              const SizedBox(height: 4),
-              Text(winLine, style: AppText.label(28, color: Colors.white, weight: FontWeight.w900)),
-              const SizedBox(height: 10),
-              Text(t.entryFee(level.buyIn), style: AppText.label(22, color: Colors.white, weight: FontWeight.w900)),
+              Text(poker ? t.winUpTo : t.prize, style: AppText.label(18, color: DuelColors.silver, weight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              Text(winLine, style: AppText.label(34, color: Colors.white, weight: FontWeight.w900)),
+              const SizedBox(height: 16),
+              Text(headline,
+                  style: AppText.label(30, color: poker ? DuelColors.gold : Colors.white, weight: FontWeight.w900).copyWith(
+                    shadows: [Shadow(color: color.withValues(alpha: 0.65), blurRadius: 16)],
+                  )),
               const SizedBox(height: 14),
               if (poker)
                 Text(t.minPrizePlayers(level.minPrize!),
@@ -438,7 +459,12 @@ class _LevelCard extends ConsumerWidget {
 
 /// Free pool matches on this device: every pool game against bots or passing
 /// the phone around. [open] pushes the chosen screen.
-Future<void> showPoolPracticeDialog(BuildContext context, {required Future<void> Function(Widget screen) open}) {
+Future<void> showPoolPracticeDialog(
+  BuildContext context, {
+  required Future<void> Function(Widget screen) open,
+  AppGame? game,
+}) {
+  final games = game != null ? [game] : AppGame.values;
   return     showDuelDialog<void>(
     context,
     barrierColor: const Color(0xB3000000),
@@ -460,13 +486,13 @@ Future<void> showPoolPracticeDialog(BuildContext context, {required Future<void>
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontFamily: 'sans-serif', fontSize: 13, height: 1.4, color: DuelColors.dim)),
             const SizedBox(height: 12),
-            for (final game in AppGame.values)
+            for (final pick in games)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SizedBox(width: 150, child: Text(t.appGameTitle(game), style: AppText.label(13, color: DuelColors.silver))),
+                    SizedBox(width: 150, child: Text(t.appGameTitle(pick), style: AppText.label(13, color: DuelColors.silver))),
                     DuelButton(
                       label: t.vsBots,
                       width: 140,
@@ -474,7 +500,7 @@ Future<void> showPoolPracticeDialog(BuildContext context, {required Future<void>
                       fontSize: 14,
                       onPressed: () {
                         Navigator.of(dialog).pop();
-                        open(LobbyScreen(game: game));
+                        open(LobbyScreen(game: pick));
                       },
                     ),
                     const SizedBox(width: 8),
@@ -486,7 +512,7 @@ Future<void> showPoolPracticeDialog(BuildContext context, {required Future<void>
                       color: DuelColors.blue,
                       onPressed: () {
                         Navigator.of(dialog).pop();
-                        open(LobbyScreen(game: game, passAndPlay: true));
+                        open(LobbyScreen(game: pick, passAndPlay: true));
                       },
                     ),
                   ],

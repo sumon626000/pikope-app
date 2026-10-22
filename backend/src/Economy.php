@@ -346,6 +346,7 @@ final class Economy
         Db::run('UPDATE users SET coins = ?, redeemable_coins = ? WHERE id = ?', [$coins, $redeemable, $uid]);
         Db::run('INSERT INTO wallet_tx (user_id, currency, amount, balance_after, reason, room_id) VALUES (?, ?, ?, ?, ?, ?)',
             [$uid, 'coins', $amount, $coins, $reason, $roomId]);
+        Push::notifyWalletChange($uid, $amount, $reason, $roomId);
         return $coins;
     }
 

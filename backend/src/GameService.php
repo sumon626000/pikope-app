@@ -87,19 +87,100 @@ final class GameService
     /** Poll. Overdue shot clocks are enforced here, whoever happens to ask. */
     public static function get(int $gameId, int $uid, int $since): array
     {
+        self::ensureAimColumn();
         $seat = self::seatOf($gameId, $uid);
-        $row = Db::one('SELECT version, status, state FROM games WHERE id = ?', [$gameId]);
+        $row = Db::one('SELECT version, status, state, aim FROM games WHERE id = ?', [$gameId]);
         if ($row === null) {
             throw ApiError::notFound('Game not found');
         }
         $state = json_decode($row['state'], true);
         if ($row['status'] === 'active' && self::nowMs() > $state['deadline'] + 1500) {
-            return self::mutate($gameId, $seat, static fn (array &$s): bool => false);
+            return self::withAim(self::mutate($gameId, $seat, static fn (array &$s): bool => false), $gameId);
         }
         if ((int) $row['version'] <= $since) {
-            return ['id' => $gameId, 'version' => (int) $row['version'], 'serverNow' => self::nowMs(), 'unchanged' => true];
+            return self::withAim([
+                'id' => $gameId,
+                'version' => (int) $row['version'],
+                'serverNow' => self::nowMs(),
+                'unchanged' => true,
+            ], $gameId, $row['aim']);
         }
-        return self::view($gameId, (int) $row['version'], $state, $seat);
+        return self::withAim(self::view($gameId, (int) $row['version'], $state, $seat), $gameId, $row['aim']);
+    }
+
+    /**
+     * Where the player on turn is pointing the cue. Not part of the rules:
+     * stored so phones that only poll HTTP can still watch the lineup.
+     * @param array<string,mixed> $body
+     * @return array{ok:bool}
+     */
+    public static function shareAim(int $gameId, int $uid, array $body): array
+    {
+        self::ensureAimColumn();
+        $seat = self::seatOf($gameId, $uid);
+        $row = Db::one('SELECT status, state FROM games WHERE id = ?', [$gameId]);
+        if ($row === null || $row['status'] !== 'active') {
+            return ['ok' => true];
+        }
+        $state = json_decode($row['state'], true);
+        $turn = (int) ($state['turn'] ?? $state['currentIndex'] ?? -1);
+        $phase = (string) ($state['phase'] ?? '');
+        if ($turn !== $seat || !in_array($phase, ['playerTurn', 'pushOutChoice', 'declarePhase'], true)) {
+            return ['ok' => true];
+        }
+        $aim = ['s' => $seat];
+        foreach (['a', 'p', 'x', 'y'] as $key) {
+            if (!isset($body[$key]) || !is_numeric($body[$key])) {
+                continue;
+            }
+            $value = (float) $body[$key];
+            if (!is_finite($value)) {
+                continue;
+            }
+            $aim[$key] = round($value, 4);
+        }
+        if (!isset($aim['a']) && !isset($aim['x'])) {
+            return ['ok' => true];
+        }
+        Db::run('UPDATE games SET aim = ? WHERE id = ?', [json_encode($aim), $gameId]);
+        return ['ok' => true];
+    }
+
+    private static bool $aimReady = false;
+
+    private static function ensureAimColumn(): void
+    {
+        if (self::$aimReady) {
+            return;
+        }
+        $have = Db::pdo()->query("SHOW COLUMNS FROM games LIKE 'aim'")->fetch();
+        if (!$have) {
+            try {
+                Db::pdo()->exec('ALTER TABLE games ADD COLUMN aim TEXT NULL');
+            } catch (\Throwable $e) {
+                // A parallel request added the column first.
+            }
+        }
+        self::$aimReady = true;
+    }
+
+    /**
+     * @param array<string,mixed> $view
+     * @param mixed $aimJson false = read it; null = none stored
+     */
+    private static function withAim(array $view, int $gameId, mixed $aimJson = false): array
+    {
+        if ($aimJson === false) {
+            $row = Db::one('SELECT aim FROM games WHERE id = ?', [$gameId]);
+            $aimJson = $row['aim'] ?? null;
+        }
+        if (is_string($aimJson) && $aimJson !== '') {
+            $aim = json_decode($aimJson, true);
+            if (is_array($aim)) {
+                $view['aim'] = $aim;
+            }
+        }
+        return $view;
     }
 
     /**
@@ -108,6 +189,7 @@ final class GameService
      */
     private static function mutate(int $gameId, int $seat, callable $fn): array
     {
+        self::ensureAimColumn();
         return Db::transaction(static function () use ($gameId, $seat, $fn): array {
             $row = Db::one('SELECT version, status, state, room_id, game FROM games WHERE id = ? FOR UPDATE', [$gameId]);
             if ($row === null) {
@@ -123,7 +205,7 @@ final class GameService
             if ($changed) {
                 $version++;
                 $state['lastActMs'] = self::nowMs();
-                Db::run('UPDATE games SET state = ?, version = ? WHERE id = ?', [json_encode($state), $version, $gameId]);
+                Db::run('UPDATE games SET state = ?, version = ?, aim = NULL WHERE id = ?', [json_encode($state), $version, $gameId]);
                 if ($state['phase'] === 'gameOver') {
                     self::finish($gameId, (int) $row['room_id'], $row['game'], $state);
                 }
@@ -376,6 +458,7 @@ final class GameService
     /** @param array<string,mixed> $body */
     public static function act(int $gameId, int $uid, array $body): array
     {
+        self::ensureAimColumn();
         $seat = self::seatOf($gameId, $uid);
         $type = (string) ($body['type'] ?? '');
         $now = self::nowMs();

@@ -57,11 +57,11 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
       // Never leave a blank screen — fall back to sign-in.
     }
     if (!mounted) return;
-    final onboarded = ref.read(settingsProvider).onboarded;
+    final settings = ref.read(settingsProvider);
+    final toHome = settings.onboarded || settings.authToken.isNotEmpty;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder<void>(
-        pageBuilder: (_, _, _) =>
-            onboarded ? homeScreenFor() : const LoginScreen(),
+        pageBuilder: (_, _, _) => toHome ? homeScreenFor() : const LoginScreen(),
         transitionsBuilder: (_, animation, _, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 250),

@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pikope - Play Store Style</title>
+    <meta name="description" content="PikoPe — গেম খেলুন, বন্ধুদের সাথে আড্ডা দিন, Pico Coin আয় করুন">
+    <link rel="icon" href="assets/app_icon.jpg" type="image/jpeg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Hind Siliguri"', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            green: '#12915d',
+                            lightgreen: '#f2fbf6',
+                            dark: '#1f2937'
+                        }
+                    },
+                    keyframes: {
+                        'pulse-glow': {
+                            '0%, 100%': { boxShadow: '0 0 0 0 rgba(18, 145, 93, 0.7)' },
+                            '50%': { boxShadow: '0 0 0 15px rgba(18, 145, 93, 0)' },
+                        }
+                    },
+                    animation: {
+                        'pulse-glow': 'pulse-glow 2s infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #f3f4f6; }
+        ::-webkit-scrollbar { display: none; }
+        .lang-en { display: none !important; }
+        .lang-en.show, .lang-bn.show { display: block !important; }
+        .lang-en.inline-show, .lang-bn.inline-show { display: inline !important; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="text-gray-800 antialiased">
+    <!-- pikope-landing-v2 -->
+
+    <div class="max-w-md mx-auto bg-white min-h-screen shadow-lg relative pb-10">
+        <!-- Language Toggle -->
+        <div class="flex justify-end px-4 py-2">
+            <div class="flex bg-gray-100 rounded-full p-1 text-xs font-semibold cursor-pointer">
+                <span id="btn-en" onclick="setLanguage('en')" class="px-3 py-1 text-gray-500 rounded-full transition-all duration-300">EN</span>
+                <span id="btn-bn" onclick="setLanguage('bn')" class="px-3 py-1 bg-brand-green text-white rounded-full transition-all duration-300">বাংলা</span>
+            </div>
+        </div>
+
+        <main class="px-4">
+            <!-- App Header Section -->
+            <section class="mt-2">
+                <div class="flex gap-4 items-start">
+                    <!-- APP ICON -->
+                    <div class="w-20 h-20 bg-gray-200 rounded-2xl flex-shrink-0 flex items-center justify-center shadow-md overflow-hidden border border-gray-100">
+                        <img id="landing-app-icon" src="assets/app_icon.jpg" alt="PikoPe" class="w-full h-full object-cover">
+                    </div>
+                    
+                    <div class="flex-1">
+                        <h1 class="text-2xl font-bold text-gray-900 leading-tight">PikoPe</h1>
+                        <a href="https://pikope.com" class="text-brand-green text-sm font-medium hover:underline">pikope.com</a>
+                        <p class="text-sm text-gray-600 mt-1 leading-snug">
+                            <span class="lang-bn show">গেম খেলুন, বন্ধুদের সাথে আড্ডা দিন, Pico Coin আয় করুন</span>
+                            <span class="lang-en">Play games, chat with friends, earn Pico Coins</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Stats Row -->
+                <div class="flex justify-between items-center mt-6 border-y border-gray-100 py-3 text-center divide-x divide-gray-200">
+                    <div class="flex-1 px-2">
+                        <div class="text-sm font-bold text-gray-800"><span class="lang-bn show">অনলাইন</span><span class="lang-en">Online</span></div>
+                        <div class="text-xs text-gray-500 mt-1"><span class="lang-bn show">বন্ধুদের সাথে</span><span class="lang-en">With friends</span></div>
+                    </div>
+                    <div class="flex-1 px-2">
+                        <div class="text-sm font-bold text-gray-800"><span class="lang-bn show">গতি গেম</span><span class="lang-en">Fast Games</span></div>
+                        <div class="text-xs text-gray-500 mt-1"><span class="lang-bn show">লুডু • পুল • ক্যারম</span><span class="lang-en">Ludo • Pool • Carrom</span></div>
+                    </div>
+                    <div class="flex-1 px-2">
+                        <div class="text-sm font-bold text-gray-800">Pico Coin</div>
+                        <div class="text-xs text-gray-500 mt-1"><span class="lang-bn show">গেম রিওয়ার্ড</span><span class="lang-en">Game Rewards</span></div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex justify-center gap-8 mt-4 text-brand-green text-sm font-semibold">
+                    <button class="flex items-center gap-1 hover:opacity-80">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+                        <span class="lang-bn show">শেয়ার করুন</span><span class="lang-en">Share</span>
+                    </button>
+                    <button class="flex items-center gap-1 hover:opacity-80">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                        <span class="lang-bn show">ওয়েবসাইট দেখুন</span><span class="lang-en">Visit Website</span>
+                    </button>
+                </div>
+
+                <!-- Primary CTA Button -->
+                <div class="mt-6">
+                    <a id="download-btn" href="#" class="w-full bg-brand-green text-white font-bold text-lg py-3 rounded-xl shadow-[0_4px_14px_0_rgba(18,145,93,0.39)] hover:bg-emerald-700 transition flex items-center justify-center gap-2 animate-pulse-glow opacity-60 pointer-events-none" aria-disabled="true">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        <span class="lang-bn show">PikoPe অ্যাপ ডাউনলোড</span><span class="lang-en">Download PikoPe App</span>
+                    </a>
+                    <p id="download-hint" class="text-center text-xs text-gray-400 mt-2">
+                        <span class="lang-bn show">APK ডাউনলোড এখলো উল্লেখ নয়। পরে আবার দেখুন।</span>
+                        <span class="lang-en">APK download not available yet. Please check back later.</span>
+                    </p>
+                </div>
+            </section>
+
+            <!-- Game Categories Grid -->
+            <section class="mt-8">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-lg font-bold text-gray-900"><span class="lang-bn show">গেমের ব্রিডিট</span><span class="lang-en">Game Categories</span></h2>
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <!-- Ludo -->
+                    <div class="bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm">
+                        <div class="h-32 bg-gray-100 relative overflow-hidden">
+                            <img id="grid-img-0" src="https://i.ibb.co.com/3YpmVd3m/Screenshot-20261021-040654.jpg" alt="Ludo" class="w-full h-full object-cover">
+                        </div>
+                        <div class="p-2.5">
+                            <h3 class="font-bold text-sm text-gray-900"><span class="lang-bn show">লুডু</span><span class="lang-en">Ludo</span></h3>
+                            <p class="text-xs text-gray-500 mt-0.5"><span class="lang-bn show">বন্ধুদের সাথে লুডু</span><span class="lang-en">Ludo with friends</span></p>
+                        </div>
+                    </div>
+                    
+                    <!-- Pool -->
+                    <div class="bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm">
+                        <div class="h-32 bg-gray-100 relative overflow-hidden">
+                            <img id="grid-img-1" src="https://i.ibb.co.com/cKMM52z9/Screenshot-20261021-040705.jpg" alt="Pool" class="w-full h-full object-cover">
+                        </div>
+                        <div class="p-2.5">
+                            <h3 class="font-bold text-sm text-gray-900"><span class="lang-bn show">পুল</span><span class="lang-en">Pool</span></h3>
+                            <p class="text-xs text-gray-500 mt-0.5"><span class="lang-bn show">একসাথে পুল খেলুন</span><span class="lang-en">Play pool together</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Carrom -->
+                    <div class="bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm">
+                        <div class="h-32 bg-gray-100 relative overflow-hidden">
+                            <img id="grid-img-2" src="https://i.ibb.co.com/7xHGT0mg/Screenshot-20261021-040717.jpg" alt="Carrom" class="w-full h-full object-cover">
+                        </div>
+                        <div class="p-2.5">
+                            <h3 class="font-bold text-sm text-gray-900"><span class="lang-bn show">ক্যারম</span><span class="lang-en">Carrom</span></h3>
+                            <p class="text-xs text-gray-500 mt-0.5"><span class="lang-bn show">নিজের মতো ক্যারম</span><span class="lang-en">Play your style</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Game Lobby -->
+                    <div class="bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm">
+                        <div class="h-32 bg-gray-100 relative overflow-hidden">
+                            <img id="grid-img-3" src="https://i.ibb.co.com/ZwwYXNG/Screenshot-20261021-040819.jpg" alt="Lobby" class="w-full h-full object-cover">
+                        </div>
+                        <div class="p-2.5">
+                            <h3 class="font-bold text-sm text-gray-900"><span class="lang-bn show">গেম লবি</span><span class="lang-en">Game Lobby</span></h3>
+                            <p class="text-xs text-gray-500 mt-0.5"><span class="lang-bn show">Pikope লবিতে গেম বেছে নিন</span><span class="lang-en">Choose games in Pikope lobby</span></p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Features / Pico Coin Section -->
+            <section class="mt-8 bg-brand-lightgreen rounded-2xl p-5 border border-[#e5f5eb]">
+                <p class="text-xs font-bold text-brand-green uppercase tracking-wider mb-1">PICO COIN • <span class="lang-bn show">পুনরায়</span><span class="lang-en">REWARDS</span></p>
+                <h2 class="text-lg font-bold text-gray-900 leading-snug mb-2">
+                    <span class="lang-bn show">বন্ধুদের আমন্ত্রণ জানান, একসাথে খেলুন, পুরস্কারের সুযোগ পান</span>
+                    <span class="lang-en">Invite friends, play together, win rewards</span>
+                </h2>
+                <p class="text-sm text-gray-600 mb-5">
+                    <span class="lang-bn show">বন্ধুদের সাথে আনন্দে যোগ দিন—পুরস্কার পাওয়ার সুযোগ রয়েছে।</span>
+                    <span class="lang-en">Join the fun with friends—there are chances to win rewards.</span>
+                </p>
+                
+                <div class="space-y-4 mb-6">
+                    <div class="flex gap-3">
+                        <span class="text-brand-green font-bold text-sm mt-0.5">01</span>
+                        <div>
+                            <h4 class="font-bold text-sm text-gray-900"><span class="lang-bn show">বন্ধুদের আমন্ত্রণ জানান</span><span class="lang-en">Invite Friends</span></h4>
+                            <p class="text-xs text-gray-600 mt-0.5 leading-relaxed"><span class="lang-bn show">Pikope বন্ধুদের সাথে খেলার করুন এবং একসাথে খেলুন—পুরস্কার পাওয়ার সুযোগ রয়েছে।</span><span class="lang-en">Play with friends on Pikope and play together—chances to win rewards.</span></p>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <span class="text-brand-green font-bold text-sm mt-0.5">02</span>
+                        <div>
+                            <h4 class="font-bold text-sm text-gray-900"><span class="lang-bn show">তাৎক্ষণিক অটো পেমেন্ট</span><span class="lang-en">Instant Auto Payment</span></h4>
+                            <p class="text-xs text-gray-600 mt-0.5 leading-relaxed"><span class="lang-bn show">পুরস্কারের পেমেন্ট স্বয়ংক্রিয়ভাবে ও তাৎক্ষণিকভাবে করা হয়।</span><span class="lang-en">Reward payments are made automatically and instantly.</span></p>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <span class="text-brand-green font-bold text-sm mt-0.5">03</span>
+                        <div>
+                            <h4 class="font-bold text-sm text-gray-900"><span class="lang-bn show">পুরস্কার উত্তোলন করুন</span><span class="lang-en">Withdraw Rewards</span></h4>
+                            <p class="text-xs text-gray-600 mt-0.5 leading-relaxed"><span class="lang-bn show">সময়মতো পেমেন্ট পদ্ধতির মাধ্যমে পুরস্কার উত্তোলনের সুযোগ রয়েছে।</span><span class="lang-en">Opportunity to withdraw rewards via timely payment methods.</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white/60 rounded-xl p-4 flex flex-col items-center">
+                    <div class="w-full flex justify-center mb-2 mt-2 rounded-lg overflow-hidden">
+                        <img id="pico-promo-img" src="https://i.ibb.co.com/JJt16vH/auto-payments-f9dfa769.png" alt="Pico Coin & Auto Payment" class="w-full h-auto object-contain">
+                    </div>
+                </div>
+            </section>
+
+            <!-- About This App Section -->
+            <section class="mt-8 border-t border-gray-100 pt-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-gray-900"><span class="lang-bn show">এই অ্যাপ সম্পর্কে</span><span class="lang-en">About this app</span></h2>
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </div>
+                
+                <div class="text-sm text-gray-600 space-y-3 leading-relaxed">
+                    <p class="lang-bn show">Pikope হলো কাজুয়াল অনলাইন গেম ও সামাজিক অ্যাডার অ্যাপ। বন্ধুদের সাথে লুডু, পুল ও ক্যারম খেলুন।</p>
+                    <p class="lang-en">Pikope is a casual online game and social adder app. Play Ludo, Pool, and Carrom with friends.</p>
+                    
+                    <p class="lang-bn show">গেম খেলার পাশাপাশি Pico Coin জমাতে এবং বন্ধুদের সাথে সময় কাটাতে পারবেন।</p>
+                    <p class="lang-en">Along with playing games, you can collect Pico Coins and spend time with friends.</p>
+                    
+                    <p class="lang-bn show">জমানো Pico Coin দিয়ে bKash, Nagad বা Rocket-এর মাধ্যমে পুরস্কার রিভিট করার সুযোগ থাকতে পারে।</p>
+                    <p class="lang-en">You may have the opportunity to withdraw rewards via bKash, Nagad, or Rocket using saved Pico Coins.</p>
+                </div>
+
+                <div class="flex flex-wrap gap-2 mt-4">
+                    <span class="px-3 py-1.5 bg-gray-50 text-gray-700 border border-gray-200 rounded-full text-xs font-medium"><span class="lang-bn show">লুডু</span><span class="lang-en">Ludo</span></span>
+                    <span class="px-3 py-1.5 bg-gray-50 text-gray-700 border border-gray-200 rounded-full text-xs font-medium"><span class="lang-bn show">পুল</span><span class="lang-en">Pool</span></span>
+                    <span class="px-3 py-1.5 bg-gray-50 text-gray-700 border border-gray-200 rounded-full text-xs font-medium"><span class="lang-bn show">ক্যারম</span><span class="lang-en">Carrom</span></span>
+                    <span class="px-3 py-1.5 bg-gray-50 text-gray-700 border border-gray-200 rounded-full text-xs font-medium"><span class="lang-bn show">বন্ধুদের সাথে চ্যাট</span><span class="lang-en">Chat with friends</span></span>
+                    <span class="px-3 py-1.5 bg-gray-50 text-gray-700 border border-gray-200 rounded-full text-xs font-medium">Pico Coin</span>
+                </div>
+            </section>
+
+            <!-- Data Safety Section -->
+            <section class="mt-8 border-t border-gray-100 pt-6">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-lg font-bold text-gray-900"><span class="lang-bn show">ডেটা সুরক্ষা</span><span class="lang-en">Data safety</span></h2>
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </div>
+                <p class="text-xs text-gray-500 mb-4">
+                    <span class="lang-bn show">এই তথ্যটি প্রাথমিক এবং স্বাধীনভাবে যাচাই করা হয়নি।</span>
+                    <span class="lang-en">This information is preliminary and has not been independently verified.</span>
+                </p>
+                
+                <div class="border border-gray-200 rounded-xl p-4 space-y-4">
+                    <div class="flex gap-3 items-start">
+                        <div class="mt-0.5 text-brand-green"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg></div>
+                        <p class="text-sm text-gray-700"><span class="lang-bn show">ডেটা কীভাবে সংগ্রহ ও ব্যবহার করা হয় তা আপনার অবগতি, বয়স এবং অ্যাপ ব্যবহারের ওপর নির্ভর করতে পারে।</span><span class="lang-en">How data is collected and used may depend on your awareness, age, and app usage.</span></p>
+                    </div>
+                    <div class="flex gap-3 items-start">
+                        <div class="mt-0.5 text-brand-green"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+                        <p class="text-sm text-gray-700"><span class="lang-bn show">প্রাইভেসি পলিসি উপলব্ধ হলে আরও বিস্তারিত জানানো হবে।</span><span class="lang-en">More details will be provided when the privacy policy is available.</span></p>
+                    </div>
+                     <div class="flex gap-3 items-start">
+                        <div class="mt-0.5 text-brand-green"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+                        <p class="text-sm text-gray-700"><span class="lang-bn show">প্রাইভেসি পলিসি শীঘ্রই আসছে</span><span class="lang-en">Privacy policy coming soon</span></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Ratings & Reviews Section (With 10 Fake Reviews) -->
+            <section class="mt-8 border-t border-gray-100 pt-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-gray-900"><span class="lang-bn show">রেটিং ও রিভিউ</span><span class="lang-en">Ratings & Reviews</span></h2>
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </div>
+                
+                <!-- Rating Summary -->
+                <div class="flex gap-6 items-center mb-6">
+                    <div class="text-center">
+                        <div id="stat-rating-big" class="text-5xl font-bold text-gray-800 mb-1">4.8</div>
+                        <div class="flex text-yellow-400 text-sm mb-1">
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                        </div>
+                        <p id="stat-reviews-label" class="text-[10px] text-gray-500">১২,৪৫০টি রিভিউ</p>
+                    </div>
+                    <div class="flex-1 space-y-1">
+                        <div class="flex items-center text-xs text-gray-500"><span class="w-4">5</span><div class="flex-1 h-1.5 bg-gray-200 rounded-full ml-2"><div class="w-[90%] h-full bg-brand-green rounded-full"></div></div></div>
+                        <div class="flex items-center text-xs text-gray-500"><span class="w-4">4</span><div class="flex-1 h-1.5 bg-gray-200 rounded-full ml-2"><div class="w-[5%] h-full bg-brand-green rounded-full"></div></div></div>
+                        <div class="flex items-center text-xs text-gray-500"><span class="w-4">3</span><div class="flex-1 h-1.5 bg-gray-200 rounded-full ml-2"><div class="w-[2%] h-full bg-brand-green rounded-full"></div></div></div>
+                        <div class="flex items-center text-xs text-gray-500"><span class="w-4">2</span><div class="flex-1 h-1.5 bg-gray-200 rounded-full ml-2"><div class="w-[1%] h-full bg-brand-green rounded-full"></div></div></div>
+                        <div class="flex items-center text-xs text-gray-500"><span class="w-4">1</span><div class="flex-1 h-1.5 bg-gray-200 rounded-full ml-2"><div class="w-[2%] h-full bg-brand-green rounded-full"></div></div></div>
+                    </div>
+                </div>
+
+                <!-- Review List (10 Reviews) -->
+                <div class="space-y-5">
+                    <!-- Review 1 -->
+                    <div class="border-t border-gray-100 pt-4">
+                        <div class="flex items-center gap-3 mb-2">
+                            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Rakib" class="w-10 h-10 rounded-full object-cover">
+                            <div>
+                                <h3 class="font-bold text-sm text-gray-900">Rakib Hasan</h3>
+                                <div class="flex text-yellow-400 text-xs mt-0.5">
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600">খুব ভালো একটা অ্যাপ। আমি বিকাশে ৫০০ টাকা উইথড্র দিয়েছি। কোনো ঝামেলা ছাড়াই টাকা পেয়েছি। ধন্যবাদ পিকোপ টিম।</p>
+                    </div>
+
+                    <!-- Review 2 -->
+                    <div class="border-t border-gray-100 pt-4">
+                        <div class="flex items-center gap-3 mb-2">
+                            <img src="https://randomuser.me/api/portraits/men/45.jpg" alt="Sajid" class="w-10 h-10 rounded-full object-cover">
+                            <div>
+                                <h3 class="font-bold text-sm text-gray-900">Sajid Islam</h3>
+                                <div class="flex text-yellow-400 text-xs mt-0.5">
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600">বন্ধুদের সাথে লুডু খেলার জন্য পারফেক্ট অ্যাপ। ডিজাইনটা খুব স্মুথ এবং ইউজার ফ্রেন্ডলি। কয়েন জমা করাও সহজ।</p>
+                    </div>
+
+                    <!-- Review 3 -->
+                    <div class="border-t border-gray-100 pt-4">
+                        <div class="flex items-center gap-3 mb-2">
+                            <img src="https://randomuser.me/api/portraits/men/22.jpg" alt="Tanvir" class="w-10 h-10 rounded-full object-cover">
+                            <div>
+                                <h3 class="font-bold text-sm text-gray-900">Tanvir Ahmed</h3>
+                                <div class="flex text-yellow-400 text-xs mt-0.5">
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-gray-300" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600">গেমপ্লে খুবই স্মুথ। পুল খেলতে খুব ভালো লাগে। অটো পেমেন্ট সিস্টেমটা দ্রুত কাজ করে। আশা করি ভবিষ্যতে আরও নতুন গেম যোগ করবেন।</p>
+                    </div>
+
+                    <!-- Review 4 -->
+                    <div class="border-t border-gray-100 pt-4">
+                        <div class="flex items-center gap-3 mb-2">
+                            <img src="https://randomuser.me/api/portraits/men/67.jpg" alt="Mehedi" class="w-10 h-10 rounded-full object-cover">
+                            <div>
+                                <h3 class="font-bold text-sm text-gray-900">Mehedi Hasan</h3>
+                                <div class="flex text-yellow-400 text-xs mt-0.5">
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600">অটো পেমেন্ট অপশনটা আমার সবচেয়ে ভালো লেগেছে। নগদে টাকা ইনস্ট্যান্ট পেয়েছি। বন্ধুদের রেফার করে অনেক কয়েনও জমাতে পেরেছি।</p>
+                    </div>
+
+                    <!-- Review 5 -->
+                    <div class="border-t border-gray-100 pt-4">
+                        <div class="flex items-center gap-3 mb-2">
+                            <img src="https://randomuser.me/api/portraits/men/11.jpg" alt="Fahim" class="w-10 h-10 rounded-full object-cover">
+                            <div>
+                                <h3 class="font-bold text-sm text-gray-900">Fahim Faisal</h3>
+                                <div class="flex text-yellow-400 text-xs mt-0.5">
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600">সময় কাটানোর জন্য দারুণ একটি অ্যাপ। ক্যারম খেলতে অনেক মজা লাগে। ইন্টারনেট কানেকশন একটু স্লো হলেও গেম ল্যাগ করে না।</p>
+                    </div>
+
+                    <!-- Review 6 -->
+                    <div class="border-t border-gray-100 pt-4">
+                        <div class="flex items-center gap-3 mb-2">
+                            <img src="https://randomuser.me/api/portraits/men/76.jpg" alt="Arif" class="w-10 h-10 rounded-full object-cover">
+                            <div>
+                                <h3 class="font-bold text-sm text-gray-900">Arif Hossain</h3>
+                                <div class="flex text-yellow-400 text-xs mt-0.5">
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600">সবাইকে রিকমেন্ড করছি। যারা অনলাইনে বন্ধুদের সাথে গেম খেলতে ভালোবাসেন, তাদের জন্য এটি সেরা প্ল্যাটফর্ম। পেমেন্ট প্রুফও পেয়েছি।</p>
+                    </div>
+
+                    <!-- Review 7 -->
+                    <div class="border-t border-gray-100 pt-4">
+                        <div class="flex items-center gap-3 mb-2">
+                            <img src="https://randomuser.me/api/portraits/men/52.jpg" alt="Nayeem" class="w-10 h-10 rounded-full object-cover">
+                            <div>
+                                <h3 class="font-bold text-sm text-gray-900">Nayeem Islam</h3>
+                                <div class="flex text-yellow-400 text-xs mt-0.5">
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-gray-300" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600">পুল গেমটা খুব উপভোগ করছি। চ্যাটিং ফিচারও ভালো। তবে মাঝে মাঝে একটু নেটওয়ার্ক ইস্যু ফেস করতে হয়। সামগ্রিকভাবে ভালো।</p>
+                    </div>
+
+                    <!-- Review 8 -->
+                    <div class="border-t border-gray-100 pt-4">
+                        <div class="flex items-center gap-3 mb-2">
+                            <img src="https://randomuser.me/api/portraits/men/88.jpg" alt="Shakil" class="w-10 h-10 rounded-full object-cover">
+                            <div>
+                                <h3 class="font-bold text-sm text-gray-900">Shakil Ahmed</h3>
+                                <div class="flex text-yellow-400 text-xs mt-0.5">
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600">অ্যাপটা একদম ল্যাগ ফ্রি। আমি নিয়মিত লুডু খেলি এবং কয়েন আর্ন করি। যারা ফ্রি টাইমে কিছু ইনকাম করতে চান তাদের জন্য ভালো অপশন।</p>
+                    </div>
+
+                    <!-- Review 9 -->
+                    <div class="border-t border-gray-100 pt-4">
+                        <div class="flex items-center gap-3 mb-2">
+                            <img src="https://randomuser.me/api/portraits/men/41.jpg" alt="Rony" class="w-10 h-10 rounded-full object-cover">
+                            <div>
+                                <h3 class="font-bold text-sm text-gray-900">Rony Mia</h3>
+                                <div class="flex text-yellow-400 text-xs mt-0.5">
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600">আমি নগদে ২০০ টাকা উইথড্র করেছি। খুব দ্রুত পেমেন্ট পেয়েছি। এই ধরনের লিজিট অ্যাপ সত্যিই প্রশংসনীয়। সবাই খেলতে পারেন।</p>
+                    </div>
+
+                    <!-- Review 10 -->
+                    <div class="border-t border-gray-100 pt-4">
+                        <div class="flex items-center gap-3 mb-2">
+                            <img src="https://randomuser.me/api/portraits/men/19.jpg" alt="Jubayer" class="w-10 h-10 rounded-full object-cover">
+                            <div>
+                                <h3 class="font-bold text-sm text-gray-900">Jubayer Hossain</h3>
+                                <div class="flex text-yellow-400 text-xs mt-0.5">
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <svg class="w-3 h-3 fill-gray-300" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600">গেমের গ্রাফিক্স এবং কন্ট্রোল ভালো। তবে আমি চাই রেফারেল বোনাস আরেকটু বাড়ানো হোক। তবুও অ্যাপটি ব্যবহার করে আমি সন্তুষ্ট।</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="mt-10 border-t border-gray-100 pt-4 pb-8 px-4 flex justify-between items-center text-xs text-gray-400">
+            <span><span class="lang-bn show">Pikope সম্পর্কে</span><span class="lang-en">About Pikope</span></span>
+            <span><span class="lang-bn show">একটি খেলারই জমে উঠুক সময়।</span><span class="lang-en">Let the game time be joyful.</span></span>
+        </footer>
+
+    </div>
+
+    <script src="assets/config.js"></script>
+    <script src="assets/landing.js"></script>
+    <!-- JavaScript for Language Toggle -->
+    <script>
+        function setLanguage(lang) {
+            const btnEn = document.getElementById('btn-en');
+            const btnBn = document.getElementById('btn-bn');
+            
+            if (lang === 'en') {
+                btnEn.className = 'px-3 py-1 bg-brand-green text-white rounded-full transition-all duration-300';
+                btnBn.className = 'px-3 py-1 text-gray-500 rounded-full transition-all duration-300';
+            } else {
+                btnBn.className = 'px-3 py-1 bg-brand-green text-white rounded-full transition-all duration-300';
+                btnEn.className = 'px-3 py-1 text-gray-500 rounded-full transition-all duration-300';
+            }
+
+            document.querySelectorAll('.lang-bn').forEach(el => {
+                if (lang === 'bn') {
+                    el.classList.add('show');
+                    if (el.tagName === 'SPAN' && el.parentElement.tagName === 'P') el.classList.add('inline-show');
+                } else {
+                    el.classList.remove('show', 'inline-show');
+                }
+            });
+
+            document.querySelectorAll('.lang-en').forEach(el => {
+                if (lang === 'en') {
+                    el.classList.add('show');
+                     if (el.tagName === 'SPAN' && el.parentElement.tagName === 'P') el.classList.add('inline-show');
+                } else {
+                    el.classList.remove('show', 'inline-show');
+                }
+            });
+        }
+        setLanguage('bn');
+    </script>
+</body>
+</html>

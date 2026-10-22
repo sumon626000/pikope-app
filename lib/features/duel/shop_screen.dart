@@ -8,7 +8,6 @@ import '../../core/audio_service.dart';
 import '../../core/duel_ui.dart';
 import '../../data/api_client.dart';
 import '../online/session.dart';
-import 'board_shop.dart';
 import 'duel_chrome.dart';
 import 'lobby_data.dart';
 import '../../l10n/strings.dart';
@@ -45,7 +44,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
       _packQty = 1;
     });
     if (cfg.autoEnabled && !pack.free) {
-      await openZiniPayDeposit(context, ref, config: cfg, bdt: pack.coins);
+      await openZiniPayDeposit(context, ref, config: cfg, bdt: pack.coins, packId: pack.id);
       return;
     }
     _tabs.animateTo(1);
@@ -136,65 +135,22 @@ class _BuyTab extends ConsumerWidget {
           if (packs.isEmpty)
             Text(t.noPacks, style: AppText.label(18, color: DuelColors.dim))
           else
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (final pack in packs)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 16),
-                      child: _CoinPackCard(
-                        pack: pack,
-                        onTap: () => onBuy(pack),
-                      ),
-                    ),
-                ],
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 0.68,
+              ),
+              itemCount: packs.length,
+              itemBuilder: (context, i) => _CoinPackCard(
+                pack: packs[i],
+                onTap: () => onBuy(packs[i]),
               ),
             ),
-          const SizedBox(height: 22),
-          Row(
-            children: [
-              _ShopDoor(label: t.poolTableBtn, color: DuelColors.green, icon: Icons.crop_16_9_rounded, onTap: () => pushScreen(context, const BoardShopScreen(kind: BoardKind.pool))),
-              const SizedBox(width: 16),
-              _ShopDoor(label: t.carromTableBtn, color: const Color(0xFFD9A34A), icon: Icons.grid_on_rounded, onTap: () => pushScreen(context, const BoardShopScreen(kind: BoardKind.carrom))),
-              const SizedBox(width: 16),
-              _ShopDoor(label: t.ludoBoardBtn, color: const Color(0xFFE8721C), icon: Icons.casino_rounded, onTap: () => pushScreen(context, const BoardShopScreen(kind: BoardKind.ludo))),
-            ],
-          ),
         ],
-      ),
-    );
-  }
-}
-
-class _ShopDoor extends StatelessWidget {
-  const _ShopDoor({required this.label, required this.color, required this.icon, required this.onTap});
-
-  final String label;
-  final Color color;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          AudioService.tap();
-          onTap();
-        },
-        child: Container(
-          height: 104,
-          decoration: duelPanel(radius: 16, rim: color, glow: true),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: color, size: 36),
-              const SizedBox(width: 12),
-              Text(label, style: AppText.label(24, color: Colors.white, weight: FontWeight.w900)),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -1063,8 +1019,7 @@ class _CoinPackCard extends ConsumerWidget {
         onTap();
       },
       child: Container(
-          width: 252,
-          height: 248,
+          width: double.infinity,
           decoration: duelPanel(radius: 18, rim: Color.lerp(DuelColors.gold, Colors.black, 0.35)!),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

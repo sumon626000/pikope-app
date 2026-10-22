@@ -114,6 +114,10 @@ class SessionNotifier extends Notifier<SessionState> {
           ownedPoolTables: _idList(user['ownedPoolTables']) ?? s.ownedPoolTables,
           ownedCarromBoards: _idList(user['ownedCarromBoards']) ?? s.ownedCarromBoards,
           ownedLudoBoards: _idList(user['ownedLudoBoards']) ?? s.ownedLudoBoards,
+          challengesEnabled: user['challengesEnabled'] as bool? ?? s.challengesEnabled,
+          challengePoolEnabled: user['challengePoolEnabled'] as bool? ?? s.challengePoolEnabled,
+          challengeLudoEnabled: user['challengeLudoEnabled'] as bool? ?? s.challengeLudoEnabled,
+          challengeCarromEnabled: user['challengeCarromEnabled'] as bool? ?? s.challengeCarromEnabled,
           coins: _asInt(user['coins'], s.coins),
           wins: _asInt(user['wins'], s.wins),
           games: _asInt(user['games'], s.games),
@@ -150,9 +154,11 @@ class SessionNotifier extends Notifier<SessionState> {
     return ((await _api.get('/me/activity?limit=$limit'))['items'] as List).cast<Map<String, dynamic>>();
   }
 
-  Future<Map<String, dynamic>> startZiniPayDeposit(int bdt) async {
+  Future<Map<String, dynamic>> startZiniPayDeposit(int bdt, {String? packId, int qty = 1}) async {
     await ensureSignedIn();
-    return await _api.post('/deposit/zinipay/start', {'bdt': bdt});
+    final body = <String, dynamic>{'bdt': bdt, 'qty': qty};
+    if (packId != null && packId.isNotEmpty) body['packId'] = packId;
+    return await _api.post('/deposit/zinipay/start', body);
   }
 
   Future<Map<String, dynamic>> finishZiniPayDeposit(int depositId) async {

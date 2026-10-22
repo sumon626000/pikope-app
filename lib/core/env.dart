@@ -8,7 +8,14 @@ class Env {
 
   /// Base URL of the PHP backend, e.g. https://api.example.com (no trailing
   /// slash). Empty: the app runs offline only.
-  static const apiBaseUrl = String.fromEnvironment('API_BASE_URL');
+  ///
+  /// Release APKs default to production so a build without `--dart-define-from-file`
+  /// still reaches the live server. Override with `.env` or `--dart-define=API_BASE_URL=`
+  /// for offline-only dev builds.
+  static const apiBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://adminnew.pikope.com',
+  );
 
   /// Optional SHA-256 (hex) of the API TLS leaf certificate. Empty: default
   /// system trust only. Set only when you need to trust a custom/staging cert.
