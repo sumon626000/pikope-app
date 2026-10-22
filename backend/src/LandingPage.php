@@ -280,19 +280,27 @@ final class LandingPage
         }
     }
 
-    /** @param array<string,mixed> $c */
-    private static function resolveApkUrl(array $c, string $base): string
+    /** Landing upload or optional landing URL — same file pikope.com download uses. */
+    public static function liveApkDownloadUrl(): string
     {
+        $c = self::config();
+        $base = rtrim(Config::get('APP_URL', ''), '/');
         $file = trim((string) $c['apkFile']);
         if ($file !== '') {
             return self::publicUrl($file, $base);
         }
-        $apk = trim((string) $c['apkUrl']);
+        return trim((string) $c['apkUrl']);
+    }
+
+    /** @param array<string,mixed> $c */
+    private static function resolveApkUrl(array $c, string $base): string
+    {
+        unset($c, $base);
+        $apk = self::liveApkDownloadUrl();
         if ($apk !== '') {
             return $apk;
         }
-        $upd = AppUpdate::published();
-        return (string) ($upd['apkUrl'] ?? '');
+        return trim((string) (AppUpdate::config()['apkUrl'] ?? ''));
     }
 
     /** @param list<string> $rels */

@@ -35,7 +35,11 @@ final class AppUpdate
     public static function published(): array
     {
         $c = self::config();
-        if (!$c['enabled'] || $c['apkUrl'] === '' || (int) $c['versionCode'] < 1) {
+        $apkUrl = trim((string) $c['apkUrl']);
+        if ($apkUrl === '') {
+            $apkUrl = LandingPage::liveApkDownloadUrl();
+        }
+        if (!$c['enabled'] || $apkUrl === '' || (int) $c['versionCode'] < 1) {
             return [
                 'versionCode' => 0,
                 'versionName' => '',
@@ -47,7 +51,7 @@ final class AppUpdate
         $out = [
             'versionCode' => (int) $c['versionCode'],
             'versionName' => $c['versionName'],
-            'apkUrl' => $c['apkUrl'],
+            'apkUrl' => $apkUrl,
             'notes' => $c['notes'],
             'required' => (bool) $c['required'],
         ];
@@ -61,8 +65,9 @@ final class AppUpdate
     public static function save(array $raw): void
     {
         $clean = self::normalize($raw);
-        if ($clean['enabled'] && ($clean['versionCode'] < 1 || $clean['apkUrl'] === '')) {
-            throw ApiError::badRequest('Set a version code and an https link before turning the update on', 'bad_update');
+        $apkEffective = $clean['apkUrl'] !== '' ? $clean['apkUrl'] : LandingPage::liveApkDownloadUrl();
+        if ($clean['enabled'] && ($clean['versionCode'] < 1 || $apkEffective === '')) {
+            throw ApiError::badRequest('Set a version code and upload the landing APK (or paste an APK link) before turning the update on', 'bad_update');
         }
         Db::run(
             "INSERT INTO settings (k, v) VALUES ('app_update', ?) ON DUPLICATE KEY UPDATE v = VALUES(v)",

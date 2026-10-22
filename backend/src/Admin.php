@@ -2376,14 +2376,19 @@ CSS;
         $base = self::base();
         $c = AppUpdate::config();
         self::begin('App update', 'app-update');
-        self::pageLead('The installed app checks this when it opens. If the version code is higher than the one on the phone, it downloads the APK inside the app and Android opens the install screen. Players still confirm that install. Host the file on HTTPS (File Manager is fine) and paste the link. The build that first added this updater is version code 2.');
+        $landingApk = LandingPage::liveApkDownloadUrl();
+        self::pageLead(
+            'The app checks this on open. Use the same APK as <a href="' . self::e($base) . '/admin/landing">Landing page</a> '
+            . '(upload build 12 there). Leave <b>APK link</b> empty to use the landing file automatically.'
+        );
         echo '<section class="section"><div class="card"><form method="post" action="', self::e($base), '/admin/app-update">', self::csrfField($csrf),
             '<div class="grid">',
             '<label class="check"><input type="checkbox" name="enabled" value="1"', $c['enabled'] ? ' checked' : '', '> Update is on</label>',
             '<label class="check"><input type="checkbox" name="required" value="1"', $c['required'] ? ' checked' : '', '> Players must install it</label>',
-            '<label>Version code<input type="number" name="versionCode" min="1" max="999999" value="', self::e((int) $c['versionCode']), '" placeholder="3"></label>',
+            '<label>Version code<input type="number" name="versionCode" min="1" max="999999" value="', self::e((int) $c['versionCode']), '" placeholder="12"></label>',
             '<label>Version name<input name="versionName" maxlength="40" value="', self::e($c['versionName']), '" placeholder="1.0.2"></label>',
-            '<label class="span2">APK link<input name="apkUrl" maxlength="400" value="', self::e($c['apkUrl']), '" placeholder="https://adminnew.pikope.com/pikope-release.apk"></label>',
+            '<p class="hint span2">Landing APK (used when link empty): <b>', self::e($landingApk !== '' ? $landingApk : '(upload on Landing page first)'), '</b></p>',
+            '<label class="span2">APK link (optional override)<input name="apkUrl" maxlength="400" value="', self::e($c['apkUrl']), '" placeholder="Leave empty = landing APK"></label>',
             '<label class="span2">APK SHA-256 (optional)<input name="apkSha256" maxlength="64" value="', self::e($c['apkSha256'] ?? ''), '" placeholder="64 hex chars; app rejects a mismatch"></label>',
             '<label class="span2">Note for players<textarea name="notes" rows="3" maxlength="400">', self::e($c['notes']), '</textarea></label>',
             '</div><button>Save app update</button></form></div></section>';
