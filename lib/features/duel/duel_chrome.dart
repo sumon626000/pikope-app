@@ -172,7 +172,15 @@ class _TopIcon extends StatelessWidget {
 /// Page frame of the secondary lobby screens (shop, cues, history ...):
 /// top bar, a title, the content, and BACK in the corner.
 class DuelPage extends ConsumerWidget {
-  const DuelPage({super.key, required this.title, required this.child, this.sub, this.expanded = false, this.sideBack = false});
+  const DuelPage({
+    super.key,
+    required this.title,
+    required this.child,
+    this.sub,
+    this.expanded = false,
+    this.sideBack = false,
+    this.contentTop,
+  });
 
   final String title;
   final String? sub;
@@ -184,25 +192,30 @@ class DuelPage extends ConsumerWidget {
   /// BACK sits on the left side, clear of the shop cards.
   final bool sideBack;
 
+  /// Extra clearance below [DuelTitle] + subtitle (shop / items tabs).
+  final double? contentTop;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
+    final bodyTop = contentTop ?? (expanded ? 168.0 : 226.0);
+    final backTop = sideBack ? (contentTop != null ? contentTop! - 14.0 : (expanded ? 178.0 : 210.0)) : 0.0;
     return DuelCanvas(
         child: Stack(
           children: [
             const Positioned(left: 0, right: 0, top: 6, child: DuelTopBar(showProfile: false, showShortcuts: false)),
             Positioned(left: 0, right: 0, top: 118, child: Center(child: DuelTitle(title, size: 44, sub: sub))),
             Positioned(
-              left: sideBack ? 188 : (expanded ? 36 : 210),
-              right: expanded ? 36 : 60,
-              top: expanded ? 188 : 226,
-              bottom: expanded ? 24 : 40,
+              left: sideBack ? (expanded ? 168 : 188) : (expanded ? 28 : 210),
+              right: expanded ? 20 : 60,
+              top: bodyTop,
+              bottom: expanded ? 12 : 40,
               child: child,
             ),
             if (sideBack)
               Positioned(
-                left: 28,
-                top: 210,
+                left: 20,
+                top: backTop,
                 child: NavTile(icon: Icons.reply_rounded, label: t.navBack, onTap: () => Navigator.of(context).pop()),
               )
             else

@@ -143,19 +143,16 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
   }
 
   Future<void> _challenge(Map<String, dynamic> player) async {
-    var levels = ref.read(lobbyProvider).valueOrNull?.levelsFor(DuelMode.billiard);
-    if (levels == null || levels.isEmpty) {
+    if (ref.read(lobbyProvider).valueOrNull == null) {
       try {
         await ref.read(lobbyProvider.notifier).refresh();
       } catch (_) {}
-      levels = ref.read(lobbyProvider).valueOrNull?.levelsFor(DuelMode.billiard) ?? const [];
     }
-    final bets = levels ?? const <BetLevel>[];
     if (!mounted) return;
     await showDuelDialog<void>(
       context,
       barrierColor: const Color(0xCC000000),
-      builder: (dialog) => _SendDialog(player: player, levels: bets),
+      builder: (dialog) => _SendDialog(player: player),
     );
     if (mounted) _refresh();
   }
@@ -251,18 +248,20 @@ class _PlayerRow extends ConsumerWidget {
   }
 }
 
+enum _SendChallengeStep { gameFamily, poolMode, stake }
+
 class _SendDialog extends ConsumerStatefulWidget {
-  const _SendDialog({required this.player, required this.levels});
+  const _SendDialog({required this.player});
 
   final Map<String, dynamic> player;
-  final List<BetLevel> levels;
 
   @override
   ConsumerState<_SendDialog> createState() => _SendDialogState();
 }
 
 class _SendDialogState extends ConsumerState<_SendDialog> {
-  String _game = 'eight';
+  _SendChallengeStep _step = _SendChallengeStep.gameFamily;
+  String? _game;
   int? _level;
   bool _busy = false;
   String? _error;
@@ -272,22 +271,52 @@ class _SendDialogState extends ConsumerState<_SendDialog> {
   static const _poolGames = ['eight', 'nine', 'ten', 'billiard'];
 
   @override
-  void initState() {
-    super.initState();
-    if (widget.levels.isNotEmpty) {
-      _level = widget.levels.first.level;
-    }
-  }
-
-  @override
   void dispose() {
     _poll?.cancel();
     super.dispose();
   }
 
+  List<BetLevel> _paidLevelsFor(String game) {
+    final mode = duelModeFromApi(game);
+    if (mode == null) return const [];
+    final all = ref.read(lobbyProvider).valueOrNull?.levelsFor(mode) ?? const [];
+    return all.where((l) => l.stake > 0).toList();
+  }
+
+  void _pickDefaultLevel() {
+    final game = _game;
+    if (game == null) {
+      _level = null;
+      return;
+    }
+    final levels = _paidLevelsFor(game);
+    _level = levels.isNotEmpty ? levels.first.level : null;
+  }
+
+  void _goBack() {
+    AudioService.tap();
+    setState(() {
+      _error = null;
+      if (_step == _SendChallengeStep.stake) {
+        if (_game != null && _poolGames.contains(_game)) {
+          _step = _SendChallengeStep.poolMode;
+        } else {
+          _step = _SendChallengeStep.gameFamily;
+          _game = null;
+          _level = null;
+        }
+      } else if (_step == _SendChallengeStep.poolMode) {
+        _step = _SendChallengeStep.gameFamily;
+        _game = null;
+        _level = null;
+      }
+    });
+  }
+
   Future<void> _send() async {
+    final game = _game;
     final level = _level;
-    if (level == null) {
+    if (game == null || level == null) {
       setState(() => _error = ref.read(stringsProvider).challengePickStake);
       return;
     }
@@ -296,7 +325,7 @@ class _SendDialogState extends ConsumerState<_SendDialog> {
       _error = null;
     });
     try {
-      final ch = await ref.read(sessionProvider.notifier).sendChallenge(widget.player['id'] as int, _game, level);
+      final ch = await ref.read(sessionProvider.notifier).sendChallenge(widget.player['id'] as int, game, level);
       requestChallengeInboxPoll();
       _sentId = ch['id'] as int;
       // Wait for acceptance.
@@ -363,6 +392,7 @@ class _SendDialogState extends ConsumerState<_SendDialog> {
         decoration: duelPanel(rim: DuelColors.rimLight),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(waiting ? t.waitingShort : t.challengePlayer(widget.player['name'] as String),
                 textAlign: TextAlign.center, style: AppText.label(20, weight: FontWeight.w900)),
@@ -374,47 +404,16 @@ class _SendDialogState extends ConsumerState<_SendDialog> {
               const SizedBox(height: 20),
               DuelButton(label: t.cancel, width: 180, height: 48, color: DuelColors.rimLight, onPressed: _cancel),
             ] else ...[
-              Text(t.challengePickGame, style: AppText.label(13, color: DuelColors.dim)),
-              const SizedBox(height: 8),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final g in _poolGames) _gameChip(_poolLabel(t, g), g),
-                  _gameChip(t.ludoTitle, 'ludo2'),
-                  _gameChip(t.carromTitle, 'carrom'),
-                ],
-              ),
-              const SizedBox(height: 18),
-              Text(t.stake, style: AppText.label(13, color: DuelColors.dim)),
-              const SizedBox(height: 8),
               ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 240),
-                child: SingleChildScrollView(
-                  child: Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final l in widget.levels) _stakeChip(l.displayName, l.level),
-                    ],
-                  ),
-                ),
+                constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.52),
+                child: SingleChildScrollView(child: _buildSetupStep(t)),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 12),
                 Text(_error!.toUpperCase(), style: AppText.label(13, color: DuelColors.red)),
               ],
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  DuelButton(label: _busy ? '...' : t.send, width: 180, height: 50, color: DuelColors.gold, onPressed: _busy ? null : _send),
-                  const SizedBox(width: 12),
-                  DuelButton(label: t.close, width: 150, height: 50, color: DuelColors.rimLight, onPressed: () => Navigator.of(context).pop()),
-                ],
-              ),
+              const SizedBox(height: 16),
+              _buildSetupActions(t),
             ],
           ],
         ),
@@ -429,36 +428,174 @@ class _SendDialogState extends ConsumerState<_SendDialog> {
         _ => t.billiardTitle,
       };
 
-  Widget _gameChip(String label, String game) {
-    final on = _game == game;
+  String _gameTitle(AppStrings t, String game) => switch (game) {
+        'ludo2' => t.ludoTitle,
+        'carrom' => t.carromTitle,
+        _ => _poolLabel(t, game),
+      };
+
+  Widget _buildSetupStep(AppStrings t) {
+    return switch (_step) {
+      _SendChallengeStep.gameFamily => _buildGameFamilyStep(t),
+      _SendChallengeStep.poolMode => _buildPoolModeStep(t),
+      _SendChallengeStep.stake => _buildStakeStep(t),
+    };
+  }
+
+  Widget _buildGameFamilyStep(AppStrings t) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(t.challengePickGame, textAlign: TextAlign.center, style: AppText.label(13, color: DuelColors.dim)),
+        const SizedBox(height: 12),
+        _familyTile(t.billiardTitle, DuelColors.green, () {
+          setState(() {
+            _step = _SendChallengeStep.poolMode;
+            _game = null;
+            _level = null;
+            _error = null;
+          });
+        }),
+        const SizedBox(height: 10),
+        _familyTile(t.ludoTitle, const Color(0xFFE8721C), () {
+          setState(() {
+            _game = 'ludo2';
+            _step = _SendChallengeStep.stake;
+            _pickDefaultLevel();
+            _error = null;
+          });
+        }),
+        const SizedBox(height: 10),
+        _familyTile(t.carromTitle, const Color(0xFFD9A34A), () {
+          setState(() {
+            _game = 'carrom';
+            _step = _SendChallengeStep.stake;
+            _pickDefaultLevel();
+            _error = null;
+          });
+        }),
+      ],
+    );
+  }
+
+  Widget _familyTile(String label, Color accent, VoidCallback onTap) {
     return GestureDetector(
       onTap: () {
         AudioService.tap();
-        setState(() => _game = game);
+        onTap();
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        height: 48,
-        constraints: const BoxConstraints(minWidth: 88),
+        height: 56,
         alignment: Alignment.center,
-        decoration: duelPanel(radius: 12, rim: on ? DuelColors.green : DuelColors.rim, glow: on, fill: on ? const Color(0xE60C2414) : const Color(0xCC0B0E1C)),
-        child: Text(label, style: AppText.label(17, color: on ? DuelColors.green : DuelColors.silver, weight: FontWeight.w900)),
+        decoration: duelPanel(radius: 14, rim: accent, fill: const Color(0xCC0B0E1C)),
+        child: Text(label, style: AppText.label(20, color: accent, weight: FontWeight.w900)),
       ),
     );
   }
 
-  Widget _stakeChip(String label, int? level) {
-    final on = _level == level;
+  Widget _buildPoolModeStep(AppStrings t) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(t.challengePickGame, textAlign: TextAlign.center, style: AppText.label(13, color: DuelColors.dim)),
+        const SizedBox(height: 12),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 2.4,
+          children: [
+            for (final g in _poolGames)
+              _modeTile(_poolLabel(t, g), _game == g, () {
+                setState(() {
+                  _game = g;
+                  _step = _SendChallengeStep.stake;
+                  _pickDefaultLevel();
+                  _error = null;
+                });
+              }),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _modeTile(String label, bool on, VoidCallback onTap) {
     return GestureDetector(
       onTap: () {
         AudioService.tap();
-        setState(() => _level = level);
+        onTap();
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-        decoration: duelPanel(radius: 10, rim: on ? DuelColors.gold : DuelColors.rim, glow: on),
-        child: Text(label, style: AppText.label(15, color: on ? DuelColors.gold : DuelColors.silver, weight: FontWeight.w800)),
+        alignment: Alignment.center,
+        decoration: duelPanel(radius: 12, rim: on ? DuelColors.green : DuelColors.rim, glow: on, fill: on ? const Color(0xE60C2414) : const Color(0xCC0B0E1C)),
+        child: Text(label, textAlign: TextAlign.center, style: AppText.label(16, color: on ? DuelColors.green : DuelColors.silver, weight: FontWeight.w900)),
       ),
+    );
+  }
+
+  Widget _buildStakeStep(AppStrings t) {
+    final game = _game;
+    final levels = game == null ? const <BetLevel>[] : _paidLevelsFor(game);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (game != null)
+          Text(_gameTitle(t, game), textAlign: TextAlign.center, style: AppText.label(18, color: DuelColors.gold, weight: FontWeight.w900)),
+        const SizedBox(height: 8),
+        Text(t.stake, textAlign: TextAlign.center, style: AppText.label(13, color: DuelColors.dim)),
+        const SizedBox(height: 12),
+        if (levels.isEmpty)
+          Text(t.offlineServer, textAlign: TextAlign.center, style: AppText.label(14, color: DuelColors.red))
+        else
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 2.1,
+            ),
+            itemCount: levels.length,
+            itemBuilder: (context, i) {
+              final l = levels[i];
+              final on = _level == l.level;
+              return GestureDetector(
+                onTap: () {
+                  AudioService.tap();
+                  setState(() => _level = l.level);
+                },
+                child: Container(
+                  alignment: Alignment.center,
+                  decoration: duelPanel(radius: 10, rim: on ? DuelColors.gold : DuelColors.rim, glow: on),
+                  child: Text(l.displayName, style: AppText.label(15, color: on ? DuelColors.gold : DuelColors.silver, weight: FontWeight.w800)),
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSetupActions(AppStrings t) {
+    final onStake = _step == _SendChallengeStep.stake;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        if (_step != _SendChallengeStep.gameFamily)
+          Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: DuelButton(label: t.back, width: 120, height: 50, color: DuelColors.rimLight, onPressed: _goBack),
+          ),
+        if (onStake) ...[
+          DuelButton(label: _busy ? '...' : t.send, width: 180, height: 50, color: DuelColors.gold, onPressed: _busy ? null : _send),
+          const SizedBox(width: 10),
+        ],
+        DuelButton(label: t.close, width: onStake ? 130 : 180, height: 50, color: DuelColors.rimLight, onPressed: () => Navigator.of(context).pop()),
+      ],
     );
   }
 }

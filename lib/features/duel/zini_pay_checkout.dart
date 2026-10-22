@@ -154,18 +154,19 @@ class _ZiniPayCheckoutScreenState extends ConsumerState<ZiniPayCheckoutScreen> {
     return DuelPage(
       title: t.autoAddTitle,
       sub: t.autoAddSub,
+      expanded: true,
       sideBack: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
               child: WebViewWidget(controller: _web),
             ),
           ),
-          const SizedBox(height: 12),
-          Text(t.autoAddWebHint, style: AppText.label(18, color: DuelColors.dim), textAlign: TextAlign.center),
+          const SizedBox(height: 8),
+          Text(t.autoAddWebHint, style: AppText.label(15, color: DuelColors.dim), textAlign: TextAlign.center),
         ],
       ),
     );

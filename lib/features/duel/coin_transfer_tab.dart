@@ -191,14 +191,18 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> {
     final amount = _amountInt ?? 0;
     final fee = amount > 0 ? _feeFor(amount) : 0;
     final total = amount + fee;
-    return SingleChildScrollView(
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(36, 28, 36, 32),
-        decoration: duelPanel(radius: 22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(24, 22, 24, 26),
+              decoration: duelPanel(radius: 22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
             Text(t.tabTransfer, style: AppText.label(40, color: DuelColors.gold, weight: FontWeight.w900)),
             const SizedBox(height: 8),
             Text(
@@ -251,16 +255,19 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> {
               Text(_error!, style: AppText.label(22, color: DuelColors.red)),
             ],
             const SizedBox(height: 24),
-            GameButton(
-              label: _busy ? t.sending : t.transferSendBtn,
-              height: 88,
-              fontSize: 26,
-              color: DuelColors.gold,
-              onPressed: _busy ? null : _send,
+                  GameButton(
+                    label: _busy ? t.sending : t.transferSendBtn,
+                    height: 88,
+                    fontSize: 26,
+                    color: DuelColors.gold,
+                    onPressed: _busy ? null : _send,
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
