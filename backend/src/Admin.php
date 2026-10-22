@@ -980,8 +980,13 @@ CSS;
     {
         $base = self::base();
         $id = (int) $u['id'];
+        $playerId = $u['referral_code'] ?? null;
+        $playerIdCell = '—';
+        if (is_string($playerId) && preg_match('/^\d{6}$/', $playerId) === 1) {
+            $playerIdCell = '<a href="' . self::e($base) . '/admin/players?gameId=' . self::e($playerId) . '"><code>' . self::e($playerId) . '</code></a>';
+        }
         $html = '<tr><td>' . self::e($id)
-            . '<td>' . self::e($u['referral_code'] ?? '—')
+            . '<td>' . $playerIdCell
             . '<td><a href="' . self::e($base) . '/admin/player?id=' . self::e($id) . '">' . self::e($u['display_name']) . '</a> '
             . (self::on($u['banned']) ? '<span class="pill bad">suspended</span>' : '')
             . '<td>' . self::e(self::loginLabel($u))
@@ -1020,10 +1025,20 @@ CSS;
     {
         $q = trim((string) ($_GET['q'] ?? ''));
         $q = str_replace(['%', '_'], '', $q);
+        $gameId = trim((string) ($_GET['gameId'] ?? ''));
+        $gameId = str_replace(['%', '_'], '', $gameId);
         $page = self::pageOf('page');
         $where = 'is_bot = 0';
         $params = [];
-        if ($q !== '') {
+        if ($gameId !== '') {
+            if (preg_match('/^\d{6}$/', $gameId) !== 1) {
+                $gameId = '';
+            } else {
+                $where .= ' AND referral_code = ?';
+                $params[] = $gameId;
+            }
+        }
+        if ($q !== '' && $gameId === '') {
             $where .= ' AND (display_name LIKE ? OR IFNULL(phone, \'\') LIKE ? OR IFNULL(email, \'\') LIKE ?';
             $like = '%' . $q . '%';
             $params = [$like, $like, $like];
@@ -1044,17 +1059,28 @@ CSS;
             $params
         );
         $csrf = AdminAuth::csrfToken();
-        $keep = $q === '' ? [] : ['q' => $q];
-        $next = '/admin/players' . ($q === '' ? '' : '?q=' . rawurlencode($q));
+        $keep = [];
+        if ($q !== '') {
+            $keep['q'] = $q;
+        }
+        if ($gameId !== '') {
+            $keep['gameId'] = $gameId;
+        }
+        $nextQs = http_build_query($keep);
+        $next = '/admin/players' . ($nextQs === '' ? '' : '?' . $nextQs);
 
         self::begin('Players', 'players');
-        self::pageLead('Search, edit profiles, adjust Pico coin / gems, suspend accounts.');
+        self::pageLead(
+            'Search by name or mobile. <b>Player ID</b> is the 6-digit code players use for coin transfer in the app.'
+        );
         echo '<div class="search-card"><form class="row" method="get" action="', self::e(self::base()), '/admin/players">',
-            '<label>Search name, mobile, id or game ID<input name="q" value="', self::e($q), '" placeholder="Search players"></label>',
-            '<button>Search</button></form></div>',
+            '<label>Player ID (6 digits)<input name="gameId" maxlength="6" inputmode="numeric" pattern="[0-9]*" value="', self::e($gameId), '" placeholder="e.g. 482910"></label>',
+            '<label>Search name, mobile or account ID<input name="q" value="', self::e($q), '" placeholder="Name or +880…"></label>',
+            '<button>Search</button></form>',
+            '<p class="hint" style="margin:10px 0 0">Player ID finds one account exactly. Leave it empty to search by name or phone.</p></div>',
             '<section class="section"><h2>Results</h2><p class="muted">', self::e($total), ' player(s).</p>',
             self::tableScrollOpen(),
-            '<table><tr><th>ID<th>Game ID<th>Name<th>Mobile<th>Coins<th>Gems<th>Wins / games<th>Joined<th></tr>';
+            '<table><tr><th>Account ID<th>Player ID<th>Name<th>Mobile<th>Coins<th>Gems<th>Wins / games<th>Joined<th></tr>';
         foreach ($rows as $u) {
             echo self::playerRow($u, $csrf, $next);
         }
@@ -1085,7 +1111,7 @@ CSS;
             '<div class="stat"><b>', self::e((int) $u['xp']), '</b><span>xp</span></div>',
             '<div class="stat"><b>', self::e($u['wins']), ' / ', self::e($u['games']), '</b><span>wins / games</span></div>',
             '<div class="stat"><b>', self::on($u['banned']) ? 'Suspended' : 'Active', '</b><span>', self::e(self::on($u['is_guest']) ? 'guest' : 'account'), '</span></div>',
-            '<div class="stat"><b>', self::e($u['referral_code'] ?? '—'), '</b><span>Game ID</span></div>',
+            '<div class="stat"><b>', self::e($u['referral_code'] ?? '—'), '</b><span>Player ID</span></div>',
             '</div></section>';
         if ($u['referred_by'] !== null) {
             $inviter = Db::one('SELECT id, display_name FROM users WHERE id = ?', [(int) $u['referred_by']]);
@@ -1102,7 +1128,7 @@ CSS;
         echo '<section class="section"><h2>Profile</h2><div class="card"><form method="post" action="', self::e($base), '/admin/player/save">',
             self::csrfField($csrf), '<input type="hidden" name="id" value="', self::e($id), '"><div class="grid">',
             '<label>Name<input name="display_name" maxlength="24" required value="', self::e($u['display_name']), '"></label>',
-            '<label>Game ID (6 digits)<input name="game_id" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" value="', self::e($u['referral_code'] ?? ''), '" placeholder="Coin transfer ID"></label>',
+            '<label>Player ID (6 digits)<input name="game_id" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" value="', self::e($u['referral_code'] ?? ''), '" placeholder="Coin transfer ID"></label>',
             '<label>Mobile (+880)<input name="phone" value="', self::e(isset($u['phone']) && $u['phone'] !== null && $u['phone'] !== '' ? substr((string) $u['phone'], 3) : ''), '" placeholder="10 digits, empty = guest"></label>',
             '<label>Avatar<select name="avatar">';
         for ($i = 1; $i <= 6; $i++) {
@@ -2043,15 +2069,17 @@ CSS;
         foreach ($packs as $p) {
             $gets = CoinShop::receiveCoins($p, $global);
             $liveBonus = CoinShop::effectiveBonusPercent($p);
+            $pid = (string) $p['id'];
+            $editUrl = $base . '/admin/coin-shop?edit=' . rawurlencode($pid) . '#pack-form';
             echo '<tr><td>', ($p['active'] ?? true) ? '<span class="pill good">yes</span>' : '<span class="pill">no</span>',
-                '<td>', self::e($p['id']), '<td>', self::e($p['name']),
-                '<td>', self::e($p['coins']), '<td>', self::e($p['discountPercent']), '%',
-                '<td>', self::e($liveBonus), '%<td><b>', self::e($gets), '</b>',
-                '<td>', self::e($p['priceCoins']),
-                '<td>', self::e($p['sort']), '<td class="row">';
-            echo '<a class="btn ghost" href="', self::e($base), '/admin/coin-shop?edit=', rawurlencode((string) $p['id']), '#pack-form">Edit</a> ';
+                '</td><td><a href="', self::e($editUrl), '">', self::e($pid), '</a></td><td>', self::e($p['name']),
+                '</td><td>', self::e($p['coins']), '</td><td>', self::e($p['discountPercent']), '%',
+                '</td><td>', self::e($liveBonus), '%</td><td><b>', self::e($gets), '</b>',
+                '</td><td>', self::e($p['priceCoins']),
+                '</td><td>', self::e($p['sort']), '</td><td class="row" style="white-space:nowrap">';
+            echo '<a class="btn" href="', self::e($editUrl), '">Edit</a> ';
             echo '<form method="post" action="', self::e($base), '/admin/coin-shop/delete" style="display:inline" onsubmit="return confirm(\'Remove this pack?\');">', self::csrfField($csrf),
-                '<input type="hidden" name="id" value="', self::e($p['id']), '"><button type="submit" class="danger">Delete</button></form></tr>';
+                '<input type="hidden" name="id" value="', self::e($pid), '"><button type="submit" class="danger">Delete</button></form></td></tr>';
         }
         if ($packs === []) {
             echo '<tr><td colspan="10" class="muted">No packs yet — add one below.</td></tr>';
@@ -2078,6 +2106,9 @@ CSS;
             '<label>Active<select name="active"><option value="1"', $active ? ' selected' : '', '>yes</option>',
             '<option value="0"', $active ? '' : ' selected', '>no</option></select></label>',
             '</div><p></p><button>', $editing ? 'Save changes' : 'Add pack', '</button></form></div></section>';
+        if ($editing) {
+            echo '<script>try{document.getElementById("pack-form")?.scrollIntoView({behavior:"smooth",block:"start"});}catch(e){}</script>';
+        }
         self::end();
     }
 

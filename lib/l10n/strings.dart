@@ -130,6 +130,10 @@ class AppStrings {
   String get transferNotEligible => _t('This ID cannot receive transfers (guest or invalid).', 'এই আইডি গ্রহণ করতে পারবে না।');
   String get transferSent => _t('TRANSFER SENT', 'পাঠানো হয়েছে');
   String transferSentBody(String name, int amount) => _t('You sent $amount to $name.', '$name কে $amount পাঠানো হয়েছে।');
+  String get badgeTransferSuccess => _t('SUCCESS', 'সফল');
+  String transferHistorySuccess(int amount, int fee) =>
+      _t('Transfer sent · fee $fee', 'পাঠানো হয়েছে · ফি $fee');
+  String transferHistoryReceived(int amount) => _t('Received $amount', '$amount পেয়েছেন');
   String get badgeTransfer => _t('TRANSFER', 'ট্রান্সফার');
   String get redeemCancel => _t('CANCEL', 'বাতিল');
   String get redeemPendingTitle => _t('PENDING REDEEMS', 'অপেক্ষমান রিডিম');

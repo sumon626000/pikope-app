@@ -228,8 +228,16 @@ class SessionNotifier extends Notifier<SessionState> {
     await ensureSignedIn();
     final code = gameId.replaceAll(RegExp(r'\D'), '');
     final r = await _api.post('/transfer/send', {'gameId': code, 'amount': amount});
-    _adopt(r['user'] as Map<String, dynamic>);
-    return r['transfer'] as Map<String, dynamic>;
+    final user = r['user'];
+    if (user is Map<String, dynamic>) {
+      _adopt(user);
+    } else if (user is Map) {
+      _adopt(Map<String, dynamic>.from(user));
+    }
+    final transfer = r['transfer'];
+    if (transfer is Map<String, dynamic>) return transfer;
+    if (transfer is Map) return Map<String, dynamic>.from(transfer);
+    return const {};
   }
 
   /// Operator announcements to show in the inbox (and home banner).

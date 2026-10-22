@@ -121,7 +121,7 @@ final class CoinTransfer
         $fee = intdiv($amount * $feePct, 100);
         $total = $amount + $fee;
 
-        return Db::transaction(static function () use ($fromId, $toId, $amount, $fee, $total, $toGameId): array {
+        $payload = Db::transaction(static function () use ($fromId, $toId, $amount, $fee, $total): array {
             self::ensureTable();
             Economy::move($fromId, -$total, 'transfer_out');
             Economy::move($toId, $amount, 'transfer_in');
@@ -130,24 +130,6 @@ final class CoinTransfer
                 [$fromId, $toId, $amount, $fee, $amount]
             );
             $id = Db::lastId();
-            $from = Auth::publicUser(Db::one('SELECT * FROM users WHERE id = ?', [$fromId]));
-            $toName = (string) Db::one('SELECT display_name FROM users WHERE id = ?', [$toId])['display_name'];
-            Push::notifyUser(
-                $toId,
-                'coin_received',
-                'Pico coin received',
-                $from['name'] . " sent you $amount Pico coin.",
-                [],
-                'transfer_in:' . $id
-            );
-            Push::notifyUser(
-                $fromId,
-                'coin_sent',
-                'Transfer sent',
-                "You sent $amount to $toName (fee $fee).",
-                [],
-                'transfer_out:' . $id
-            );
             $row = Db::one(
                 'SELECT t.*, fu.display_name AS from_name, fu.referral_code AS from_code,
                         tu.display_name AS to_name, tu.referral_code AS to_code
@@ -157,11 +139,37 @@ final class CoinTransfer
                  WHERE t.id = ?',
                 [$id]
             );
-            return [
-                'transfer' => self::publicRow($row, $fromId),
-                'user' => $from,
-            ];
+            $toName = (string) ($row['to_name'] ?? '');
+            return ['row' => $row, 'fromId' => $fromId, 'toId' => $toId, 'toName' => $toName, 'transferId' => $id];
         });
+
+        $from = Auth::publicUser(Db::one('SELECT * FROM users WHERE id = ?', [$fromId]));
+        $senderName = (string) ($from['displayName'] ?? 'Player');
+        try {
+            Push::notifyUser(
+                $payload['toId'],
+                'coin_received',
+                'Pico coin received',
+                "$senderName sent you $amount Pico coin.",
+                [],
+                'transfer_in:' . $payload['transferId']
+            );
+            Push::notifyUser(
+                $fromId,
+                'coin_sent',
+                'Transfer sent',
+                "You sent $amount to {$payload['toName']} (fee $fee).",
+                [],
+                'transfer_out:' . $payload['transferId']
+            );
+        } catch (\Throwable $e) {
+            error_log('[transfer] push failed: ' . $e->getMessage());
+        }
+
+        return [
+            'transfer' => self::publicRow($payload['row'], $fromId),
+            'user' => $from,
+        ];
     }
 
     /** @return list<array<string,mixed>> */

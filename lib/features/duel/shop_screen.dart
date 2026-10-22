@@ -167,11 +167,16 @@ class _BuyTab extends ConsumerWidget {
                 if (packs.isEmpty)
                   Text(t.noPacks, style: AppText.label(18, color: DuelColors.dim))
                 else
-                  ListView.separated(
+                  GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: constraints.maxWidth >= 720 ? 3 : 2,
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      mainAxisExtent: 196,
+                    ),
                     itemCount: packs.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (context, i) => _CoinPackCard(
                       pack: packs[i],
                       onTap: () => onBuy(packs[i]),
@@ -940,10 +945,12 @@ class _ActivityRow extends ConsumerWidget {
       final peer = sent ? (item['toName'] as String? ?? '') : (item['fromName'] as String? ?? '');
       final peerId = sent ? item['toGameId'] : item['fromGameId'];
       return _rowShell(
-        badge: t.badgeTransfer,
-        badgeColor: sent ? DuelColors.silver : DuelColors.green,
+        badge: sent ? t.badgeTransferSuccess : t.badgeTransfer,
+        badgeColor: sent ? DuelColors.green : DuelColors.green,
         title: sent ? '→ $peer' : '← $peer',
-        sub: 'ID $peerId · ${sent ? '-${formatCoins(amount + fee)}' : '+${formatCoins(amount)}'}',
+        sub: sent
+            ? '${t.transferHistorySuccess(amount, fee)} · ID $peerId'
+            : '${t.transferHistoryReceived(amount)} · ID $peerId',
         coins: sent ? -(amount + fee) : amount,
         time: time,
       );
@@ -1043,56 +1050,79 @@ class _CoinPackCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
+    final bonus = pack.discountPercent;
+    final payLabel = pack.free
+        ? t.claimNow
+        : pack.priceCoins > 0
+            ? formatCoins(pack.priceCoins, compact: true)
+            : t.payNow;
     return GestureDetector(
       onTap: () {
         AudioService.tap();
         onTap();
       },
       child: Container(
-        width: double.infinity,
-        decoration: duelPanel(radius: 14, rim: Color.lerp(DuelColors.gold, Colors.black, 0.35)!),
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-        child: Row(
+        decoration: BoxDecoration(
+          color: const Color(0xFF1C2238),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFF2E3654)),
+          boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 8, offset: Offset(0, 4))],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
           children: [
-            const PikoCoinIcon(size: 42),
-            const SizedBox(width: 12),
-            Expanded(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 14, 10, 10),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
                 children: [
+                  const PikoCoinIcon(size: 48),
+                  const SizedBox(height: 6),
                   Text(
                     formatCoins(pack.coins, compact: true),
-                    style: AppText.label(24, color: Colors.white, weight: FontWeight.w900),
+                    textAlign: TextAlign.center,
+                    style: AppText.label(20, color: Colors.white, weight: FontWeight.w900),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     t.youGetCoins(formatPicoCoins(pack.receiveCoins)),
+                    textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: AppText.label(13, color: DuelColors.gold, weight: FontWeight.w800),
+                    style: AppText.label(11, color: DuelColors.gold, weight: FontWeight.w800),
                   ),
-                  if (pack.discountPercent > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        t.bonusPercent(pack.discountPercent),
-                        style: AppText.label(12, color: DuelColors.green, weight: FontWeight.w800),
-                      ),
+                  const Spacer(),
+                  Container(
+                    width: double.infinity,
+                    height: 36,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF12915D),
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: const [BoxShadow(color: Color(0x4012915D), blurRadius: 6, offset: Offset(0, 2))],
                     ),
+                    child: Text(payLabel, style: AppText.label(12, color: Colors.white, weight: FontWeight.w900)),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(width: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: DuelColors.gold.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: DuelColors.gold),
+            if (bonus > 0)
+              Positioned(
+                top: 8,
+                left: -28,
+                child: Transform.rotate(
+                  angle: -0.65,
+                  child: Container(
+                    width: 96,
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    color: const Color(0xFFD32F2F),
+                    child: Text(
+                      '+$bonus%',
+                      style: AppText.label(11, color: Colors.white, weight: FontWeight.w900),
+                    ),
+                  ),
+                ),
               ),
-              child: Text(t.payNow, style: AppText.label(13, color: DuelColors.gold, weight: FontWeight.w900)),
-            ),
           ],
         ),
       ),
