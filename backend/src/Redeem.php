@@ -8,7 +8,7 @@ final class Redeem
 {
     public const DEFAULTS = [
         'enabled' => true,
-        'minCoins' => 1000,
+        'minCoins' => 300,
         'maxCoins' => 200000,
         'maxPendingPerUser' => 2,
         'coinPerBdt' => 1,
@@ -383,7 +383,7 @@ final class Redeem
     {
         return [
             'enabled' => (bool) ($raw['enabled'] ?? true),
-            'minCoins' => max(100, min(10_000_000, (int) ($raw['minCoins'] ?? 1000))),
+            'minCoins' => max(100, min(10_000_000, (int) ($raw['minCoins'] ?? 300))),
             'maxCoins' => max(100, min(50_000_000, (int) ($raw['maxCoins'] ?? 200000))),
             'maxPendingPerUser' => max(1, min(10, (int) ($raw['maxPendingPerUser'] ?? 2))),
             'coinPerBdt' => max(1, min(1000, (int) ($raw['coinPerBdt'] ?? 1))),

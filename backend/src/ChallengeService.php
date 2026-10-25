@@ -336,6 +336,15 @@ final class ChallengeService
         return self::row(Db::one('SELECT * FROM challenges WHERE id = ?', [$id]));
     }
 
+    private static function challengePrize(string $game, int $stake): int
+    {
+        if ($stake <= 0) {
+            return 0;
+        }
+        $seats = RoomService::GAMES[$game] ?? 2;
+        return Economy::winnerPrize($stake, $seats);
+    }
+
     /** @param array<string,mixed> $c */
     private static function row(array $c): array
     {
@@ -347,7 +356,7 @@ final class ChallengeService
             'level' => $c['level'] === null ? null : (int) $c['level'],
             'stake' => (int) $c['stake'],
             'buyIn' => (int) $c['stake'] + (int) $c['fee'],
-            'prize' => (int) $c['stake'] * 2,
+            'prize' => self::challengePrize((string) $c['game'], (int) $c['stake']),
             'status' => $c['status'],
             'roomId' => $c['room_id'] === null ? null : (int) $c['room_id'],
             'expiresIn' => max(0, strtotime($c['expires_at']) - time()),

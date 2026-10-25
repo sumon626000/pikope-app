@@ -129,7 +129,11 @@ class _LudoScreenState extends ConsumerState<LudoScreen> with SingleTickerProvid
                             Positioned(left: 64, top: 0, child: _MenuTab(onTap: () => setState(() => _paused = true))),
                             // Pot indicator (only for staked online games); own balance shows on the seat card.
                             if (widget.config.bet.staked)
-                              Positioned(left: 24, top: 70, child: CoinsTile(coins: widget.config.bet.prize, size: 70)),
+                              Positioned(
+                                left: 20,
+                                top: 58,
+                                child: MatchPrizeTile(prize: widget.config.bet.prize),
+                              ),
                             // The board, centred.
                             Positioned(
                               left: (1950 - 820) / 2,

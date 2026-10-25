@@ -10,13 +10,15 @@ import '../../core/widgets.dart';
 import '../../data/api_client.dart';
 import '../../l10n/strings.dart';
 import '../online/session.dart';
+import 'coin_tutorial_video.dart';
 import 'lobby_data.dart';
 
 /// Send Pico coin to another player by 6-digit game ID (registered only).
 class CoinTransferTab extends ConsumerStatefulWidget {
-  const CoinTransferTab({super.key, required this.config});
+  const CoinTransferTab({super.key, required this.config, this.tutorialUrl = ''});
 
   final CoinTransferConfig config;
+  final String tutorialUrl;
 
   @override
   ConsumerState<CoinTransferTab> createState() => _CoinTransferTabState();
@@ -203,6 +205,11 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+            CoinTutorialVideoFrame(
+              youtubeUrl: widget.tutorialUrl,
+              title: t.coinTutorialTransferTitle,
+              tapHint: t.coinTutorialTapPlay,
+            ),
             Text(t.tabTransfer, style: AppText.label(40, color: DuelColors.gold, weight: FontWeight.w900)),
             const SizedBox(height: 8),
             Text(

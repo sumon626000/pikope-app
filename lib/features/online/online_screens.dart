@@ -21,6 +21,7 @@ import '../carrom/carrom_controller.dart';
 import '../carrom/carrom_screen.dart';
 import '../ludo/ludo_controller.dart';
 import '../ludo/ludo_screen.dart';
+import '../start/forgot_password_screen.dart';
 import '../start/login_screen.dart';
 import 'game_link.dart';
 import 'realtime_socket.dart';
@@ -546,16 +547,13 @@ class AccountScreen extends ConsumerStatefulWidget {
 class _AccountScreenState extends ConsumerState<AccountScreen> {
   final _phone = TextEditingController();
   final _password = TextEditingController();
-  final _code = TextEditingController();
   bool _busy = false;
-  bool _resetting = false;
   String? _message;
 
   @override
   void dispose() {
     _phone.dispose();
     _password.dispose();
-    _code.dispose();
     super.dispose();
   }
 
@@ -596,49 +594,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                         controller: _phone,
                         decoration: InputDecoration(labelText: t.mobile880),
                       ),
-                      if (_resetting)
-                        TextField(
-                          controller: _code,
-                          keyboardType: TextInputType.number,
-                          maxLength: 8,
-                          decoration: InputDecoration(labelText: t.otpSms, counterText: ''),
-                        ),
                       TextField(
                         controller: _password,
                         obscureText: true,
-                        decoration: InputDecoration(
-                            labelText: _resetting ? t.newPassword8 : t.password8),
+                        decoration: InputDecoration(labelText: t.password8),
                       ),
                       const SizedBox(height: 14),
-                      if (_resetting)
-                        Row(
-                          children: [
-                            Expanded(
-                              child: GameButton(
-                                label: t.setNewPassword,
-                                height: 46,
-                                fontSize: 14,
-                                onPressed: _busy
-                                    ? null
-                                    : () => _run(
-                                        () => notifier.resetPassword(
-                                            _phone.text.trim(), _code.text.trim(), _password.text),
-                                        t.msgPasswordChanged),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            GameButton(
-                              label: t.cancel,
-                              height: 46,
-                              width: 150,
-                              fontSize: 14,
-                              color: AppColors.frame,
-                              onPressed: () => setState(() => _resetting = false),
-                            ),
-                          ],
-                        )
-                      else ...[
-
                       Row(
                         children: [
                           Expanded(
@@ -693,20 +654,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                         color: const Color(0xFF2B2B38),
                         onPressed: _busy
                             ? null
-                            : () async {
-                                final err = BdPhone.validationMessage(_phone.text.trim(), t);
-                                if (err != null) {
-                                  setState(() => _message = err);
-                                  return;
-                                }
-                                await _run(
-                                  () => notifier.forgotPassword(_phone.text.trim()),
-                                  t.msgOtpSent,
-                                );
-                                if (mounted) setState(() => _resetting = true);
-                              },
+                            : () => Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => ForgotPasswordScreen(initialPhoneLocal: _phone.text.trim()),
+                                  ),
+                                ),
                       ),
-                      ],
                     ],
                   )
                 : Row(

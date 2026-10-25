@@ -105,27 +105,50 @@ class FramedTile extends StatelessWidget {
 }
 
 class CoinsTile extends StatelessWidget {
-  const CoinsTile({super.key, required this.coins, this.size = 120});
+  const CoinsTile({
+    super.key,
+    required this.coins,
+    this.size = 120,
+    this.emphasis = false,
+  });
 
   final int coins;
   final double size;
+  /// Larger coin art and prize digits (in-match pot display).
+  final bool emphasis;
 
   @override
   Widget build(BuildContext context) {
+    final coinH = size * (emphasis ? 0.46 : 0.5);
+    final digits = size * (emphasis ? 0.28 : 0.2);
     return FramedTile(
       size: size,
       color: Colors.black,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset(PicoCoin.asset, height: size * 0.5, filterQuality: FilterQuality.medium),
+          Image.asset(PicoCoin.asset, height: coinH, filterQuality: FilterQuality.medium),
           FittedBox(
             child: Text('$coins',
-                style: AppText.label(size * 0.2, color: AppColors.gold, weight: FontWeight.w900)),
+                style: AppText.label(digits, color: AppColors.gold, weight: FontWeight.w900)),
           ),
         ],
       ),
     );
+  }
+}
+
+/// Staked-match prize pot (carrom, ludo, pool, billiard poker — same size everywhere).
+class MatchPrizeTile extends StatelessWidget {
+  const MatchPrizeTile({super.key, required this.prize});
+
+  final int prize;
+
+  static const double size = 132;
+
+  @override
+  Widget build(BuildContext context) {
+    return CoinsTile(coins: prize, size: size, emphasis: true);
   }
 }
 

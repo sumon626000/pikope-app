@@ -62,6 +62,14 @@ class AppStrings {
   String get logIn => _t('LOG IN', 'লগ ইন');
   String get signUp => _t('SIGN UP', 'সাইন আপ');
   String get forgotPassword => _t('FORGOT PASSWORD?', 'পাসওয়ার্ড ভুলে গেছেন?');
+  String get forgotPasswordTitle => _t('FORGOT PASSWORD', 'পাসওয়ার্ড ভুলে গেছেন');
+  String get forgotPasswordSteps => _t(
+        'Enter your registered mobile, tap Send OTP, then enter the SMS code and a new password.',
+        'রেজিস্টার্ড মোবাইল দিন, OTP পাঠান, SMS কোড ও নতুন পাসওয়ার্ড দিন।',
+      );
+  String get sendOtp => _t('SEND OTP', 'OTP পাঠান');
+  String get resendOtp => _t('Resend OTP', 'আবার OTP পাঠান');
+  String get enterOtpFull => _t('Enter the full OTP from SMS.', 'SMS-এর OTP পুরো লিখুন।');
   String get playAsGuest => _t('PLAY AS GUEST', 'অতিথি হিসেবে খেলুন');
   String get enterPassword => _t('Enter your password.', 'পাসওয়ার্ড লিখুন।');
   String get passwordMin8 => _t('Password must be at least 8 characters.', 'পাসওয়ার্ড কমপক্ষে ৮ অক্ষর।');
@@ -108,6 +116,16 @@ class AppStrings {
       ? _t('EXTRA $globalDiscount% ON PACKS · 1 COIN = 1 BDT', 'প্যাকে অতিরিক্ত $globalDiscount% · ১ কয়েন = ১ টাকা')
       : _t('PACK BONUS 5%–30% · 1 COIN = 1 BDT', 'প্যাক বোনাস ৫%–৩০% · ১ কয়েন = ১ টাকা');
   String get tabTransfer => _t('COIN TRANSFER', 'কয়েন ট্রান্সফার');
+  String get coinTutorialDepositTitle => _t('How to add coins (deposit)', 'কয়েন যোগ / ডিপোজিট কীভাবে');
+  String get coinTutorialRedeemTitle => _t('How to withdraw (redeem)', 'উত্তোলন / রিডিম কীভাবে');
+  String get coinTutorialTransferTitle => _t('How to transfer coins', 'কয়েন ট্রান্সফার কীভাবে');
+  String get coinTutorialTapPlay => _t('Tap to watch tutorial', 'টিউটোরিয়াল দেখতে ট্যাপ করুন');
+
+  String get coinTutorialDepositTitle => _t('How to add coins (deposit)', 'কয়েন যোগ / ডিপোজিট কীভাবে');
+  String get coinTutorialRedeemTitle => _t('How to withdraw (redeem)', 'উত্তোলন / রিডিম কীভাবে');
+  String get coinTutorialTransferTitle => _t('How to transfer coins', 'কয়েন ট্রান্সফার কীভাবে');
+  String get coinTutorialTapPlay => _t('Tap to watch tutorial', 'টিউটোরিয়াল দেখতে ট্যাপ করুন');
+
   String get tabBuy => _t('BUY', 'কিনুন');
   String get tabAdd => _t('ADD', 'যোগ');
   String get tabRedeem => _t('REDEEM', 'রিডিম');
@@ -357,6 +375,7 @@ class AppStrings {
       _t('MIN PRIZE ${formatCoinsDisplay(prize)}  -  4 PLAYERS', 'ন্যূন. পুরস্কার ${formatCoinsDisplay(prize)}  -  ৪ খেলোয়াড়');
   String get playersOnline => _t('PLAYERS ONLINE', 'খেলোয়াড় অনলাইন');
   String get tapToPlay => _t('TAP TO PLAY', 'খেলতে ট্যাপ');
+  String get tapToChallenge => _t('TAP TO CHALLENGE', 'চ্যালেঞ্জ পাঠাতে ট্যাপ');
   String get practiceLong => _t(
         'Free matches on this device: against bots, or passing the phone between friends. No coins are won or lost.',
         'এই ডিভাইসে ফ্রি ম্যাচ: বটের বিপক্ষে, অথবা বন্ধুদের মধ্যে ফোন হাত বদলে। কোনো কয়েন জিত/হার হবে না।',

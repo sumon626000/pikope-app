@@ -169,7 +169,9 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
               Positioned(
                 left: 933,
                 top: 6,
-                child: CoinsTile(coins: widget.config.bet.staked ? widget.config.bet.prize : settings.coins, size: 84),
+                child: widget.config.bet.staked
+                    ? MatchPrizeTile(prize: widget.config.bet.prize)
+                    : CoinsTile(coins: settings.coins, size: 84),
               ),
               Positioned(left: 1836, top: 4, child: SpinControl(controller: c)),
               for (var i = 0; i < 2; i++) ...[

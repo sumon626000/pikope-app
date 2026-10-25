@@ -9,7 +9,7 @@ final class CoinTransfer
     public const DEFAULTS = [
         'enabled' => true,
         'feePercent' => 10,
-        'minCoins' => 10,
+        'minCoins' => 50,
         'maxCoins' => 500000,
     ];
 
@@ -235,7 +235,7 @@ final class CoinTransfer
         return [
             'enabled' => (bool) ($raw['enabled'] ?? true),
             'feePercent' => max(0, min(50, (int) ($raw['feePercent'] ?? 10))),
-            'minCoins' => max(1, min(10_000_000, (int) ($raw['minCoins'] ?? 10))),
+            'minCoins' => max(1, min(10_000_000, (int) ($raw['minCoins'] ?? 50))),
             'maxCoins' => max(1, min(50_000_000, (int) ($raw['maxCoins'] ?? 500000))),
         ];
     }

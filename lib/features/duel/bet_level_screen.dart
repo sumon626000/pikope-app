@@ -6,25 +6,30 @@ import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
 import '../../core/duel_ui.dart';
 import '../../data/app_game.dart';
-import '../../data/demo_data.dart';
-import '../carrom/carrom_controller.dart';
-import '../carrom/carrom_screen.dart';
-import '../game/game_controller.dart' show SeatConfig;
 import '../lobby/lobby_screen.dart';
-import '../ludo/ludo_controller.dart';
-import '../ludo/ludo_screen.dart';
+import 'practice_launch.dart';
 import '../misc/leaderboard_screen.dart';
 import 'duel_chrome.dart';
 import 'lobby_data.dart';
 import '../online/online_screens.dart';
 import 'matchmaking_screen.dart';
 import 'shop_screen.dart';
+import 'challenge_flow.dart';
+import 'challenge_inbox_pulse.dart';
 import '../../l10n/strings.dart';
+import '../online/session.dart';
+import '../../data/api_client.dart';
 
 /// Pick what to play for: a row of tables, cheapest to richest, that scrolls
 /// sideways with the chosen one large in the middle.
 class BetLevelScreen extends ConsumerStatefulWidget {
-  const BetLevelScreen({super.key, required this.mode, this.practiceFirst = false, this.friendsRoom = false});
+  const BetLevelScreen({
+    super.key,
+    required this.mode,
+    this.practiceFirst = false,
+    this.friendsRoom = false,
+    this.challengeTarget,
+  });
 
   final DuelMode mode;
 
@@ -33,6 +38,9 @@ class BetLevelScreen extends ConsumerStatefulWidget {
 
   /// Pick a stake, then open a private room (play with friends).
   final bool friendsRoom;
+
+  /// Same stake UI as play, but tap sends a 1v1 challenge.
+  final ChallengeTarget? challengeTarget;
 
   @override
   ConsumerState<BetLevelScreen> createState() => _BetLevelScreenState();
@@ -77,11 +85,33 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
       _open(const ShopScreen(initialTab: 0));
       return;
     }
+    final target = widget.challengeTarget;
+    if (target != null) {
+      _sendChallenge(target, level);
+      return;
+    }
     if (widget.friendsRoom) {
       _open(OnlineLobbyScreen.stakedPrivate(gameKey: widget.mode.apiName, level: level));
       return;
     }
     _open(MatchmakingScreen(mode: widget.mode, level: level));
+  }
+
+  Future<void> _sendChallenge(ChallengeTarget target, BetLevel level) async {
+    try {
+      final ch = await ref.read(sessionProvider.notifier).sendChallenge(target.userId, widget.mode.apiName, level.level);
+      requestChallengeInboxPoll();
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ChallengeWaitScreen(challengeId: ch['id'] as int, opponentName: target.name),
+        ),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      final t = ref.read(stringsProvider);
+      showDuelMessage(context, title: t.challengePageTitle, body: t.maybeApi(e.message), icon: Icons.error_outline_rounded);
+    }
   }
 
   AppGame? _poolGameForMode(DuelMode mode) => switch (mode) {
@@ -93,43 +123,25 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
       };
 
   void _practiceLudo(int players) {
-    final s = ref.read(settingsProvider);
-    const colour = 0;
-    final colours = players == 2 ? [colour, (colour + 2) % 4] : [colour, 1, 2, 3];
-    final seats = [
-      SeatConfig(name: s.name, avatar: s.avatar),
-      for (var i = 1; i < players; i++)
-        SeatConfig(
-          name: DemoData.botNames[(i - 1) % DemoData.botNames.length],
-          avatar: DemoData.botAvatars[(i - 1) % DemoData.botAvatars.length],
-          isBot: true,
-        ),
-    ];
-    _open(LudoScreen(
-      config: LudoMatchConfig(seats: players, players: seats, shotSeconds: s.shotSeconds, humanSeats: 1),
-      colours: colours,
-    ));
+    final t = ref.read(stringsProvider);
+    showOfflinePracticeModeDialog(
+      context,
+      ref,
+      modeLabel: t.ludoPlayers(players),
+      onVsBots: () => _open(buildLudoPracticeScreen(ref, players: players, passAndPlay: false)),
+      onPassAndPlay: () => _open(buildLudoPracticeScreen(ref, players: players, passAndPlay: true)),
+    );
   }
 
   void _practiceCarrom() {
-    final s = ref.read(settingsProvider);
-    _open(CarromScreen(
-      config: CarromMatchConfig(
-        seats: [
-          SeatConfig(name: s.name, avatar: s.avatar),
-          SeatConfig(
-            name: DemoData.botNames[0],
-            avatar: DemoData.botAvatars[0],
-            isBot: true,
-            botSkill: s.botSkill,
-          ),
-        ],
-        shotSeconds: s.shotSeconds,
-        strikerSkin: s.carromStriker,
-        pieceSkin: s.carromPieces,
-        boardSkin: s.carromBoard,
-      ),
-    ));
+    final t = ref.read(stringsProvider);
+    showOfflinePracticeModeDialog(
+      context,
+      ref,
+      modeLabel: t.carromTitle,
+      onVsBots: () => _open(buildCarromPracticeScreen(ref, passAndPlay: false)),
+      onPassAndPlay: () => _open(buildCarromPracticeScreen(ref, passAndPlay: true)),
+    );
   }
 
   void _practice() {
@@ -217,6 +229,7 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
                 selected: _selected,
                 onSelect: (i) => setState(() => _selected = i),
                 onPlay: _play,
+                challengeMode: widget.challengeTarget != null,
               ),
             ),
             Positioned(
@@ -225,7 +238,10 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
               top: 126,
               child: Center(
                 child: Text(
-                  t.modeSubtitle(widget.mode),
+                  widget.challengeTarget != null
+                      ? t.challengePlayer(widget.challengeTarget!.name)
+                      : t.modeSubtitle(widget.mode),
+                  textAlign: TextAlign.center,
                   style: AppText.label(15, color: DuelColors.dim, weight: FontWeight.w700),
                 ),
               ),
@@ -276,6 +292,7 @@ class _Carousel extends StatelessWidget {
     required this.selected,
     required this.onSelect,
     required this.onPlay,
+    this.challengeMode = false,
   });
 
   final PageController controller;
@@ -286,6 +303,7 @@ class _Carousel extends StatelessWidget {
   final int selected;
   final ValueChanged<int> onSelect;
   final ValueChanged<BetLevel> onPlay;
+  final bool challengeMode;
 
   @override
   Widget build(BuildContext context) {
@@ -321,6 +339,7 @@ class _Carousel extends StatelessWidget {
                                 color: DuelColors.level(i),
                                 affordable: coins >= levels[i].buyIn,
                                 active: (page - i).abs() < 0.5,
+                                challengeMode: challengeMode,
                               ),
                             ),
                           );
@@ -358,13 +377,21 @@ class _Carousel extends StatelessWidget {
 }
 
 class _LevelCard extends ConsumerWidget {
-  const _LevelCard({required this.level, required this.mode, required this.color, required this.affordable, required this.active});
+  const _LevelCard({
+    required this.level,
+    required this.mode,
+    required this.color,
+    required this.affordable,
+    required this.active,
+    this.challengeMode = false,
+  });
 
   final BetLevel level;
   final DuelMode mode;
   final Color color;
   final bool affordable;
   final bool active;
+  final bool challengeMode;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -440,7 +467,10 @@ class _LevelCard extends ConsumerWidget {
               bottom: 22,
               child: Center(
                 child: affordable
-                    ? Text(t.tapToPlay, style: AppText.label(15, color: Colors.white.withValues(alpha: 0.75), weight: FontWeight.w800))
+                    ? Text(
+                        challengeMode ? t.tapToChallenge : t.tapToPlay,
+                        style: AppText.label(15, color: Colors.white.withValues(alpha: 0.75), weight: FontWeight.w800),
+                      )
                     : Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [

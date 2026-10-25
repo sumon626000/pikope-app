@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/app_state.dart';
 import 'core/app_theme.dart';
 import 'core/brand.dart';
+import 'core/root_nav.dart';
 import 'core/perf.dart';
 import 'data/app_storage.dart';
 import 'core/push_service.dart';
@@ -61,6 +62,7 @@ class BilliardPokerApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final lang = ref.watch(settingsProvider.select((s) => s.languageCode));
     return MaterialApp(
+      navigatorKey: rootNavigatorKey,
       title: Brand.name,
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),

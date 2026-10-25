@@ -633,6 +633,7 @@ final class Economy
             'redeem' => Redeem::publicConfig(),
             'coinTransfer' => CoinTransfer::publicConfig(),
             'coinDeposit' => CoinDeposit::publicConfig(),
+            'coinTutorials' => CoinTutorials::public(),
             'promotions' => Promotions::publicConfig(),
             'push' => [
                 'enabled' => (bool) Push::config()['enabled'],

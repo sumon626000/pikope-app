@@ -1,7 +1,7 @@
 name: billiard_poker
 description: "PikoPe - Pool, Ludo and Carrom with online coin play."
 publish_to: 'none'
-version: 1.0.2+16
+version: 1.0.2+17
 
 environment:
   sdk: ^3.12.0
@@ -39,7 +39,7 @@ flutter_launcher_icons:
   ios: false
   image_path: assets/icon/app_icon.png
   adaptive_icon_background: "#1E1E21"
-  adaptive_icon_foreground: assets/icon/app_icon.png
+  adaptive_icon_foreground: assets/icon/app_icon_foreground.png
 
 flutter:
   uses-material-design: true

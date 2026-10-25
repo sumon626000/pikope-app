@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_theme.dart';
-import '../../core/brand.dart';
 import '../../core/widgets.dart';
 import '../../core/audio_service.dart';
 import '../../core/duel_ui.dart';
@@ -13,18 +12,24 @@ import 'duel_chrome.dart';
 import 'lobby_data.dart';
 import '../../l10n/strings.dart';
 import 'coin_transfer_tab.dart';
+import 'coin_tutorial_video.dart';
 import 'zini_pay_checkout.dart';
 
 /// Shop-only accents (UI); logic unchanged.
 abstract final class _ShopUi {
-  static const cardFill = Color(0xFF12182C);
-  static const cardBorder = Color(0xFF3B6CFF);
+  // Matches site / coin-shop reference (navy + sky + green buy).
+  static const cardFillTop = Color(0xFF0C1B44);
+  static const cardFillMid = Color(0xFF091535);
+  static const cardFillBot = Color(0xFF060E24);
+  static const cardBorder = Color(0xFF1D3D82);
   static const cardBorderDim = Color(0xFF2A3558);
-  static const bestBorder = Color(0xFFFFB040);
-  static const heroBorder = Color(0xFFB04DFF);
-  static const buyGreen = Color(0xFF12915D);
-  static const ribbon = Color(0xFFE040FB);
-  static const tabGlow = Color(0xFF4DA3FF);
+  static const bestBorder = Color(0xFFFFAA00);
+  static const buyGreen = Color(0xFF00C675);
+  static const buyGreenText = Color(0xFF032014);
+  static const ribbonStart = Color(0xFFFF1B7A);
+  static const ribbonEnd = Color(0xFFD40058);
+  static const skyLine = Color(0xFF7DD3FC);
+  static const tabGlow = Color(0xFF00D2FF);
 
   static String? bestValuePackId(List<CoinShopPack> packs) {
     String? id;
@@ -41,11 +46,105 @@ abstract final class _ShopUi {
   }
 
   static double coinArtSize(int coins) {
-    if (coins >= 10000) return 62;
-    if (coins >= 5000) return 54;
-    if (coins >= 1000) return 50;
-    if (coins >= 500) return 46;
-    return 42;
+    if (coins >= 10000) return 52;
+    if (coins >= 5000) return 48;
+    if (coins >= 1000) return 44;
+    if (coins >= 500) return 42;
+    return 40;
+  }
+
+  static Widget packCoinArt(int coins) {
+    final size = coinArtSize(coins);
+    if (coins >= 200) {
+      return SizedBox(
+        width: 56,
+        height: 48,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            Positioned(left: 2, bottom: 2, child: PikoCoinIcon(size: size * 0.78)),
+            Positioned(right: 2, top: 0, child: PikoCoinIcon(size: size * 0.92)),
+          ],
+        ),
+      );
+    }
+    return SizedBox(
+      width: 56,
+      height: 48,
+      child: Center(child: PikoCoinIcon(size: size)),
+    );
+  }
+}
+
+/// Seven standard packs: 2-up on phones (last row full width), 3-up on wide screens.
+class _CoinPackGrid extends StatelessWidget {
+  const _CoinPackGrid({
+    required this.packs,
+    required this.columns,
+    required this.bestId,
+    required this.onBuy,
+  });
+
+  final List<CoinShopPack> packs;
+  final int columns;
+  final String? bestId;
+  final Future<void> Function(CoinShopPack) onBuy;
+
+  static const _gap = 12.0;
+  static const _cardH = 168.0;
+
+  Widget _card(CoinShopPack pack) {
+    return SizedBox(
+      height: _cardH,
+      child: _CoinPackCard(
+        pack: pack,
+        isBestValue: bestId != null && pack.id == bestId,
+        onTap: () => onBuy(pack),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (columns >= 3) {
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          mainAxisSpacing: _gap,
+          crossAxisSpacing: _gap,
+          mainAxisExtent: _cardH,
+        ),
+        itemCount: packs.length,
+        itemBuilder: (context, i) => _card(packs[i]),
+      );
+    }
+
+    final rows = <Widget>[];
+    for (var i = 0; i < packs.length;) {
+      final remaining = packs.length - i;
+      if (remaining == 1) {
+        rows.add(_card(packs[i]));
+        break;
+      }
+      rows.add(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: _card(packs[i])),
+            const SizedBox(width: _gap),
+            Expanded(child: _card(packs[i + 1])),
+          ],
+        ),
+      );
+      i += 2;
+      if (i < packs.length) {
+        rows.add(const SizedBox(height: _gap));
+      }
+    }
+    return Column(mainAxisSize: MainAxisSize.min, children: rows);
   }
 }
 
@@ -209,8 +308,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
                         controller: _tabs,
                         children: [
                           _BuyTab(data: data!, onBuy: _onPackTap),
-                          CoinTransferTab(config: data.coinTransfer),
-                          _RedeemTab(config: data.redeem),
+                          CoinTransferTab(config: data.coinTransfer, tutorialUrl: data.coinTutorials.transfer),
+                          _RedeemTab(config: data.redeem, tutorialUrl: data.coinTutorials.redeem),
                           const _ActivityTab(),
                         ],
                       ),
@@ -263,32 +362,30 @@ class _BuyTab extends ConsumerWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final cols = constraints.maxWidth >= 880 ? 3 : 2;
+        final tutorials = data.coinTutorials;
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 20),
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: constraints.maxHeight - 24),
-            child: packs.isEmpty
-                ? Center(child: Text(t.noPacks, style: AppText.label(18, color: DuelColors.dim)))
-                : GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: cols,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      mainAxisExtent: cols == 3 ? 228 : 218,
-                    ),
-                    itemCount: packs.length,
-                    itemBuilder: (context, i) {
-                      final pack = packs[i];
-                      return _CoinPackCard(
-                        pack: pack,
-                        isBestValue: bestId != null && pack.id == bestId,
-                        isHeroTier: pack.coins >= 10000,
-                        onTap: () => onBuy(pack),
-                      );
-                    },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                CoinTutorialVideoFrame(
+                  youtubeUrl: tutorials.deposit,
+                  title: t.coinTutorialDepositTitle,
+                  tapHint: t.coinTutorialTapPlay,
+                ),
+                if (packs.isEmpty)
+                  Center(child: Text(t.noPacks, style: AppText.label(18, color: DuelColors.dim)))
+                else
+                  _CoinPackGrid(
+                    packs: packs,
+                    columns: cols,
+                    bestId: bestId,
+                    onBuy: onBuy,
                   ),
+              ],
+            ),
           ),
         );
       },
@@ -579,9 +676,10 @@ class _PendingRedeemRowState extends ConsumerState<_PendingRedeemRow> {
 }
 
 class _RedeemTab extends ConsumerStatefulWidget {
-  const _RedeemTab({required this.config});
+  const _RedeemTab({required this.config, required this.tutorialUrl});
 
   final RedeemConfig config;
+  final String tutorialUrl;
 
   @override
   ConsumerState<_RedeemTab> createState() => _RedeemTabState();
@@ -698,6 +796,11 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          CoinTutorialVideoFrame(
+            youtubeUrl: widget.tutorialUrl,
+            title: t.coinTutorialRedeemTitle,
+            tapHint: t.coinTutorialTapPlay,
+          ),
           FutureBuilder<List<Map<String, dynamic>>>(
               future: _pending,
               builder: (context, snap) {
@@ -1016,25 +1119,19 @@ class _CoinPackCard extends ConsumerWidget {
     required this.pack,
     required this.onTap,
     this.isBestValue = false,
-    this.isHeroTier = false,
   });
 
   final CoinShopPack pack;
   final VoidCallback onTap;
   final bool isBestValue;
-  final bool isHeroTier;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
     final bonus = pack.discountPercent;
-    final borderColor = isHeroTier
-        ? _ShopUi.heroBorder
-        : isBestValue
-            ? _ShopUi.bestBorder
-            : _ShopUi.cardBorder;
-    final artSize = _ShopUi.coinArtSize(pack.coins);
-    final buyLabel = pack.free ? t.claimNow : '৳${formatCoins(pack.coins, compact: true)}';
+    final borderColor = isBestValue ? _ShopUi.bestBorder : _ShopUi.cardBorder;
+    final buyBdt = pack.free ? t.claimNow : '৳${formatCoins(pack.coins, compact: true)}';
+    final amountLabel = formatCoins(pack.coins, compact: true);
     return GestureDetector(
       onTap: () {
         AudioService.tap();
@@ -1043,143 +1140,156 @@ class _CoinPackCard extends ConsumerWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              _ShopUi.cardFill,
-              const Color(0xFF0E1222),
-            ],
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [_ShopUi.cardFillTop, _ShopUi.cardFillMid, _ShopUi.cardFillBot],
           ),
           border: Border.all(
-            color: borderColor.withValues(alpha: isBestValue || isHeroTier ? 0.95 : 0.55),
-            width: isBestValue || isHeroTier ? 2 : 1,
+            color: borderColor.withValues(alpha: isBestValue ? 1 : 0.9),
+            width: isBestValue ? 1.8 : 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: borderColor.withValues(alpha: isHeroTier ? 0.35 : 0.18),
-              blurRadius: isHeroTier ? 16 : 10,
+              color: (isBestValue ? _ShopUi.bestBorder : Colors.black).withValues(alpha: isBestValue ? 0.4 : 0.45),
+              blurRadius: isBestValue ? 16 : 14,
               offset: const Offset(0, 4),
             ),
+            if (isBestValue)
+              BoxShadow(color: _ShopUi.bestBorder.withValues(alpha: 0.15), blurRadius: 8, spreadRadius: -2),
           ],
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 16, 10, 10),
+              padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  PikoCoinIcon(size: artSize),
-                  const SizedBox(height: 8),
-                  Text(
-                    formatCoins(pack.coins, compact: true),
-                    textAlign: TextAlign.center,
-                    style: AppText.label(22, color: Colors.white, weight: FontWeight.w900),
-                  ),
-                  Text(
-                    PicoCoin.name,
-                    style: AppText.label(11, color: DuelColors.dim, weight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    t.youGetCoins(formatPicoCoins(pack.receiveCoins)),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppText.label(11, color: DuelColors.gold, weight: FontWeight.w800),
-                  ),
-                  const Spacer(),
-                  Container(
-                    width: double.infinity,
-                    height: 40,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF16A56A), _ShopUi.buyGreen],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: const [
-                        BoxShadow(color: Color(0x5012915D), blurRadius: 8, offset: Offset(0, 3)),
-                      ],
-                    ),
+                  Expanded(
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Flexible(
-                          child: Text(
-                            buyLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppText.label(13, color: Colors.white, weight: FontWeight.w900),
+                        const SizedBox(width: 4),
+                        _ShopUi.packCoinArt(pack.coins),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                amountLabel,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppText.label(20, color: Colors.white, weight: FontWeight.w900),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                t.youGetCoins(formatPicoCoins(pack.receiveCoins)),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppText.label(10, color: _ShopUi.skyLine, weight: FontWeight.w800),
+                              ),
+                            ],
                           ),
                         ),
-                        if (!pack.free) ...[
-                          Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 8),
-                            width: 1,
-                            height: 16,
-                            color: Colors.white38,
-                          ),
-                          Text(t.tabBuy, style: AppText.label(12, color: Colors.white, weight: FontWeight.w800)),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
-                        ],
                       ],
+                    ),
+                  ),
+                  Container(
+                    height: 34,
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    decoration: BoxDecoration(
+                      color: _ShopUi.buyGreen,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: const [
+                        BoxShadow(color: Color(0x6600C675), blurRadius: 10, offset: Offset(0, 2)),
+                      ],
+                    ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: pack.free
+                          ? Text(buyBdt, style: AppText.label(12, color: _ShopUi.buyGreenText, weight: FontWeight.w900))
+                          : Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(buyBdt, style: AppText.label(12, color: _ShopUi.buyGreenText, weight: FontWeight.w900)),
+                                Text('  •  ', style: AppText.label(10, color: _ShopUi.buyGreenText.withValues(alpha: 0.75))),
+                                Text('${t.tabBuy} →', style: AppText.label(12, color: _ShopUi.buyGreenText, weight: FontWeight.w900)),
+                              ],
+                            ),
                     ),
                   ),
                 ],
               ),
             ),
-            if (bonus > 0)
-              Positioned(
-                top: 10,
-                left: -30,
-                child: Transform.rotate(
-                  angle: -0.62,
-                  child: Container(
-                    width: 100,
-                    alignment: Alignment.center,
-                    padding: const EdgeInsets.symmetric(vertical: 5),
-                    decoration: BoxDecoration(
-                      color: _ShopUi.ribbon,
-                      boxShadow: [
-                        BoxShadow(color: _ShopUi.ribbon.withValues(alpha: 0.5), blurRadius: 8),
-                      ],
-                    ),
-                    child: Text(
-                      '+$bonus%',
-                      style: AppText.label(12, color: Colors.white, weight: FontWeight.w900),
-                    ),
-                  ),
-                ),
-              ),
+            if (bonus > 0) _BonusRibbon(percent: bonus),
             if (isBestValue)
               Positioned(
-                top: 8,
+                top: 6,
                 right: 8,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFD54F),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFFFB300)),
+                    gradient: const LinearGradient(colors: [Color(0xFFFBBF24), Color(0xFFEAB308)]),
+                    borderRadius: BorderRadius.circular(999),
+                    boxShadow: const [BoxShadow(color: Color(0xCCFBBF24), blurRadius: 8)],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.workspace_premium_rounded, size: 14, color: Colors.brown.shade800),
-                      const SizedBox(width: 4),
-                      Text(
-                        'BEST',
-                        style: AppText.label(10, color: Colors.brown.shade900, weight: FontWeight.w900),
-                      ),
+                      Icon(Icons.workspace_premium_rounded, size: 12, color: Colors.brown.shade900),
+                      const SizedBox(width: 3),
+                      Text('BEST VALUE', style: AppText.label(9, color: Colors.brown.shade900, weight: FontWeight.w900)),
                     ],
                   ),
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BonusRibbon extends StatelessWidget {
+  const _BonusRibbon({required this.percent});
+
+  final int percent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: 0,
+      left: 0,
+      child: SizedBox(
+        width: 50,
+        height: 50,
+        child: OverflowBox(
+          maxWidth: 90,
+          maxHeight: 90,
+          alignment: Alignment.topLeft,
+          child: Transform.rotate(
+            angle: -0.785398,
+            child: Container(
+              width: 72,
+              margin: const EdgeInsets.only(top: 10, left: -18),
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [_ShopUi.ribbonStart, _ShopUi.ribbonEnd],
+                ),
+                boxShadow: [BoxShadow(color: _ShopUi.ribbonStart.withValues(alpha: 0.6), blurRadius: 6)],
+              ),
+              child: Text('+$percent%', style: AppText.label(10, color: Colors.white, weight: FontWeight.w900)),
+            ),
+          ),
         ),
       ),
     );

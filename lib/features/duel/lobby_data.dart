@@ -180,7 +180,7 @@ class CoinTransferConfig {
   factory CoinTransferConfig.fromJson(Map<String, dynamic> j) => CoinTransferConfig(
         enabled: j['enabled'] as bool? ?? false,
         feePercent: j['feePercent'] as int? ?? 10,
-        minCoins: j['minCoins'] as int? ?? 10,
+        minCoins: j['minCoins'] as int? ?? 50,
         maxCoins: j['maxCoins'] as int? ?? 500000,
       );
 }
@@ -204,7 +204,7 @@ class RedeemConfig {
 
   factory RedeemConfig.fromJson(Map<String, dynamic> j) => RedeemConfig(
         enabled: j['enabled'] as bool? ?? false,
-        minCoins: j['minCoins'] as int? ?? 1000,
+        minCoins: j['minCoins'] as int? ?? 300,
         maxCoins: j['maxCoins'] as int? ?? 200000,
         maxPendingPerUser: j['maxPendingPerUser'] as int? ?? 2,
         coinPerBdt: j['coinPerBdt'] as int? ?? 1,
@@ -242,6 +242,20 @@ class CueOffer {
         price: j['price'] as int,
         currency: j['currency'] as String,
         owned: j['owned'] as bool,
+      );
+}
+
+class CoinTutorialVideos {
+  const CoinTutorialVideos({required this.deposit, required this.redeem, required this.transfer});
+
+  final String deposit;
+  final String redeem;
+  final String transfer;
+
+  factory CoinTutorialVideos.fromJson(Map<String, dynamic>? j) => CoinTutorialVideos(
+        deposit: j?['deposit'] as String? ?? '',
+        redeem: j?['redeem'] as String? ?? '',
+        transfer: j?['transfer'] as String? ?? '',
       );
 }
 
@@ -291,6 +305,7 @@ class LobbyData {
     required this.redeem,
     required this.coinDeposit,
     required this.coinTransfer,
+    required this.coinTutorials,
     required this.push,
     required this.fetchedAt,
   });
@@ -307,6 +322,7 @@ class LobbyData {
   final RedeemConfig redeem;
   final CoinDepositConfig coinDeposit;
   final CoinTransferConfig coinTransfer;
+  final CoinTutorialVideos coinTutorials;
   final PushConfig push;
   final DateTime fetchedAt;
 
@@ -340,6 +356,7 @@ class LobbyData {
         redeem: RedeemConfig.fromJson(j['redeem'] as Map<String, dynamic>? ?? const {'enabled': false}),
         coinDeposit: CoinDepositConfig.fromJson(j['coinDeposit'] as Map<String, dynamic>? ?? const {'enabled': false}),
         coinTransfer: CoinTransferConfig.fromJson(j['coinTransfer'] as Map<String, dynamic>? ?? const {'enabled': false}),
+        coinTutorials: CoinTutorialVideos.fromJson(j['coinTutorials'] as Map<String, dynamic>?),
         push: PushConfig.fromJson(j['push'] as Map<String, dynamic>?),
         fetchedAt: DateTime.now(),
       );

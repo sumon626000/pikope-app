@@ -57,10 +57,14 @@ final class Admin
                     self::saveCoinShopPack();
                 case '/admin/coin-shop/delete':
                     self::deleteCoinShopPack();
+                case '/admin/coin-tutorials':
+                    self::saveCoinTutorials();
                 case '/admin/items/save':
                     self::saveItemPrices();
                 case '/admin/otp-sms':
                     self::saveOtpSms();
+                case '/admin/otp-sms/test':
+                    self::testOtpSms();
                 case '/admin/redeem/save':
                     self::saveRedeemConfig();
                 case '/admin/redeem/approve':
@@ -125,6 +129,7 @@ final class Admin
             '/admin/referrals' => self::referralsPage($csrf),
             '/admin/economy' => self::economyPage($csrf),
             '/admin/coin-shop' => self::coinShopPage($csrf),
+            '/admin/coin-tutorials' => self::coinTutorialsPage($csrf),
             '/admin/items' => self::itemsPage($csrf),
             '/admin/otp-sms' => self::otpSmsPage($csrf),
             '/admin/redeems' => self::redeemsPage($csrf),
@@ -723,6 +728,7 @@ CSS;
                 'redeems' => ['Redeem', '/admin/redeems'],
                 'transfer' => ['Coin transfer', '/admin/transfer'],
                 'coin-shop' => ['Coin shop', '/admin/coin-shop'],
+                'coin-tutorials' => ['Coin help videos', '/admin/coin-tutorials'],
                 'items' => ['Item prices', '/admin/items'],
                 'referrals' => ['Referrals', '/admin/referrals'],
             ],
@@ -788,6 +794,7 @@ CSS;
             ['App update', '/admin/app-update', 'In-app APK update', 0],
             ['Landing page', '/admin/landing', 'pikope.com APK site', 0],
             ['Coin shop', '/admin/coin-shop', 'Packs and discount', 0],
+            ['Coin help videos', '/admin/coin-tutorials', 'YouTube: add, redeem, transfer', 0],
             ['Item prices', '/admin/items', 'Cues and board prices', 0],
             ['SMS OTP', '/admin/otp-sms', 'Forgot password SMS', 0],
         ];
@@ -1573,6 +1580,34 @@ CSS;
         self::back('/admin/coin-shop', 'Coin pack removed.');
     }
 
+    private static function saveCoinTutorials(): never
+    {
+        CoinTutorials::save([
+            'depositUrl' => (string) ($_POST['depositUrl'] ?? ''),
+            'redeemUrl' => (string) ($_POST['redeemUrl'] ?? ''),
+            'transferUrl' => (string) ($_POST['transferUrl'] ?? ''),
+        ]);
+        self::back('/admin/coin-tutorials', 'Coin help video links saved.');
+    }
+
+    private static function coinTutorialsPage(string $csrf): never
+    {
+        $base = self::base();
+        $c = CoinTutorials::config();
+        self::begin('Coin help videos', 'coin-tutorials');
+        self::pageLead(
+            'YouTube links shown in the app Shop → Buy (add coins / deposit), Transfer, and Redeem (withdraw). '
+            . 'Use full watch URLs or youtu.be links. Leave empty to hide that video frame.'
+        );
+        echo '<section class="section"><div class="card"><form method="post" action="', self::e($base), '/admin/coin-tutorials">', self::csrfField($csrf),
+            '<label>Add coins / deposit (Buy tab)<input name="depositUrl" value="', self::e($c['depositUrl']), '" placeholder="https://www.youtube.com/watch?v=..."></label>',
+            '<label>Redeem / withdraw (Redeem tab)<input name="redeemUrl" value="', self::e($c['redeemUrl']), '" placeholder="https://www.youtube.com/watch?v=..."></label>',
+            '<label>Transfer coins (Transfer tab)<input name="transferUrl" value="', self::e($c['transferUrl']), '" placeholder="https://www.youtube.com/watch?v=..."></label>',
+            '<p class="muted">Demo links are pre-filled until you save your own tutorials.</p>',
+            '<button>Save video links</button></form></div></section>';
+        self::end();
+    }
+
     private static function saveOtpSms(): never
     {
         $raw = [
@@ -1583,24 +1618,49 @@ CSS;
             'maxPerIpPerHour' => (int) ($_POST['maxPerIpPerHour'] ?? 10),
             'delivery' => (string) ($_POST['delivery'] ?? 'log'),
             'messageTemplate' => trim((string) ($_POST['messageTemplate'] ?? '')),
+            'providerPreset' => (string) ($_POST['providerPreset'] ?? 'custom'),
+            'httpMethod' => (string) ($_POST['httpMethod'] ?? 'post_json'),
             'httpUrl' => trim((string) ($_POST['httpUrl'] ?? '')),
             'httpApiKey' => trim((string) ($_POST['httpApiKey'] ?? '')),
+            'httpSenderId' => trim((string) ($_POST['httpSenderId'] ?? '')),
             'httpBodyTemplate' => trim((string) ($_POST['httpBodyTemplate'] ?? '')),
         ];
         if ($raw['delivery'] === 'http' && $raw['httpUrl'] === '') {
             self::fail('Set the SMS gateway URL or choose Log only.', '/admin/otp-sms');
         }
+        if ($raw['delivery'] === 'http' && $raw['httpMethod'] !== 'get' && $raw['httpBodyTemplate'] === '') {
+            self::fail('Set the gateway body template, or use GET (Alpha SMS).', '/admin/otp-sms');
+        }
         OtpSms::save($raw);
         self::back('/admin/otp-sms', 'SMS OTP settings saved.');
+    }
+
+    private static function testOtpSms(): never
+    {
+        if (!OtpSms::config()['enabled']) {
+            self::fail('Enable forgot-password SMS and save first.', '/admin/otp-sms');
+        }
+        try {
+            $phone = Phone::normalize(trim((string) ($_POST['testPhone'] ?? '')));
+        } catch (ApiError $e) {
+            self::fail($e->getMessage(), '/admin/otp-sms');
+        }
+        Sms::sendTest($phone);
+        self::back(
+            '/admin/otp-sms',
+            'Test SMS sent for ' . Phone::display($phone) . '. Check the phone, SMS_LOG, or server error log.'
+        );
     }
 
     private static function otpSmsPage(string $csrf): never
     {
         $base = self::base();
         $c = OtpSms::config();
+        $presetsJson = json_encode(OtpSms::providerPresets(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG);
+        $preset = (string) ($c['providerPreset'] ?? 'custom');
         self::begin('SMS OTP (forgot password)', 'otp-sms');
-        self::pageLead('Forgot password only — sign-up does not send OTP. After OTP the player sets a new password in the app.');
-        echo '<section class="section"><div class="card"><form method="post" action="', self::e($base), '/admin/otp-sms">', self::csrfField($csrf),
+        self::pageLead('Forgot password only — sign-up does not send OTP. Pick a Bangladesh SMS provider preset, paste your API key, save, then send a test SMS.');
+        echo '<section class="section"><div class="card"><form method="post" action="', self::e($base), '/admin/otp-sms" id="otp-form">', self::csrfField($csrf),
             '<label class="check"><input type="checkbox" name="enabled" value="1"', $c['enabled'] ? ' checked' : '', '> Enable forgot-password SMS</label>',
             '<div class="grid">',
             '<label>OTP digits (4–8)<input type="number" name="otpDigits" min="4" max="8" value="', self::e($c['otpDigits']), '"></label>',
@@ -1610,16 +1670,38 @@ CSS;
             '</div>',
             '<label>SMS text (must include <code>{code}</code> and may use <code>{minutes}</code>)',
             '<textarea name="messageTemplate" rows="3">', self::e($c['messageTemplate']), '</textarea></label>',
-            '<label>Delivery<select name="delivery">',
-            '<option value="log"', $c['delivery'] === 'log' ? ' selected' : '', '>Log only (development — OTP in server error log)</option>',
-            '<option value="http"', $c['delivery'] === 'http' ? ' selected' : '', '>HTTP SMS gateway</option>',
+            '<h3>SMS gateway (API)</h3>',
+            '<label>Provider preset<select name="providerPreset" id="otp-preset">';
+        foreach (OtpSms::providerPresets() as $id => $p) {
+            echo '<option value="', self::e($id), '"', $preset === $id ? ' selected' : '', '>', self::e($p['label']), '</option>';
+        }
+        echo '</select></label>',
+            '<label>Delivery<select name="delivery" id="otp-delivery">',
+            '<option value="log"', $c['delivery'] === 'log' ? ' selected' : '', '>Log only (OTP in server error log)</option>',
+            '<option value="http"', $c['delivery'] === 'http' ? ' selected' : '', '>Live HTTP SMS gateway</option>',
             '</select></label>',
-            '<label>Gateway URL<input name="httpUrl" value="', self::e($c['httpUrl']), '" placeholder="https://sms-provider.example/send"></label>',
-            '<label>Gateway API key (optional Bearer token)<input name="httpApiKey" value="', self::e($c['httpApiKey']), '" autocomplete="off"></label>',
-            '<label>Gateway JSON body (<code>{phone}</code> = 8801…, <code>{message}</code> = full SMS text)',
-            '<textarea name="httpBodyTemplate" rows="4" spellcheck="false">', self::e($c['httpBodyTemplate']), '</textarea></label>',
-            '<p class="muted">For local tests, set <code>SMS_LOG</code> in .env to a file path — OTP is appended there and overrides delivery.</p>',
-            '<button>Save OTP settings</button></form></div></section>';
+            '<label>HTTP method<select name="httpMethod" id="otp-method">',
+            '<option value="get"', ($c['httpMethod'] ?? '') === 'get' ? ' selected' : '', '>GET (query string — Alpha SMS)</option>',
+            '<option value="post_json"', ($c['httpMethod'] ?? 'post_json') === 'post_json' ? ' selected' : '', '>POST JSON (Bearer API key)</option>',
+            '<option value="post_form"', ($c['httpMethod'] ?? '') === 'post_form' ? ' selected' : '', '>POST form body</option>',
+            '</select></label>',
+            '<label>Gateway URL<input name="httpUrl" id="otp-url" value="', self::e($c['httpUrl']), '" placeholder="https://api.sms.net.bd/sendsms?api_key={api_key}&amp;msg={message}&amp;to={phone}"></label>',
+            '<label>API key<input name="httpApiKey" id="otp-key" value="', self::e($c['httpApiKey']), '" autocomplete="off" placeholder="From sms.bd / GotiSMS / Qolek panel"></label>',
+            '<label>Sender ID (masking name, if approved)<input name="httpSenderId" id="otp-sender" value="', self::e($c['httpSenderId'] ?? ''), '" placeholder="PikoPe"></label>',
+            '<label>Request body template (POST only; leave empty for GET)',
+            '<textarea name="httpBodyTemplate" id="otp-body" rows="5" spellcheck="false">', self::e($c['httpBodyTemplate']), '</textarea></label>',
+            '<p class="muted">Placeholders: <code>{phone}</code> (8801…), <code>{phone_local}</code> (01…), <code>{message}</code>, <code>{api_key}</code>, <code>{sender_id}</code>. Alpha: put API key in the field above — URL uses <code>{api_key}</code>, not Bearer.</p>',
+            '<p class="muted">Override for dev: <code>SMS_LOG</code> in .env writes every OTP to a file (ignores gateway).</p>',
+            '<button type="submit">Save OTP settings</button></form></div></section>',
+            '<section class="section"><div class="card"><h3>Send test SMS</h3>',
+            '<form method="post" action="', self::e($base), '/admin/otp-sms/test">', self::csrfField($csrf),
+            '<label>Mobile (01… or +880)<input name="testPhone" placeholder="017XXXXXXXX"></label>',
+            '<button type="submit">Send test OTP</button></form></div></section>',
+            '<script>(function(){var P=', $presetsJson, '||{};var sel=document.getElementById("otp-preset");',
+            'function apply(id){var p=P[id];if(!p||id==="custom")return;document.getElementById("otp-method").value=p.httpMethod;',
+            'document.getElementById("otp-url").value=p.httpUrl||"";document.getElementById("otp-body").value=p.httpBodyTemplate||"";',
+            'document.getElementById("otp-delivery").value="http";}',
+            'sel&&sel.addEventListener("change",function(){apply(sel.value);});})();</script>';
         self::end();
     }
 
@@ -1627,7 +1709,7 @@ CSS;
     {
         Redeem::save([
             'enabled' => ($_POST['enabled'] ?? '0') === '1',
-            'minCoins' => (int) ($_POST['minCoins'] ?? 1000),
+            'minCoins' => (int) ($_POST['minCoins'] ?? 300),
             'maxCoins' => (int) ($_POST['maxCoins'] ?? 200000),
             'maxPendingPerUser' => (int) ($_POST['maxPendingPerUser'] ?? 2),
             'coinPerBdt' => (int) ($_POST['coinPerBdt'] ?? 1),
@@ -1779,7 +1861,7 @@ CSS;
         CoinTransfer::save([
             'enabled' => isset($_POST['enabled']),
             'feePercent' => (int) ($_POST['feePercent'] ?? 10),
-            'minCoins' => (int) ($_POST['minCoins'] ?? 10),
+            'minCoins' => (int) ($_POST['minCoins'] ?? 50),
             'maxCoins' => (int) ($_POST['maxCoins'] ?? 500000),
         ]);
         self::back('/admin/transfer', 'Transfer settings saved.');

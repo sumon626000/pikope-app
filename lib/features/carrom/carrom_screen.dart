@@ -165,7 +165,12 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
                   child: Stack(
                     children: [
                       Positioned(left: 64, top: 0, child: _MenuTab(onTap: () => setState(() => _paused = true))),
-                      if (widget.config.bet.staked) Positioned(left: 24, top: 70, child: CoinsTile(coins: widget.config.bet.prize, size: 70)),
+                      if (widget.config.bet.staked)
+                        Positioned(
+                          left: 20,
+                          top: 58,
+                          child: MatchPrizeTile(prize: widget.config.bet.prize),
+                        ),
                       // The board.
                       Positioned(
                         left: _boardLeft,

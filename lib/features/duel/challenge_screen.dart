@@ -8,71 +8,16 @@ import '../../core/audio_service.dart';
 import '../../core/duel_ui.dart';
 import '../../core/widgets.dart';
 import '../../data/api_client.dart';
-import '../online/online_screens.dart';
 import '../online/session.dart';
-import 'challenge_inbox_pulse.dart';
 import 'challenge_incoming_banner.dart';
 import 'duel_chrome.dart';
 import 'lobby_data.dart';
-import 'matchmaking_screen.dart';
+import 'bet_level_screen.dart';
+import 'challenge_flow.dart';
+import 'challenge_game_mode_art.dart';
 import '../../l10n/strings.dart';
 
-BetLevel _betFromRoom(WidgetRef ref, DuelMode mode, Map<String, dynamic> room) {
-  final levelIdx = room['level'] as int?;
-  final lobby = ref.read(lobbyProvider).valueOrNull;
-  if (levelIdx != null && lobby != null) {
-    for (final b in lobby.levelsFor(mode)) {
-      if (b.level == levelIdx) return b;
-    }
-  }
-  final stake = (room['stake'] as int?) ?? 0;
-  final fee = (room['fee'] as int?) ?? 0;
-  return BetLevel(
-    level: levelIdx ?? 0,
-    name: stake > 0 ? '$stake' : '',
-    stake: stake,
-    fee: fee,
-    buyIn: stake + fee,
-    players: mode.seats,
-    prize: room['prize'] as int?,
-  );
-}
-
-/// After accept: join matchmaking or go straight into a live match.
-Future<void> openChallengeRoom(BuildContext context, WidgetRef ref, Map<String, dynamic> room, {bool replace = false}) async {
-  final gameKey = room['game'] as String;
-  final mode = duelModeFromApi(gameKey);
-  if (mode == null) return;
-  final playing = room['status'] == 'playing' && room['gameId'] != null;
-  if (!playing) {
-    final bet = _betFromRoom(ref, mode, room);
-    final route = MaterialPageRoute<void>(builder: (_) => MatchmakingScreen(mode: mode, level: bet, initialRoom: room));
-    if (replace) {
-      await Navigator.of(context).pushReplacement(route);
-    } else {
-      await Navigator.of(context).push(route);
-    }
-    return;
-  }
-  final navigator = Navigator.of(context);
-  final wsUrl = await ref.read(sessionProvider.notifier).realtimeUrl();
-  final myId = ref.read(sessionProvider).userId;
-  final players = (room['players'] as List).cast<Map<String, dynamic>>();
-  final me = players.firstWhere((p) => p['id'] == myId, orElse: () => players.first);
-  await openOnlineMatch(
-    navigator,
-    ref.read(apiProvider)!,
-    gameId: room['gameId'] as int,
-    roomId: room['id'] as int,
-    gameKey: gameKey,
-    seat: me['seat'] as int,
-    shotSeconds: room['shotSeconds'] as int,
-    players: players,
-    wsUrl: wsUrl,
-    bet: {'mode': gameKey, 'stake': room['stake'], 'prize': room['prize'], 'multiplier': room['multiplier']},
-    replace: replace,
-  );
-}
+export 'challenge_flow.dart' show openChallengeRoom, ChallengeTarget;
 
 /// Top banner (not full-screen) for an incoming challenge.
 Future<void> showIncomingChallenge(BuildContext context, WidgetRef ref, Map<String, dynamic> ch) async {
@@ -133,10 +78,19 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
       }
     }
     if (!mounted) return;
-    await showDuelDialog<void>(
-      context,
-      barrierColor: const Color(0xCC000000),
-      builder: (dialog) => _SendDialog(player: player),
+    final target = ChallengeTarget(userId: player['id'] as int, name: player['name'] as String);
+    var gameKey = player['game'] as String? ?? '';
+    var mode = duelModeFromApi(gameKey);
+    if (mode == null) {
+      gameKey = await Navigator.of(context).push<String>(
+            MaterialPageRoute(builder: (_) => ChallengeGamePickScreen(player: player)),
+          ) ??
+          '';
+      mode = duelModeFromApi(gameKey);
+    }
+    if (!mounted || mode == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => BetLevelScreen(mode: mode!, challengeTarget: target)),
     );
     if (mounted) _refresh();
   }
@@ -240,203 +194,36 @@ class _PlayerRow extends ConsumerWidget {
   }
 }
 
-enum _SendChallengeStep { gameFamily, poolMode, stake }
+enum _PickGameStep { gameFamily, poolMode, ludoPlayers }
 
-class _SendDialog extends ConsumerStatefulWidget {
-  const _SendDialog({required this.player});
+/// Full-screen game picker before the shared bet-level (stake carousel) screen.
+class ChallengeGamePickScreen extends ConsumerStatefulWidget {
+  const ChallengeGamePickScreen({super.key, required this.player});
 
   final Map<String, dynamic> player;
 
   @override
-  ConsumerState<_SendDialog> createState() => _SendDialogState();
+  ConsumerState<ChallengeGamePickScreen> createState() => _ChallengeGamePickScreenState();
 }
 
-class _SendDialogState extends ConsumerState<_SendDialog> {
-  _SendChallengeStep _step = _SendChallengeStep.gameFamily;
-  String? _game;
-  int? _level;
-  bool _busy = false;
-  bool _lobbyLoading = true;
-  String? _error;
-  int? _sentId;
-  Timer? _poll;
-
+class _ChallengeGamePickScreenState extends ConsumerState<ChallengeGamePickScreen> {
+  _PickGameStep _step = _PickGameStep.gameFamily;
   static const _poolGames = ['eight', 'nine', 'ten', 'billiard'];
 
-  @override
-  void initState() {
-    super.initState();
-    _ensureLobby();
-  }
-
-  @override
-  void dispose() {
-    _poll?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _ensureLobby() async {
-    if (ref.read(lobbyProvider).valueOrNull != null) {
-      if (mounted) setState(() => _lobbyLoading = false);
-      return;
-    }
-    if (mounted) setState(() => _lobbyLoading = true);
-    try {
-      await ref.read(lobbyProvider.notifier).refreshRequired();
-      if (mounted) setState(() => _lobbyLoading = false);
-    } on ApiException catch (e) {
-      if (mounted) {
-        setState(() {
-          _lobbyLoading = false;
-          _error = ref.read(stringsProvider).maybeApi(e.message);
-        });
-      }
-    }
-  }
-
-  List<BetLevel> _paidLevelsFor(String game) {
-    final mode = duelModeFromApi(game);
-    if (mode == null) return const [];
-    final all = ref.read(lobbyProvider).valueOrNull?.levelsFor(mode) ?? const [];
-    return all.where((l) => l.stake > 0).toList();
-  }
-
-  void _pickDefaultLevel() {
-    final game = _game;
-    if (game == null) {
-      _level = null;
-      return;
-    }
-    final levels = _paidLevelsFor(game);
-    _level = levels.isNotEmpty ? levels.first.level : null;
+  void _finish(String gameKey) {
+    AudioService.tap();
+    Navigator.of(context).pop(gameKey);
   }
 
   void _goBack() {
     AudioService.tap();
     setState(() {
-      _error = null;
-      if (_step == _SendChallengeStep.stake) {
-        if (_game != null && _poolGames.contains(_game)) {
-          _step = _SendChallengeStep.poolMode;
-        } else {
-          _step = _SendChallengeStep.gameFamily;
-          _game = null;
-          _level = null;
-        }
-      } else if (_step == _SendChallengeStep.poolMode) {
-        _step = _SendChallengeStep.gameFamily;
-        _game = null;
-        _level = null;
-      }
-    });
-  }
-
-  Future<void> _send() async {
-    final game = _game;
-    final level = _level;
-    if (game == null || level == null) {
-      setState(() => _error = ref.read(stringsProvider).challengePickStake);
-      return;
-    }
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      final ch = await ref.read(sessionProvider.notifier).sendChallenge(widget.player['id'] as int, game, level);
-      requestChallengeInboxPoll();
-      _sentId = ch['id'] as int;
-      // Wait for acceptance.
-      _poll = Timer.periodic(const Duration(seconds: 2), (_) => _checkAccepted());
-      if (mounted) setState(() {});
-    } on ApiException catch (e) {
-      if (mounted) setState(() => _error = ref.read(stringsProvider).maybeApi(e.message));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _checkAccepted() async {
-    try {
-      final inbox = await ref.read(sessionProvider.notifier).challengeInbox();
-      final outgoing = (inbox['outgoing'] as List).cast<Map<String, dynamic>>();
-      final mine = outgoing.where((c) => c['id'] == _sentId).toList();
-      if (mine.isEmpty) {
-        // Declined, expired or cancelled: the server no longer lists it.
-        _poll?.cancel();
-        if (mounted) {
-          setState(() {
-            _sentId = null;
-            _error = ref.read(stringsProvider).notAcceptedTryLater;
-          });
-        }
-        return;
-      }
-      final c = mine.first;
-      if (c['status'] == 'accepted' && c['roomId'] != null) {
-        _poll?.cancel();
-        final room = await ref.read(apiProvider)!.get('/rooms/${c['roomId']}');
-        if (!mounted) return;
+      if (_step == _PickGameStep.poolMode || _step == _PickGameStep.ludoPlayers) {
+        _step = _PickGameStep.gameFamily;
+      } else {
         Navigator.of(context).pop();
-        await openChallengeRoom(context, ref, room);
       }
-    } on ApiException {
-      // keep waiting
-    }
-  }
-
-  Future<void> _cancel() async {
-    _poll?.cancel();
-    if (_sentId != null) {
-      try {
-        await ref.read(sessionProvider.notifier).cancelChallenge(_sentId!);
-      } on ApiException {
-        // ignore
-      }
-    }
-    if (mounted) Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = ref.watch(stringsProvider);
-    final waiting = _sentId != null;
-    final name = (widget.player['name'] as String).toUpperCase();
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        width: 540,
-        padding: const EdgeInsets.all(22),
-        decoration: duelPanel(rim: DuelColors.rimLight),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(waiting ? t.waitingShort : t.challengePlayer(widget.player['name'] as String),
-                textAlign: TextAlign.center, style: AppText.label(20, weight: FontWeight.w900)),
-            const SizedBox(height: 16),
-            if (waiting) ...[
-              const CircularProgressIndicator(color: DuelColors.gold),
-              const SizedBox(height: 14),
-              Text(t.waitingAccept(name), textAlign: TextAlign.center, style: AppText.label(14, color: DuelColors.dim)),
-              const SizedBox(height: 20),
-              DuelButton(label: t.cancel, width: 180, height: 48, color: DuelColors.rimLight, onPressed: _cancel),
-            ] else ...[
-              ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.52),
-                child: SingleChildScrollView(child: _buildSetupStep(t)),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(_error!.toUpperCase(), style: AppText.label(13, color: DuelColors.red)),
-              ],
-              const SizedBox(height: 16),
-              _buildSetupActions(t),
-            ],
-          ],
-        ),
-      ),
-    );
+    });
   }
 
   String _poolLabel(AppStrings t, String game) => switch (game) {
@@ -446,18 +233,44 @@ class _SendDialogState extends ConsumerState<_SendDialog> {
         _ => t.billiardTitle,
       };
 
-  String _gameTitle(AppStrings t, String game) => switch (game) {
-        'ludo2' => t.ludoTitle,
-        'carrom' => t.carromTitle,
-        _ => _poolLabel(t, game),
-      };
-
-  Widget _buildSetupStep(AppStrings t) {
-    return switch (_step) {
-      _SendChallengeStep.gameFamily => _buildGameFamilyStep(t),
-      _SendChallengeStep.poolMode => _buildPoolModeStep(t),
-      _SendChallengeStep.stake => _buildStakeStep(t),
-    };
+  @override
+  Widget build(BuildContext context) {
+    final t = ref.watch(stringsProvider);
+    return DuelCanvas(
+      child: Stack(
+        children: [
+          const Positioned(left: 0, right: 0, top: 6, child: DuelTopBar()),
+          Positioned(
+            left: 42,
+            top: 722,
+            child: NavTile(icon: Icons.reply_rounded, label: t.navBack, onTap: _goBack),
+          ),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 620),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 100, 24, 80),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(t.challengePlayer(widget.player['name'] as String),
+                        textAlign: TextAlign.center, style: AppText.label(22, weight: FontWeight.w900)),
+                    const SizedBox(height: 8),
+                    Text(t.challengePickGame, style: AppText.label(14, color: DuelColors.dim)),
+                    const SizedBox(height: 20),
+                    switch (_step) {
+                      _PickGameStep.gameFamily => _buildGameFamilyStep(t),
+                      _PickGameStep.poolMode => _buildPoolModeStep(t),
+                      _PickGameStep.ludoPlayers => _buildLudoPlayersStep(t),
+                    },
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildGameFamilyStep(AppStrings t) {
@@ -466,47 +279,120 @@ class _SendDialogState extends ConsumerState<_SendDialog> {
       children: [
         Text(t.challengePickGame, textAlign: TextAlign.center, style: AppText.label(13, color: DuelColors.dim)),
         const SizedBox(height: 12),
-        _familyTile(t.billiardTitle, DuelColors.green, () {
-          setState(() {
-            _step = _SendChallengeStep.poolMode;
-            _game = null;
-            _level = null;
-            _error = null;
-          });
-        }),
-        const SizedBox(height: 10),
-        _familyTile(t.ludoTitle, const Color(0xFFE8721C), () {
-          setState(() {
-            _game = 'ludo2';
-            _step = _SendChallengeStep.stake;
-            _pickDefaultLevel();
-            _error = null;
-          });
-        }),
-        const SizedBox(height: 10),
-        _familyTile(t.carromTitle, const Color(0xFFD9A34A), () {
-          setState(() {
-            _game = 'carrom';
-            _step = _SendChallengeStep.stake;
-            _pickDefaultLevel();
-            _error = null;
-          });
-        }),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 420;
+            final cardH = compact ? 118.0 : 132.0;
+            return SizedBox(
+              height: cardH,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _gameModeCard(
+                    label: t.poolTitle,
+                    accent: DuelColors.green,
+                    icon: Icons.sports_baseball_rounded,
+                    art: const ChallengePoolArt(),
+                    compact: compact,
+                    onTap: () {
+                      setState(() => _step = _PickGameStep.poolMode);
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  _gameModeCard(
+                    label: t.carromTitle,
+                    accent: const Color(0xFFE8A030),
+                    icon: Icons.adjust_rounded,
+                    art: const ChallengeCarromArt(),
+                    compact: compact,
+                    onTap: () => _finish('carrom'),
+                  ),
+                  const SizedBox(width: 8),
+                  _gameModeCard(
+                    label: t.ludoTitle,
+                    accent: const Color(0xFF3B8CFF),
+                    icon: Icons.casino_rounded,
+                    art: const ChallengeLudoArt(),
+                    compact: compact,
+                    onTap: () {
+                      setState(() => _step = _PickGameStep.ludoPlayers);
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ],
     );
   }
 
-  Widget _familyTile(String label, Color accent, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: () {
-        AudioService.tap();
-        onTap();
-      },
-      child: Container(
-        height: 56,
-        alignment: Alignment.center,
-        decoration: duelPanel(radius: 14, rim: accent, fill: const Color(0xCC0B0E1C)),
-        child: Text(label, style: AppText.label(20, color: accent, weight: FontWeight.w900)),
+  Widget _gameModeCard({
+    required String label,
+    required Color accent,
+    required IconData icon,
+    required Widget art,
+    required bool compact,
+    required VoidCallback onTap,
+  }) {
+    final fontSize = compact ? 11.0 : 13.0;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          AudioService.tap();
+          onTap();
+        },
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: accent.withValues(alpha: 0.85), width: 1.8),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                accent.withValues(alpha: 0.14),
+                const Color(0xFF0C101E),
+                const Color(0xFF080A14),
+              ],
+            ),
+            boxShadow: [
+              BoxShadow(color: accent.withValues(alpha: 0.28), blurRadius: 10, spreadRadius: -2),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(compact ? 5 : 7, compact ? 5 : 7, compact ? 5 : 7, 0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: art,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.fromLTRB(4, compact ? 4 : 6, 4, compact ? 6 : 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, size: compact ? 14 : 16, color: Colors.white.withValues(alpha: 0.9)),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: AppText.label(fontSize, color: Colors.white, weight: FontWeight.w900),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -515,129 +401,115 @@ class _SendDialogState extends ConsumerState<_SendDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Text(t.poolTitle, textAlign: TextAlign.center, style: AppText.label(18, color: DuelColors.gold, weight: FontWeight.w900)),
+        const SizedBox(height: 6),
         Text(t.challengePickGame, textAlign: TextAlign.center, style: AppText.label(13, color: DuelColors.dim)),
-        const SizedBox(height: 12),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          childAspectRatio: 2.4,
+        const SizedBox(height: 14),
+        Row(
           children: [
-            for (final g in _poolGames)
-              _modeTile(_poolLabel(t, g), _game == g, () {
-                setState(() {
-                  _game = g;
-                  _step = _SendChallengeStep.stake;
-                  _pickDefaultLevel();
-                  _error = null;
-                });
-              }),
+            for (var i = 0; i < _poolGames.length; i++) ...[
+              if (i > 0) const SizedBox(width: 8),
+              Expanded(
+                child: _poolModeChip(
+                  _poolLabel(t, _poolGames[i]),
+                  accent: DuelColors.green,
+                  selected: false,
+                  onTap: () => _finish(_poolGames[i]),
+                ),
+              ),
+            ],
           ],
         ),
       ],
     );
   }
 
-  Widget _modeTile(String label, bool on, VoidCallback onTap) {
+  Widget _poolModeChip(String label, {required Color accent, required bool selected, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: () {
         AudioService.tap();
         onTap();
       },
       child: Container(
+        height: 52,
         alignment: Alignment.center,
-        decoration: duelPanel(radius: 12, rim: on ? DuelColors.green : DuelColors.rim, glow: on, fill: on ? const Color(0xE60C2414) : const Color(0xCC0B0E1C)),
-        child: Text(label, textAlign: TextAlign.center, style: AppText.label(16, color: on ? DuelColors.green : DuelColors.silver, weight: FontWeight.w900)),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: selected ? accent : DuelColors.rim, width: selected ? 2 : 1),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: selected
+                ? [accent.withValues(alpha: 0.22), const Color(0xFF0C101E)]
+                : [const Color(0xFF141A2E), const Color(0xFF0A0D18)],
+          ),
+          boxShadow: selected ? [BoxShadow(color: accent.withValues(alpha: 0.25), blurRadius: 8)] : null,
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: AppText.label(12, color: selected ? accent : DuelColors.silver, weight: FontWeight.w900),
+        ),
       ),
     );
   }
 
-  Widget _buildStakeStep(AppStrings t) {
-    final game = _game;
-    final levels = game == null ? const <BetLevel>[] : _paidLevelsFor(game);
+  Widget _buildLudoPlayersStep(AppStrings t) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (game != null)
-          Text(_gameTitle(t, game), textAlign: TextAlign.center, style: AppText.label(18, color: DuelColors.gold, weight: FontWeight.w900)),
-        const SizedBox(height: 8),
-        Text(t.stake, textAlign: TextAlign.center, style: AppText.label(13, color: DuelColors.dim)),
-        const SizedBox(height: 12),
-        if (_lobbyLoading)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
-            child: Column(
-              children: [
-                const CircularProgressIndicator(color: DuelColors.gold),
-                const SizedBox(height: 10),
-                Text(t.loading, style: AppText.label(13, color: DuelColors.dim)),
-              ],
-            ),
-          )
-        else if (levels.isEmpty)
-          Column(
-            children: [
-              Text(
-                _error ??
-                    (ref.read(lobbyProvider).valueOrNull != null
-                        ? t.challengePickStake
-                        : t.offlineServer),
-                textAlign: TextAlign.center,
-                style: AppText.label(14, color: DuelColors.red),
+        Text(t.ludoTitle, textAlign: TextAlign.center, style: AppText.label(18, color: const Color(0xFF3B8CFF), weight: FontWeight.w900)),
+        const SizedBox(height: 6),
+        Text(t.challengePickGame, textAlign: TextAlign.center, style: AppText.label(13, color: DuelColors.dim)),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: _ludoPlayerChip(
+                label: t.ludoPlayers(2),
+                selected: false,
+                onTap: () => _finish('ludo2'),
               ),
-              const SizedBox(height: 10),
-              DuelButton(label: t.retry, width: 140, height: 42, onPressed: _ensureLobby),
-            ],
-          )
-        else
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: 2.1,
             ),
-            itemCount: levels.length,
-            itemBuilder: (context, i) {
-              final l = levels[i];
-              final on = _level == l.level;
-              return GestureDetector(
-                onTap: () {
-                  AudioService.tap();
-                  setState(() => _level = l.level);
-                },
-                child: Container(
-                  alignment: Alignment.center,
-                  decoration: duelPanel(radius: 10, rim: on ? DuelColors.gold : DuelColors.rim, glow: on),
-                  child: Text(l.displayName, style: AppText.label(15, color: on ? DuelColors.gold : DuelColors.silver, weight: FontWeight.w800)),
-                ),
-              );
-            },
-          ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _ludoPlayerChip(
+                label: t.ludoPlayers(4),
+                selected: false,
+                onTap: () => _finish('ludo4'),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
 
-  Widget _buildSetupActions(AppStrings t) {
-    final onStake = _step == _SendChallengeStep.stake;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        if (_step != _SendChallengeStep.gameFamily)
-          Padding(
-            padding: const EdgeInsets.only(right: 10),
-            child: DuelButton(label: t.back, width: 120, height: 50, color: DuelColors.rimLight, onPressed: _goBack),
+  Widget _ludoPlayerChip({required String label, required bool selected, required VoidCallback onTap}) {
+    const accent = Color(0xFF3B8CFF);
+    return GestureDetector(
+      onTap: () {
+        AudioService.tap();
+        onTap();
+      },
+      child: Container(
+        height: 56,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: selected ? accent : DuelColors.rim, width: selected ? 2 : 1),
+          gradient: LinearGradient(
+            colors: selected
+                ? [accent.withValues(alpha: 0.2), const Color(0xFF0C101E)]
+                : [const Color(0xFF141A2E), const Color(0xFF0A0D18)],
           ),
-        if (onStake) ...[
-          DuelButton(label: _busy ? '...' : t.send, width: 180, height: 50, color: DuelColors.gold, onPressed: _busy ? null : _send),
-          const SizedBox(width: 10),
-        ],
-        DuelButton(label: t.close, width: onStake ? 130 : 180, height: 50, color: DuelColors.rimLight, onPressed: () => Navigator.of(context).pop()),
-      ],
+          boxShadow: selected ? [BoxShadow(color: accent.withValues(alpha: 0.28), blurRadius: 10)] : null,
+        ),
+        child: Text(label, textAlign: TextAlign.center, style: AppText.label(14, color: selected ? accent : DuelColors.silver, weight: FontWeight.w900)),
+      ),
     );
   }
 }

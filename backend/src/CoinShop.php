@@ -33,6 +33,8 @@ final class CoinShop
         $merged = array_merge(self::DEFAULTS, array_intersect_key($saved, self::DEFAULTS));
         if (!is_array($merged['packs'] ?? null)) {
             $merged['packs'] = self::DEFAULTS['packs'];
+        } else {
+            $merged['packs'] = self::resolvePacks($merged['packs']);
         }
         self::$config = self::applyTierBonuses(self::normalize($merged));
         return self::$config;
@@ -59,6 +61,35 @@ final class CoinShop
         $clean = self::normalize($raw);
         Db::run("INSERT INTO settings (k, v) VALUES ('coin_shop', ?) ON DUPLICATE KEY UPDATE v = VALUES(v)", [json_encode($clean)]);
         self::$config = null;
+    }
+
+    /** @param list<array<string,mixed>> $saved */
+    private static function resolvePacks(array $saved): array
+    {
+        if ($saved === []) {
+            return self::DEFAULTS['packs'];
+        }
+        return self::mergeStandardPacks($saved);
+    }
+
+    /** Keep admin edits but always expose all 7 standard BDT packs (100 … 10000). */
+    /** @param list<array<string,mixed>> $saved @return list<array<string,mixed>> */
+    private static function mergeStandardPacks(array $saved): array
+    {
+        $byId = [];
+        foreach ($saved as $p) {
+            if (!is_array($p) || !isset($p['id'])) {
+                continue;
+            }
+            $byId[strtolower((string) $p['id'])] = $p;
+        }
+        $out = [];
+        foreach (self::DEFAULTS['packs'] as $def) {
+            $id = (string) $def['id'];
+            $row = $byId[$id] ?? $def;
+            $out[] = array_merge($def, $row, ['id' => $id]);
+        }
+        return $out;
     }
 
     /** Bonus % by pack size: 100–1000 → 5%, 5000–10000 → 10%. */

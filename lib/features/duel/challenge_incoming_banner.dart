@@ -7,7 +7,7 @@ import '../../core/widgets.dart';
 import '../../data/api_client.dart';
 import '../../l10n/strings.dart';
 import '../online/session.dart';
-import 'challenge_screen.dart';
+import 'challenge_flow.dart';
 
 /// Compact top banner (not a full-screen dialog) for an incoming 1v1 invite.
 Future<void> showIncomingChallengeBanner(BuildContext context, WidgetRef ref, Map<String, dynamic> ch) async {

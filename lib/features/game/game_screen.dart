@@ -174,11 +174,9 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
               Positioned(
                 left: 118,
                 top: 14,
-                child: CoinsTile(
-                  // The prize stays a secret until the wheel has stopped.
-                  coins: widget.config.bet.staked ? (_intro ? 0 : widget.config.bet.prize) : settings.coins,
-                  size: 84,
-                ),
+                child: widget.config.bet.staked
+                    ? MatchPrizeTile(prize: _intro ? 0 : widget.config.bet.prize)
+                    : CoinsTile(coins: settings.coins, size: 84),
               ),
               Positioned(
                 left: 104 - PowerBar.touchPad.left,

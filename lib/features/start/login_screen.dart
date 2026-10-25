@@ -11,7 +11,7 @@ import '../../core/bd_phone.dart';
 import '../../core/duel_ui.dart';
 import '../../core/widgets/bd_phone_field.dart';
 import 'start_route.dart';
-import '../online/online_screens.dart';
+import 'forgot_password_screen.dart';
 import '../misc/legal_screen.dart';
 import '../online/session.dart';
 import '../../l10n/strings.dart';
@@ -260,7 +260,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         alignment: Alignment.centerRight,
                         child: TextButton(
                           onPressed: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(builder: (_) => const AccountScreen()),
+                            MaterialPageRoute<void>(
+                              builder: (_) => ForgotPasswordScreen(initialPhoneLocal: _phone.text.trim()),
+                            ),
                           ),
                           child: Text(s.forgotPassword, style: AppText.label(20, color: AppColors.textDim)),
                         ),
