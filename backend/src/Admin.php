@@ -2057,8 +2057,9 @@ CSS;
         self::begin('Coin shop', 'coin-shop');
         self::pageLead(
             'Shop packs. <b>Base coins</b> = BDT for ZiniPay / add-coin (e.g. pay 100 BDT on the 100 pack). '
-            . '<b>Bonus %</b> = extra Pico on that deposit only. '
-            . '100–1000 base → 5% and 5000–10000 → 10% tier bonuses apply on the app when saved. '
+            . '<b>Bonus %</b> = extra Pico on that deposit only (not when buying the pack with in-app coins). '
+            . '<b>Price (coins)</b> = in-app shop: player pays that much and receives <b>base coins</b> only (no bonus loop). '
+            . '100–1000 base → 5% and 5000–10000 → 10% tier bonuses apply on deposit when saved. '
             . 'Click <b>Edit</b> on a row to change that pack.'
         );
         echo '<section class="section"><div class="card"><form class="row" method="post" action="', self::e($base), '/admin/coin-shop/global">', self::csrfField($csrf),

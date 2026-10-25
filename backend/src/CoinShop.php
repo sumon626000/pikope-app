@@ -73,13 +73,24 @@ final class CoinShop
         return 0;
     }
 
-    /** Coins the player receives (base + per-pack bonus % only, e.g. 100 @ 5% → 105). */
+    /** Coins credited on BDT deposit / free claim (base + bonus %, e.g. 100 @ 5% → 105). */
     public static function receiveCoins(array $pack, ?int $global = null): int
     {
         unset($global);
         $base = (int) $pack['coins'];
         $bonus = max(0, min(100, self::effectiveBonusPercent($pack)));
         return $base + intdiv($base * $bonus, 100);
+    }
+
+    /** In-app purchase paying Pico coin — no deposit bonus; never credit more than price (anti-arbitrage). */
+    public static function receiveCoinsForCoinPurchase(array $pack): int
+    {
+        $price = (int) ($pack['priceCoins'] ?? 0);
+        if ($price <= 0) {
+            return self::receiveCoins($pack);
+        }
+        $base = (int) $pack['coins'];
+        return min($base, $price);
     }
 
     /** @param array<string,mixed> $pack */
@@ -104,8 +115,9 @@ final class CoinShop
             if (!(bool) ($p['active'] ?? true)) {
                 continue;
             }
-            $receive = self::receiveCoins($p);
-            $free = (int) $p['priceCoins'] <= 0;
+            $price = (int) $p['priceCoins'];
+            $free = $price <= 0;
+            $receive = $free ? self::receiveCoins($p) : self::receiveCoinsForCoinPurchase($p);
             $claimed = $free && self::freeClaimed($userId, (string) $p['id']);
             $out[] = [
                 'id' => $p['id'],
@@ -114,7 +126,7 @@ final class CoinShop
                 'discountPercent' => self::effectiveBonusPercent($p),
                 'globalDiscountPercent' => 0,
                 'receiveCoins' => $receive,
-                'priceCoins' => (int) $p['priceCoins'],
+                'priceCoins' => $price,
                 'free' => $free,
                 'claimed' => $claimed,
             ];
@@ -132,8 +144,8 @@ final class CoinShop
             if ($pack === null || !(bool) ($pack['active'] ?? true)) {
                 throw ApiError::notFound('No such coin pack');
             }
-            $receive = self::receiveCoins($pack);
             $price = (int) $pack['priceCoins'];
+            $receive = self::receiveCoinsForCoinPurchase($pack);
             if ($price <= 0) {
                 if (self::freeClaimed($uid, $packId)) {
                     throw ApiError::conflict('You already claimed this pack', 'already_claimed');

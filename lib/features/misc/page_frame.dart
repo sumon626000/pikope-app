@@ -69,12 +69,31 @@ class SectionCard extends StatelessWidget {
       width: double.infinity,
       margin: EdgeInsets.only(bottom: compact ? 8 : 14),
       padding: EdgeInsets.fromLTRB(compact ? 12 : 16, compact ? 8 : 12, compact ? 12 : 16, compact ? 8 : 12),
-      decoration: panelDecoration(radius: compact ? 12 : 16),
+      decoration: panelDecoration(radius: compact ? 12 : 16).copyWith(
+        boxShadow: compact
+            ? const [BoxShadow(color: Color(0x22000000), blurRadius: 10, offset: Offset(0, 4))]
+            : null,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: AppText.label(compact ? 11 : 13, color: AppColors.gold, weight: FontWeight.w800)),
-          SizedBox(height: compact ? 4 : 8),
+          Row(
+            children: [
+              Container(
+                width: 3,
+                height: compact ? 12 : 14,
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.gold,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Expanded(
+                child: Text(title, style: AppText.label(compact ? 11 : 13, color: AppColors.gold, weight: FontWeight.w800)),
+              ),
+            ],
+          ),
+          SizedBox(height: compact ? 6 : 8),
           child,
         ],
       ),

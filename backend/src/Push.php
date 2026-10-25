@@ -142,8 +142,8 @@ final class Push
         self::sendFcmToUser($userId, $title, $body, $data + ['kind' => $kind] + ($eventKey !== null ? ['eventKey' => $eventKey] : []));
     }
 
-    /** Wallet ledger hook — one push per wallet_tx reason (deduped). */
-    public static function notifyWalletChange(int $userId, int $amount, string $reason, ?int $roomId): void
+    /** Wallet ledger hook — one push per wallet_tx row (deduped by tx id). */
+    public static function notifyWalletChange(int $userId, int $amount, string $reason, ?int $roomId, ?int $walletTxId = null): void
     {
         if (!self::deliveryEnabled('wallet')) {
             return;
@@ -158,7 +158,10 @@ final class Push
         if ($parsed === null) {
             return;
         }
-        self::notifyUser($userId, 'wallet', $parsed['title'], $parsed['body'], [], 'wallet:' . $reason);
+        $eventKey = $walletTxId !== null && $walletTxId > 0
+            ? 'wallet:tx:' . $walletTxId
+            : 'wallet:' . $reason . ':' . time();
+        self::notifyUser($userId, 'wallet', $parsed['title'], $parsed['body'], [], $eventKey);
     }
 
     /** @return array{sent:int,failed:int,inbox:int} */

@@ -15,6 +15,7 @@ import '../online/realtime_socket.dart';
 import '../online/session.dart';
 import 'duel_chrome.dart';
 import '../../l10n/strings.dart';
+import 'challenge_inbox_pulse.dart';
 import 'lobby_data.dart';
 
 /// Waits for opponents at the chosen bet level, then opens the match.
@@ -50,6 +51,7 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Sing
     final pre = widget.initialRoom;
     if (pre != null) {
       _room = pre;
+      requestChallengeInboxPoll();
       _timer = Timer.periodic(const Duration(seconds: 1), (_) => _poll());
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _watchLive();
@@ -70,6 +72,7 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Sing
         return;
       }
       setState(() => _room = room);
+      requestChallengeInboxPoll();
       // Polling keeps the seat alive whenever the socket is not connected.
       _timer = Timer.periodic(const Duration(seconds: 1), (_) => _poll());
       _watchLive();

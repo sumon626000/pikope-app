@@ -14,7 +14,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 }
 
-/// APK push: FCM when configured. Inbox poll updates badge only (no duplicate tray alerts).
+/// APK push: FCM when configured; inbox poll shows tray when FCM missed (e.g. no server key).
 final class PushService {
   PushService._();
 
@@ -121,7 +121,7 @@ final class PushService {
     );
   }
 
-  /// Updates unread badge. Does not re-show tray alerts (FCM handles those).
+  /// Updates unread badge; shows local tray for new inbox rows (deduped via event id).
   static Future<int> pollInbox(ApiClient api) async {
     try {
       final j = await api.get('/me/notifications?limit=25');
@@ -135,6 +135,23 @@ final class PushService {
           return unread;
         }
         if (top > _lastSeenInboxId) {
+          for (final item in items) {
+            final id = item['id'] as int? ?? 0;
+            if (id <= _lastSeenInboxId) continue;
+            final dedupeKey = 'inbox:$id';
+            if (_shownEventKeys.contains(dedupeKey)) continue;
+            _shownEventKeys.add(dedupeKey);
+            final kind = item['kind'] as String? ?? '';
+            if (kind == 'challenge') {
+              requestChallengeInboxPoll();
+            } else {
+              final title = item['title'] as String? ?? 'PikoPe';
+              final body = item['body'] as String? ?? '';
+              if (body.isNotEmpty) {
+                await show(title: title, body: body);
+              }
+            }
+          }
           _lastSeenInboxId = top;
         }
       }

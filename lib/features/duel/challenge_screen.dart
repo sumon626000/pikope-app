@@ -13,7 +13,6 @@ import '../online/online_screens.dart';
 import '../online/session.dart';
 import 'challenge_inbox_pulse.dart';
 import 'challenge_incoming_banner.dart';
-import 'challenge_prefs.dart';
 import 'duel_chrome.dart';
 import 'lobby_data.dart';
 import 'matchmaking_screen.dart';
@@ -93,8 +92,6 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
   List<Map<String, dynamic>>? _players;
   String? _error;
   Timer? _timer;
-  bool _dialogOpen = false;
-  final _handled = <int>{};
 
   @override
   void initState() {
@@ -121,24 +118,6 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
       }
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
-    }
-    // Incoming challenges.
-    try {
-      final inbox = await notifier.challengeInbox();
-      final incoming = (inbox['incoming'] as List).cast<Map<String, dynamic>>();
-      final visible = incoming.where((c) => acceptsIncomingChallenge(ref.read(settingsProvider), c['game'] as String)).toList();
-      if (mounted && !_dialogOpen && visible.isNotEmpty) {
-        final ch = visible.first;
-        final id = ch['id'] as int;
-        if (!_handled.contains(id)) {
-          _handled.add(id);
-          _dialogOpen = true;
-          await showIncomingChallenge(context, ref, ch);
-          _dialogOpen = false;
-        }
-      }
-    } on ApiException {
-      // ignore
     }
   }
 

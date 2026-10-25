@@ -27,12 +27,12 @@ class ChallengeInboxHost extends ConsumerStatefulWidget {
 class _ChallengeInboxHostState extends ConsumerState<ChallengeInboxHost> {
   Timer? _poll;
   bool _dialogOpen = false;
-  static final _handled = <int>{};
+  int? _showingId;
 
   @override
   void initState() {
     super.initState();
-    _poll = Timer.periodic(const Duration(milliseconds: 1500), (_) => _tick());
+    _poll = Timer.periodic(const Duration(milliseconds: 900), (_) => _tick());
     triggerChallengeInboxPoll = _tick;
     WidgetsBinding.instance.addPostFrameCallback((_) => _tick());
   }
@@ -62,16 +62,17 @@ class _ChallengeInboxHostState extends ConsumerState<ChallengeInboxHost> {
       final visible = incoming.where((c) => acceptsIncomingChallenge(settings, c['game'] as String)).toList();
       ref.read(challengePendingCountProvider.notifier).state = visible.length;
       if (_dialogOpen || visible.isEmpty) return;
-      // Do not pop over an active online match.
+      // Do not cover an in-progress online match (matchmaking / lobby still get the banner).
       final active = ref.read(activeMatchProvider).valueOrNull;
       if (active != null) return;
       final ch = visible.first;
       final id = ch['id'] as int;
-      if (_handled.contains(id)) return;
-      _handled.add(id);
+      if (_showingId == id) return;
+      _showingId = id;
       _dialogOpen = true;
       await showIncomingChallenge(context, ref, ch);
       _dialogOpen = false;
+      _showingId = null;
     } on Object {
       // offline / not signed in
     }

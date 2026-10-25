@@ -13,24 +13,24 @@ import 'challenge_screen.dart';
 Future<void> showIncomingChallengeBanner(BuildContext context, WidgetRef ref, Map<String, dynamic> ch) async {
   await showGeneralDialog<void>(
     context: context,
+    useRootNavigator: true,
     barrierDismissible: true,
     barrierLabel: 'challenge',
-    barrierColor: Colors.black26,
-    transitionDuration: const Duration(milliseconds: 280),
+    barrierColor: Colors.black45,
+    transitionDuration: const Duration(milliseconds: 320),
     transitionBuilder: (context, animation, _, child) {
       final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic);
       return SlideTransition(
-        position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero).animate(curved),
+        position: Tween<Offset>(begin: const Offset(0, -1.08), end: Offset.zero).animate(curved),
         child: FadeTransition(opacity: curved, child: child),
       );
     },
     pageBuilder: (context, _, __) {
-      return Align(
-        alignment: Alignment.topCenter,
-        child: SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 56),
+          child: Align(
+            alignment: Alignment.topCenter,
             child: _IncomingTopBanner(ch: ch),
           ),
         ),
@@ -107,8 +107,8 @@ class _IncomingTopBannerState extends ConsumerState<_IncomingTopBanner> {
       color: Colors.transparent,
       child: Container(
         width: double.infinity,
-        constraints: const BoxConstraints(maxWidth: 520),
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+        constraints: const BoxConstraints(maxWidth: 560, minHeight: 132),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
         decoration: BoxDecoration(
           color: const Color(0xFF12182E),
           borderRadius: BorderRadius.circular(16),
