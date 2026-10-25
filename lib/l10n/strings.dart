@@ -121,11 +121,6 @@ class AppStrings {
   String get coinTutorialTransferTitle => _t('How to transfer coins', 'কয়েন ট্রান্সফার কীভাবে');
   String get coinTutorialTapPlay => _t('Tap to watch tutorial', 'টিউটোরিয়াল দেখতে ট্যাপ করুন');
 
-  String get coinTutorialDepositTitle => _t('How to add coins (deposit)', 'কয়েন যোগ / ডিপোজিট কীভাবে');
-  String get coinTutorialRedeemTitle => _t('How to withdraw (redeem)', 'উত্তোলন / রিডিম কীভাবে');
-  String get coinTutorialTransferTitle => _t('How to transfer coins', 'কয়েন ট্রান্সফার কীভাবে');
-  String get coinTutorialTapPlay => _t('Tap to watch tutorial', 'টিউটোরিয়াল দেখতে ট্যাপ করুন');
-
   String get tabBuy => _t('BUY', 'কিনুন');
   String get tabAdd => _t('ADD', 'যোগ');
   String get tabRedeem => _t('REDEEM', 'রিডিম');
