@@ -1,7 +1,7 @@
 name: billiard_poker
 description: "PikoPe - Pool, Ludo and Carrom with online coin play."
 publish_to: 'none'
-version: 1.0.2+14
+version: 1.0.2+16
 
 environment:
   sdk: ^3.12.0

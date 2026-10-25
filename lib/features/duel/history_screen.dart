@@ -51,7 +51,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () => pushScreen(context, const ShopScreen(initialTab: 3)),
+              onPressed: () => pushScreen(context, const ShopScreen(initialTab: 2)),
               child: Text(t.openCoinWallet, style: AppText.label(14, color: DuelColors.gold, weight: FontWeight.w800)),
             ),
           ),

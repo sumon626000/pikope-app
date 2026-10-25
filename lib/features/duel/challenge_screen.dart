@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
 import '../../core/duel_ui.dart';
@@ -122,10 +121,16 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
   }
 
   Future<void> _challenge(Map<String, dynamic> player) async {
+    final t = ref.read(stringsProvider);
     if (ref.read(lobbyProvider).valueOrNull == null) {
       try {
-        await ref.read(lobbyProvider.notifier).refresh();
-      } catch (_) {}
+        await ref.read(lobbyProvider.notifier).refreshRequired();
+      } on ApiException catch (e) {
+        if (mounted) {
+          showDuelMessage(context, title: t.challengePageTitle, body: t.maybeApi(e.message));
+        }
+        return;
+      }
     }
     if (!mounted) return;
     await showDuelDialog<void>(
@@ -138,6 +143,7 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(lobbyProvider);
     final t = ref.watch(stringsProvider);
     final players = _players;
     return DuelPage(
@@ -146,7 +152,14 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
       child: players == null
           ? Center(
               child: _error != null
-                  ? Text(t.offlineServer, style: AppText.label(18, color: DuelColors.red))
+                  ? Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(t.maybeApi(_error!), textAlign: TextAlign.center, style: AppText.label(16, color: DuelColors.red)),
+                        const SizedBox(height: 12),
+                        DuelButton(label: t.retry, width: 140, height: 44, onPressed: _refresh),
+                      ],
+                    )
                   : const CircularProgressIndicator(color: DuelColors.silver))
           : players.isEmpty
               ? Center(child: Text(t.noPlayersOnline, style: AppText.label(20, color: DuelColors.dim)))
@@ -243,6 +256,7 @@ class _SendDialogState extends ConsumerState<_SendDialog> {
   String? _game;
   int? _level;
   bool _busy = false;
+  bool _lobbyLoading = true;
   String? _error;
   int? _sentId;
   Timer? _poll;
@@ -250,9 +264,34 @@ class _SendDialogState extends ConsumerState<_SendDialog> {
   static const _poolGames = ['eight', 'nine', 'ten', 'billiard'];
 
   @override
+  void initState() {
+    super.initState();
+    _ensureLobby();
+  }
+
+  @override
   void dispose() {
     _poll?.cancel();
     super.dispose();
+  }
+
+  Future<void> _ensureLobby() async {
+    if (ref.read(lobbyProvider).valueOrNull != null) {
+      if (mounted) setState(() => _lobbyLoading = false);
+      return;
+    }
+    if (mounted) setState(() => _lobbyLoading = true);
+    try {
+      await ref.read(lobbyProvider.notifier).refreshRequired();
+      if (mounted) setState(() => _lobbyLoading = false);
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _lobbyLoading = false;
+          _error = ref.read(stringsProvider).maybeApi(e.message);
+        });
+      }
+    }
   }
 
   List<BetLevel> _paidLevelsFor(String game) {
@@ -526,8 +565,32 @@ class _SendDialogState extends ConsumerState<_SendDialog> {
         const SizedBox(height: 8),
         Text(t.stake, textAlign: TextAlign.center, style: AppText.label(13, color: DuelColors.dim)),
         const SizedBox(height: 12),
-        if (levels.isEmpty)
-          Text(t.offlineServer, textAlign: TextAlign.center, style: AppText.label(14, color: DuelColors.red))
+        if (_lobbyLoading)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Column(
+              children: [
+                const CircularProgressIndicator(color: DuelColors.gold),
+                const SizedBox(height: 10),
+                Text(t.loading, style: AppText.label(13, color: DuelColors.dim)),
+              ],
+            ),
+          )
+        else if (levels.isEmpty)
+          Column(
+            children: [
+              Text(
+                _error ??
+                    (ref.read(lobbyProvider).valueOrNull != null
+                        ? t.challengePickStake
+                        : t.offlineServer),
+                textAlign: TextAlign.center,
+                style: AppText.label(14, color: DuelColors.red),
+              ),
+              const SizedBox(height: 10),
+              DuelButton(label: t.retry, width: 140, height: 42, onPressed: _ensureLobby),
+            ],
+          )
         else
           GridView.builder(
             shrinkWrap: true,

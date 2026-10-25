@@ -73,6 +73,7 @@ final class ChallengeService
     {
         $uid = (int) $user['id'];
         Auth::ensureChallengesEnabledColumn();
+        Auth::ensureChallengeGameColumns();
         $rows = Db::all(
             "SELECT u.id, u.display_name, u.avatar, u.coins, u.wins, u.xp, u.challenges_enabled,
                     u.challenge_pool, u.challenge_ludo, u.challenge_carrom,
@@ -113,6 +114,7 @@ final class ChallengeService
             throw ApiError::badRequest('Pick a stake level', 'bad_level');
         }
         Auth::ensureChallengesEnabledColumn();
+        Auth::ensureChallengeGameColumns();
         $target = Db::one(
             'SELECT id, display_name, avatar, challenges_enabled, challenge_pool, challenge_ludo, challenge_carrom
              FROM users WHERE id = ? AND banned = 0',
@@ -185,6 +187,8 @@ final class ChallengeService
         $inRoom = Db::all('SELECT user_id FROM room_players WHERE room_id = ?', [$roomId]);
         $skip = array_map(static fn (array $r): int => (int) $r['user_id'], $inRoom);
         $skip[] = $uid;
+        Auth::ensureChallengesEnabledColumn();
+        Auth::ensureChallengeGameColumns();
         $rows = Db::all(
             "SELECT u.id, u.challenges_enabled, u.challenge_pool, u.challenge_ludo, u.challenge_carrom
              FROM users u JOIN (" . self::ONLINE_SQL . ") t ON t.user_id = u.id

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_theme.dart';
+import '../../core/brand.dart';
 import '../../core/widgets.dart';
 import '../../core/audio_service.dart';
 import '../../core/duel_ui.dart';
@@ -13,6 +14,40 @@ import 'lobby_data.dart';
 import '../../l10n/strings.dart';
 import 'coin_transfer_tab.dart';
 import 'zini_pay_checkout.dart';
+
+/// Shop-only accents (UI); logic unchanged.
+abstract final class _ShopUi {
+  static const cardFill = Color(0xFF12182C);
+  static const cardBorder = Color(0xFF3B6CFF);
+  static const cardBorderDim = Color(0xFF2A3558);
+  static const bestBorder = Color(0xFFFFB040);
+  static const heroBorder = Color(0xFFB04DFF);
+  static const buyGreen = Color(0xFF12915D);
+  static const ribbon = Color(0xFFE040FB);
+  static const tabGlow = Color(0xFF4DA3FF);
+
+  static String? bestValuePackId(List<CoinShopPack> packs) {
+    String? id;
+    var bestRatio = -1.0;
+    for (final p in packs) {
+      if (p.free || p.coins <= 0) continue;
+      final ratio = p.receiveCoins / p.coins;
+      if (ratio > bestRatio) {
+        bestRatio = ratio;
+        id = p.id;
+      }
+    }
+    return id;
+  }
+
+  static double coinArtSize(int coins) {
+    if (coins >= 10000) return 62;
+    if (coins >= 5000) return 54;
+    if (coins >= 1000) return 50;
+    if (coins >= 500) return 46;
+    return 42;
+  }
+}
 
 /// Pico coin: buy packs, redeem to mobile wallet, full activity history.
 class ShopScreen extends ConsumerStatefulWidget {
@@ -25,9 +60,7 @@ class ShopScreen extends ConsumerStatefulWidget {
 }
 
 class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 5, vsync: this, initialIndex: widget.initialTab.clamp(0, 4));
-  CoinShopPack? _selectedPack;
-  int _packQty = 1;
+  late final TabController _tabs = TabController(length: 4, vsync: this, initialIndex: widget.initialTab.clamp(0, 3));
 
   @override
   void dispose() {
@@ -35,19 +68,55 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
     super.dispose();
   }
 
+  Future<void> _buyFreePack(CoinShopPack pack) async {
+    final t = ref.read(stringsProvider);
+    try {
+      final received = await ref.read(lobbyProvider.notifier).buyCoinPack(pack.id);
+      if (!mounted) return;
+      showDuelMessage(context,
+          title: t.picoCoin,
+          body: t.youGetCoins(formatPicoCoins(received)),
+          icon: Icons.check_circle_rounded);
+    } on ApiException catch (e) {
+      if (mounted) {
+        showDuelMessage(context, title: t.picoCoin, body: t.maybeApi(e.message), icon: Icons.error_outline_rounded);
+      }
+    }
+  }
+
   Future<void> _onPackTap(CoinShopPack pack) async {
     final data = ref.read(lobbyProvider).valueOrNull;
     if (data == null) return;
     final cfg = data.coinDeposit;
-    setState(() {
-      _selectedPack = pack;
-      _packQty = 1;
-    });
-    if (cfg.autoEnabled && !pack.free) {
+
+    if (pack.free) {
+      await _buyFreePack(pack);
+      return;
+    }
+
+    if (cfg.autoEnabled) {
       await openZiniPayDeposit(context, ref, config: cfg, bdt: pack.coins, packId: pack.id);
       return;
     }
-    _tabs.animateTo(1);
+
+    if (cfg.manualEnabled && cfg.agents.isNotEmpty) {
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: const Color(0xFF141A2E),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (ctx) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+          child: _ManualDepositSheet(config: cfg, pack: pack),
+        ),
+      );
+      return;
+    }
+
+    final t = ref.read(stringsProvider);
+    if (mounted) {
+      showDuelMessage(context, title: t.picoCoin, body: t.paymentUnavailable, icon: Icons.payment_rounded);
+    }
   }
 
   @override
@@ -71,45 +140,81 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TabBar(
-                  controller: _tabs,
-                  isScrollable: true,
-                  tabAlignment: TabAlignment.start,
-                  indicatorColor: DuelColors.gold,
-                  indicatorWeight: 3,
-                  labelStyle: AppText.label(20, weight: FontWeight.w900),
-                  unselectedLabelStyle: AppText.label(18, color: DuelColors.dim, weight: FontWeight.w700),
-                  labelPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  tabs: [
-                    Tab(text: t.tabBuy),
-                    Tab(text: t.tabAdd),
-                    Tab(text: t.tabTransfer),
-                    Tab(text: t.tabRedeem),
-                    Tab(text: t.tabHistory),
-                  ],
-                ),
-                const Divider(height: 1, thickness: 1, color: Color(0xFF2B3566)),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: TabBarView(
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: DuelColors.rim.withValues(alpha: 0.85)),
+                    ),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        const Color(0xFF0E1433).withValues(alpha: 0.6),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                  child: TabBar(
                     controller: _tabs,
-                    children: [
-                      _BuyTab(data: data!, onBuy: _onPackTap),
-                      _DepositTab(
-                        config: data.coinDeposit,
-                        pack: _selectedPack,
-                        packs: data.coinShop.packs,
-                        qty: _packQty,
-                        onPickPack: (p) => setState(() {
-                          _selectedPack = p;
-                          _packQty = 1;
-                        }),
-                        onQty: (q) => setState(() => _packQty = q),
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
+                    dividerColor: Colors.transparent,
+                    indicatorSize: TabBarIndicatorSize.label,
+                    indicator: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: _ShopUi.tabGlow, width: 3),
                       ),
-                      CoinTransferTab(config: data.coinTransfer),
-                      _RedeemTab(config: data.redeem),
-                      const _ActivityTab(),
+                      boxShadow: [
+                        BoxShadow(color: _ShopUi.tabGlow.withValues(alpha: 0.45), blurRadius: 14, spreadRadius: -2),
+                      ],
+                    ),
+                    labelColor: Colors.white,
+                    unselectedLabelColor: DuelColors.dim,
+                    labelStyle: AppText.label(17, weight: FontWeight.w900),
+                    unselectedLabelStyle: AppText.label(16, color: DuelColors.dim, weight: FontWeight.w700),
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    tabs: [
+                      Tab(text: t.tabBuy),
+                      Tab(text: t.tabTransfer),
+                      Tab(text: t.tabRedeem),
+                      Tab(text: t.tabHistory),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: _ShopUi.cardBorderDim.withValues(alpha: 0.7)),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          const Color(0xFF0A1024).withValues(alpha: 0.92),
+                          const Color(0xFF141C40).withValues(alpha: 0.75),
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: DuelColors.blue.withValues(alpha: 0.12),
+                          blurRadius: 24,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(17),
+                      child: TabBarView(
+                        controller: _tabs,
+                        children: [
+                          _BuyTab(data: data!, onBuy: _onPackTap),
+                          CoinTransferTab(config: data.coinTransfer),
+                          _RedeemTab(config: data.redeem),
+                          const _ActivityTab(),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -154,36 +259,36 @@ class _BuyTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
     final packs = data.coinShop.packs;
+    final bestId = _ShopUi.bestValuePackId(packs);
     return LayoutBuilder(
       builder: (context, constraints) {
+        final cols = constraints.maxWidth >= 880 ? 3 : 2;
         return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 20),
           child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(t.packsTitle, style: AppText.label(22, color: DuelColors.gold, weight: FontWeight.w900)),
-                const SizedBox(height: 8),
-                if (packs.isEmpty)
-                  Text(t.noPacks, style: AppText.label(18, color: DuelColors.dim))
-                else
-                  GridView.builder(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight - 24),
+            child: packs.isEmpty
+                ? Center(child: Text(t.noPacks, style: AppText.label(18, color: DuelColors.dim)))
+                : GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: constraints.maxWidth >= 720 ? 3 : 2,
-                      mainAxisSpacing: 10,
-                      crossAxisSpacing: 10,
-                      mainAxisExtent: 196,
+                      crossAxisCount: cols,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      mainAxisExtent: cols == 3 ? 228 : 218,
                     ),
                     itemCount: packs.length,
-                    itemBuilder: (context, i) => _CoinPackCard(
-                      pack: packs[i],
-                      onTap: () => onBuy(packs[i]),
-                    ),
+                    itemBuilder: (context, i) {
+                      final pack = packs[i];
+                      return _CoinPackCard(
+                        pack: pack,
+                        isBestValue: bestId != null && pack.id == bestId,
+                        isHeroTier: pack.coins >= 10000,
+                        onTap: () => onBuy(pack),
+                      );
+                    },
                   ),
-              ],
-            ),
           ),
         );
       },
@@ -191,73 +296,40 @@ class _BuyTab extends ConsumerWidget {
   }
 }
 
-class _DepositTab extends ConsumerStatefulWidget {
-  const _DepositTab({
-    required this.config,
-    this.pack,
-    this.packs = const [],
-    this.qty = 1,
-    this.onPickPack,
-    this.onQty,
-  });
+/// Manual bKash/Nagad for the selected pack only (fixed BDT — no custom amount).
+class _ManualDepositSheet extends ConsumerStatefulWidget {
+  const _ManualDepositSheet({required this.config, required this.pack});
 
   final CoinDepositConfig config;
-  final CoinShopPack? pack;
-  final List<CoinShopPack> packs;
-  final int qty;
-  final ValueChanged<CoinShopPack>? onPickPack;
-  final ValueChanged<int>? onQty;
+  final CoinShopPack pack;
 
   @override
-  ConsumerState<_DepositTab> createState() => _DepositTabState();
+  ConsumerState<_ManualDepositSheet> createState() => _ManualDepositSheetState();
 }
 
-class _DepositTabState extends ConsumerState<_DepositTab> {
-  final _bdt = TextEditingController();
+class _ManualDepositSheetState extends ConsumerState<_ManualDepositSheet> {
   final _trx = TextEditingController();
   final _payer = TextEditingController();
-  String _provider = 'bkash';
+  late String _provider;
   bool _busy = false;
   String? _error;
+
+  int get _bdt => widget.pack.coins;
+
+  int get _coins => widget.pack.receiveCoins;
 
   @override
   void initState() {
     super.initState();
     final agents = widget.config.agents;
-    if (agents.isNotEmpty) _provider = agents.first.id;
-    _syncPackAmount();
-  }
-
-  @override
-  void didUpdateWidget(_DepositTab old) {
-    super.didUpdateWidget(old);
-    if (old.pack?.id != widget.pack?.id || old.qty != widget.qty) _syncPackAmount();
-  }
-
-  void _syncPackAmount() {
-    final pack = widget.pack;
-    if (pack == null) return;
-    final total = pack.coins * widget.qty;
-    final text = '$total';
-    if (_bdt.text != text) _bdt.text = text;
+    _provider = agents.isNotEmpty ? agents.first.id : 'bkash';
   }
 
   @override
   void dispose() {
-    _bdt.dispose();
     _trx.dispose();
     _payer.dispose();
     super.dispose();
-  }
-
-  int? get _amount => int.tryParse(_bdt.text.replaceAll(RegExp(r'\D'), ''));
-
-  int get _coins {
-    final pack = widget.pack;
-    if (pack != null) return pack.receiveCoins * widget.qty;
-    final a = _amount ?? 0;
-    final r = widget.config.coinPerBdt;
-    return r <= 0 ? a : a * r;
   }
 
   Future<void> _copy(String number) async {
@@ -273,12 +345,8 @@ class _DepositTabState extends ConsumerState<_DepositTab> {
   Future<void> _submit() async {
     final t = ref.read(stringsProvider);
     final cfg = widget.config;
-    if (!cfg.manualEnabled || cfg.agents.isEmpty) {
-      setState(() => _error = t.manualAddOff);
-      return;
-    }
-    final bdt = _amount;
-    if (bdt == null || bdt < cfg.minBdt || bdt > cfg.maxBdt) {
+    final bdt = _bdt;
+    if (bdt < cfg.minBdt || bdt > cfg.maxBdt) {
       setState(() => _error = t.bdtRange(cfg.minBdt, cfg.maxBdt));
       return;
     }
@@ -303,12 +371,11 @@ class _DepositTabState extends ConsumerState<_DepositTab> {
           );
       await ref.read(lobbyProvider.notifier).refresh();
       if (mounted) {
+        Navigator.of(context).pop();
         showDuelMessage(context,
             title: t.requestSent,
             body: t.depositPendingBody(formatPicoCoins(_coins)),
             icon: Icons.check_circle_rounded);
-        _bdt.clear();
-        _trx.clear();
       }
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = t.maybeApi(e.message));
@@ -317,199 +384,102 @@ class _DepositTabState extends ConsumerState<_DepositTab> {
     }
   }
 
-  Widget _packStepper() {
-    final unit = widget.pack?.coins ?? 0;
-    final canAdd = unit * (widget.qty + 1) <= widget.config.maxBdt;
-    final canSub = widget.qty > 1;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Row(
-        children: [
-          _stepButton(Icons.remove_rounded, canSub, () => widget.onQty?.call(widget.qty - 1)),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              '${widget.qty} × $unit',
-              textAlign: TextAlign.center,
-              style: AppText.label(28, color: Colors.white, weight: FontWeight.w900),
-            ),
-          ),
-          const SizedBox(width: 14),
-          _stepButton(Icons.add_rounded, canAdd, () => widget.onQty?.call(widget.qty + 1)),
-        ],
-      ),
-    );
-  }
-
-  Widget _stepButton(IconData icon, bool enabled, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: enabled
-          ? () {
-              AudioService.tap();
-              onTap();
-            }
-          : null,
-      child: Container(
-        width: 72,
-        height: 72,
-        alignment: Alignment.center,
-        decoration: duelPanel(radius: 16, rim: enabled ? DuelColors.gold : DuelColors.rim),
-        child: Icon(icon, color: enabled ? DuelColors.gold : DuelColors.dim, size: 36),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final t = ref.watch(stringsProvider);
     final cfg = widget.config;
-    final manualOk = cfg.manualEnabled && cfg.agents.isNotEmpty;
-    final autoOk = cfg.autoEnabled;
-    if (!manualOk && !autoOk) {
-      return Center(child: Text(t.paymentUnavailable, style: AppText.label(22, color: DuelColors.dim, weight: FontWeight.w800)));
-    }
-    if (autoOk) {
-      return _ShopPanel(
-        child: ZiniPayAutoPanel(
-          config: cfg,
-          pack: widget.pack,
-          packs: widget.packs,
-          qty: widget.qty,
-          onPickPack: widget.onPickPack,
-          onQty: widget.onQty,
-        ),
-      );
-    }
-    final input = AppText.label(28, color: Colors.white);
-    final field = InputDecorationTheme(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 22),
-      labelStyle: AppText.label(20, color: DuelColors.dim),
-    );
-    return _ShopPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(t.addCoinTitle, style: AppText.label(36, color: DuelColors.gold, weight: FontWeight.w900)),
-          const SizedBox(height: 10),
-          Text(t.addCoinSteps, style: AppText.label(20, color: DuelColors.dim)),
-          const SizedBox(height: 22),
-          for (final a in cfg.agents)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(a.label, style: AppText.label(20, color: DuelColors.silver, weight: FontWeight.w800)),
-                          Text(a.number, style: AppText.label(32, color: Colors.white, weight: FontWeight.w900)),
-                        ],
-                      ),
-                    ),
-                    GameButton(
-                      label: t.copy,
-                      height: 64,
-                      width: 180,
-                      fontSize: 20,
-                      onPressed: () => _copy(a.number),
-                    ),
-                  ],
-                ),
-              ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 10,
-              children: [
-                for (final a in cfg.agents)
-                  ChoiceChip(
-                    label: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      child: Text(a.label, style: AppText.label(22, weight: FontWeight.w800)),
-                    ),
-                    selected: _provider == a.id,
-                    onSelected: _busy ? null : (_) => setState(() => _provider = a.id),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (widget.packs.isNotEmpty) ...[
+    final input = AppText.label(22, color: Colors.white);
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20, 16, 20, 24 + MediaQuery.viewInsetsOf(context).bottom),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(t.addCoinTitle, style: AppText.label(28, color: DuelColors.gold, weight: FontWeight.w900)),
               const SizedBox(height: 8),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    for (final p in widget.packs)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 10),
-                        child: ChoiceChip(
-                          label: Text(
-                            p.receiveCoins > p.coins ? '${p.coins} → ${p.receiveCoins}' : '${p.coins}',
-                            style: AppText.label(18, weight: FontWeight.w800),
-                          ),
-                          selected: widget.pack?.id == p.id,
-                          onSelected: _busy ? null : (_) => widget.onPickPack?.call(p),
+              Text(
+                '${widget.pack.coins} BDT · ${t.youGetCoins(formatPicoCoins(_coins))}',
+                style: AppText.label(18, color: DuelColors.silver, weight: FontWeight.w800),
+              ),
+              const SizedBox(height: 12),
+              Text(t.addCoinSteps, style: AppText.label(16, color: DuelColors.dim)),
+              const SizedBox(height: 16),
+              for (final a in cfg.agents)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(a.label, style: AppText.label(16, color: DuelColors.silver, weight: FontWeight.w800)),
+                            Text(a.number, style: AppText.label(24, color: Colors.white, weight: FontWeight.w900)),
+                          ],
                         ),
                       ),
-                  ],
+                      GameButton(
+                        label: t.copy,
+                        height: 48,
+                        width: 100,
+                        fontSize: 14,
+                        onPressed: () => _copy(a.number),
+                      ),
+                    ],
+                  ),
+                ),
+              Wrap(
+                spacing: 8,
+                children: [
+                  for (final a in cfg.agents)
+                    ChoiceChip(
+                      label: Text(a.label, style: AppText.label(16, weight: FontWeight.w800)),
+                      selected: _provider == a.id,
+                      onSelected: _busy ? null : (_) => setState(() => _provider = a.id),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _payer,
+                style: input,
+                keyboardType: TextInputType.phone,
+                maxLength: 14,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  labelText: t.payerNumber,
+                  hintText: '01XXXXXXXXX',
+                  counterText: '',
+                  labelStyle: AppText.label(16, color: DuelColors.dim),
                 ),
               ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _trx,
+                style: input,
+                autocorrect: false,
+                textCapitalization: TextCapitalization.characters,
+                decoration: InputDecoration(
+                  labelText: t.trxId,
+                  labelStyle: AppText.label(16, color: DuelColors.dim),
+                ),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 8),
+                Text(_error!, style: AppText.label(16, color: DuelColors.red)),
+              ],
+              const SizedBox(height: 16),
+              GameButton(
+                label: _busy ? t.sending : t.submitForApproval,
+                height: 56,
+                fontSize: 18,
+                onPressed: _busy ? null : _submit,
+              ),
             ],
-            if (widget.pack != null) _packStepper(),
-            TextField(
-              controller: _bdt,
-              readOnly: widget.pack != null,
-              style: input,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(
-                labelText: t.amountBdt,
-                hintText: '${cfg.minBdt} – ${cfg.maxBdt}',
-                contentPadding: field.contentPadding,
-                labelStyle: field.labelStyle,
-              ),
-              onChanged: (_) => setState(() {}),
-            ),
-            Text(t.youGetCoins(formatPicoCoins(_coins)), style: AppText.label(26, color: DuelColors.gold, weight: FontWeight.w800)),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _payer,
-              style: input,
-              keyboardType: TextInputType.phone,
-              maxLength: 14,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(
-                labelText: t.payerNumber,
-                hintText: '01XXXXXXXXX',
-                counterText: '',
-                contentPadding: field.contentPadding,
-                labelStyle: field.labelStyle,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _trx,
-              style: input,
-              autocorrect: false,
-              textCapitalization: TextCapitalization.characters,
-              decoration: InputDecoration(
-                labelText: t.trxId,
-                contentPadding: field.contentPadding,
-                labelStyle: field.labelStyle,
-              ),
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 10),
-              Text(_error!, style: AppText.label(22, color: DuelColors.red)),
-            ],
-            const SizedBox(height: 24),
-            GameButton(
-              label: _busy ? t.sending : t.submitForApproval,
-              height: 88,
-              fontSize: 26,
-              onPressed: _busy ? null : _submit,
-            ),
-          ],
+          ),
+        ),
       ),
     );
   }
@@ -1042,20 +1012,29 @@ class _ActivityRow extends ConsumerWidget {
 }
 
 class _CoinPackCard extends ConsumerWidget {
-  const _CoinPackCard({required this.pack, required this.onTap});
+  const _CoinPackCard({
+    required this.pack,
+    required this.onTap,
+    this.isBestValue = false,
+    this.isHeroTier = false,
+  });
 
   final CoinShopPack pack;
   final VoidCallback onTap;
+  final bool isBestValue;
+  final bool isHeroTier;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
     final bonus = pack.discountPercent;
-    final payLabel = pack.free
-        ? t.claimNow
-        : pack.priceCoins > 0
-            ? formatCoins(pack.priceCoins, compact: true)
-            : t.payNow;
+    final borderColor = isHeroTier
+        ? _ShopUi.heroBorder
+        : isBestValue
+            ? _ShopUi.bestBorder
+            : _ShopUi.cardBorder;
+    final artSize = _ShopUi.coinArtSize(pack.coins);
+    final buyLabel = pack.free ? t.claimNow : '৳${formatCoins(pack.coins, compact: true)}';
     return GestureDetector(
       onTap: () {
         AudioService.tap();
@@ -1063,26 +1042,46 @@ class _CoinPackCard extends ConsumerWidget {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF1C2238),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF2E3654)),
-          boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 8, offset: Offset(0, 4))],
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              _ShopUi.cardFill,
+              const Color(0xFF0E1222),
+            ],
+          ),
+          border: Border.all(
+            color: borderColor.withValues(alpha: isBestValue || isHeroTier ? 0.95 : 0.55),
+            width: isBestValue || isHeroTier ? 2 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: borderColor.withValues(alpha: isHeroTier ? 0.35 : 0.18),
+              blurRadius: isHeroTier ? 16 : 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 14, 10, 10),
+              padding: const EdgeInsets.fromLTRB(10, 16, 10, 10),
               child: Column(
                 children: [
-                  const PikoCoinIcon(size: 48),
-                  const SizedBox(height: 6),
+                  PikoCoinIcon(size: artSize),
+                  const SizedBox(height: 8),
                   Text(
                     formatCoins(pack.coins, compact: true),
                     textAlign: TextAlign.center,
-                    style: AppText.label(20, color: Colors.white, weight: FontWeight.w900),
+                    style: AppText.label(22, color: Colors.white, weight: FontWeight.w900),
                   ),
-                  const SizedBox(height: 2),
+                  Text(
+                    PicoCoin.name,
+                    style: AppText.label(11, color: DuelColors.dim, weight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 4),
                   Text(
                     t.youGetCoins(formatPicoCoins(pack.receiveCoins)),
                     textAlign: TextAlign.center,
@@ -1093,33 +1092,90 @@ class _CoinPackCard extends ConsumerWidget {
                   const Spacer(),
                   Container(
                     width: double.infinity,
-                    height: 36,
+                    height: 40,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF12915D),
-                      borderRadius: BorderRadius.circular(18),
-                      boxShadow: const [BoxShadow(color: Color(0x4012915D), blurRadius: 6, offset: Offset(0, 2))],
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF16A56A), _ShopUi.buyGreen],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: const [
+                        BoxShadow(color: Color(0x5012915D), blurRadius: 8, offset: Offset(0, 3)),
+                      ],
                     ),
-                    child: Text(payLabel, style: AppText.label(12, color: Colors.white, weight: FontWeight.w900)),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            buyLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.label(13, color: Colors.white, weight: FontWeight.w900),
+                          ),
+                        ),
+                        if (!pack.free) ...[
+                          Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 8),
+                            width: 1,
+                            height: 16,
+                            color: Colors.white38,
+                          ),
+                          Text(t.tabBuy, style: AppText.label(12, color: Colors.white, weight: FontWeight.w800)),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
+                        ],
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
             if (bonus > 0)
               Positioned(
-                top: 8,
-                left: -28,
+                top: 10,
+                left: -30,
                 child: Transform.rotate(
-                  angle: -0.65,
+                  angle: -0.62,
                   child: Container(
-                    width: 96,
+                    width: 100,
                     alignment: Alignment.center,
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    color: const Color(0xFFD32F2F),
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    decoration: BoxDecoration(
+                      color: _ShopUi.ribbon,
+                      boxShadow: [
+                        BoxShadow(color: _ShopUi.ribbon.withValues(alpha: 0.5), blurRadius: 8),
+                      ],
+                    ),
                     child: Text(
                       '+$bonus%',
-                      style: AppText.label(11, color: Colors.white, weight: FontWeight.w900),
+                      style: AppText.label(12, color: Colors.white, weight: FontWeight.w900),
                     ),
+                  ),
+                ),
+              ),
+            if (isBestValue)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFD54F),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFFFB300)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.workspace_premium_rounded, size: 14, color: Colors.brown.shade800),
+                      const SizedBox(width: 4),
+                      Text(
+                        'BEST',
+                        style: AppText.label(10, color: Colors.brown.shade900, weight: FontWeight.w900),
+                      ),
+                    ],
                   ),
                 ),
               ),

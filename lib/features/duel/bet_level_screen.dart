@@ -74,7 +74,7 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
   void _play(BetLevel level) {
     final coins = ref.read(settingsProvider).coins;
     if (coins < level.buyIn) {
-      _open(const ShopScreen(initialTab: 1));
+      _open(const ShopScreen(initialTab: 0));
       return;
     }
     if (widget.friendsRoom) {

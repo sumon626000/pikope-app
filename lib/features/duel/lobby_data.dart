@@ -381,6 +381,17 @@ class LobbyNotifier extends AsyncNotifier<LobbyData> {
     }
   }
 
+  /// Reload for flows that need lobby stakes now (e.g. send challenge). Propagates errors.
+  Future<void> refreshRequired() async {
+    state = const AsyncLoading();
+    try {
+      state = AsyncData(await _fetch());
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      rethrow;
+    }
+  }
+
   Future<({int coins, int gems})> claimDaily() async {
     final j = await _api.post('/daily/claim');
     _session.adopt(j['user'] as Map<String, dynamic>);
