@@ -41,6 +41,85 @@ final class Promotions
         self::$config = null;
     }
 
+    /** Fingerprint of the live offer (empty when no bonus is active right now). */
+    public static function liveOfferSignature(): string
+    {
+        $c = self::config();
+        $bits = [];
+        if (self::depositBonusActive()) {
+            $bits[] = 'd' . (int) $c['depositBonusPercent'] . '@' . (string) $c['depositEndsAt'];
+        }
+        if (self::winBonusActive()) {
+            $bits[] = 'w' . (int) $c['winBonusPercent'] . '@' . (string) $c['winEndsAt'];
+        }
+        if ($bits === []) {
+            return '';
+        }
+        return implode(';', $bits) . ';t=' . trim((string) $c['title']);
+    }
+
+    /** @return array{title:string,body:string} */
+    public static function pushCopy(): array
+    {
+        $c = self::config();
+        $title = trim((string) $c['title']);
+        if ($title === '') {
+            $title = 'New offer';
+        }
+        $lines = [];
+        if (self::depositBonusActive()) {
+            $pct = (int) $c['depositBonusPercent'];
+            $lines[] = $pct > 0
+                ? "Add coin: +{$pct}% extra Pico on approved deposits."
+                : 'Add coin bonus is live.';
+        }
+        if (self::winBonusActive()) {
+            $pct = (int) $c['winBonusPercent'];
+            $lines[] = $pct > 0
+                ? "Win matches: +{$pct}% extra on your prize."
+                : 'Win bonus is live.';
+        }
+        $body = $lines === [] ? 'Check the app for current promotions.' : implode(' ', $lines);
+        $ends = self::offerEndHint();
+        if ($ends !== '') {
+            $body = mb_substr($body . ' ' . $ends, 0, 500);
+        }
+        return ['title' => mb_substr($title, 0, 80), 'body' => mb_substr($body, 0, 500)];
+    }
+
+    /**
+     * When a live offer starts or changes, notify all players (inbox + FCM).
+     *
+     * @return array{sent:int,failed:int,inbox:int}|null
+     */
+    public static function broadcastPushIfOfferChanged(string $beforeSignature): ?array
+    {
+        $after = self::liveOfferSignature();
+        if ($after === '' || $after === $beforeSignature) {
+            return null;
+        }
+        $copy = self::pushCopy();
+        return Push::broadcast($copy['title'], $copy['body']);
+    }
+
+    private static function offerEndHint(): string
+    {
+        $c = self::config();
+        $ends = [];
+        if (self::depositBonusActive() && trim((string) $c['depositEndsAt']) !== '') {
+            $ends[] = strtotime((string) $c['depositEndsAt']) ?: null;
+        }
+        if (self::winBonusActive() && trim((string) $c['winEndsAt']) !== '') {
+            $ends[] = strtotime((string) $c['winEndsAt']) ?: null;
+        }
+        $ends = array_values(array_filter($ends, static fn ($t): bool => $t !== null));
+        if ($ends === []) {
+            return '';
+        }
+        $ts = min($ends);
+        return 'Offer ends ' . date('M j, g:i A', $ts) . '.';
+    }
+
     /** @return array{title:string,deposit:?array{bonusPercent:int},win:?array{bonusPercent:int}} */
     public static function publicConfig(): array
     {

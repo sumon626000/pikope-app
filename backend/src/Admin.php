@@ -2274,6 +2274,7 @@ CSS;
 
     private static function savePromotions(): never
     {
+        $before = Promotions::liveOfferSignature();
         Promotions::save([
             'depositBonusEnabled' => ($_POST['depositBonusEnabled'] ?? '0') === '1',
             'depositBonusPercent' => (int) ($_POST['depositBonusPercent'] ?? 0),
@@ -2283,7 +2284,17 @@ CSS;
             'winEndsAt' => trim((string) ($_POST['winEndsAt'] ?? '')),
             'title' => trim((string) ($_POST['title'] ?? '')),
         ]);
-        self::back('/admin/promotions', 'Promotion settings saved.');
+        $msg = 'Promotion settings saved.';
+        try {
+            $push = Promotions::broadcastPushIfOfferChanged($before);
+            if ($push !== null) {
+                $msg .= ' Players notified (inbox ' . (int) $push['inbox'] . ', push sent ' . (int) $push['sent'] . ').';
+            }
+        } catch (\Throwable $e) {
+            error_log('[promotions] broadcast failed: ' . $e->getMessage());
+            $msg .= ' Push could not be sent — check Push settings and FCM key.';
+        }
+        self::back('/admin/promotions', $msg);
     }
 
     private static function promotionsPage(string $csrf): never
@@ -2321,7 +2332,9 @@ CSS;
             '<label>Ends (optional)<input type="datetime-local" name="winEndsAt" value="',
             $c['winEndsAt'] !== '' ? self::e(str_replace(' ', 'T', substr((string) $c['winEndsAt'], 0, 16))) : '',
             '"></label></div>',
-            '<p class="hint">Does not stack with coin-shop discounts or referral commission. Turn both off when not running a campaign.</p>',
+            '<p class="hint">Does not stack with coin-shop discounts or referral commission. Turn both off when not running a campaign. '
+            . 'When a live offer <b>starts or changes</b>, all players get an inbox + push (if Push and FCM are enabled). '
+            . 'Saving the same offer again does not re-send.</p>',
             '<button>Save promotions</button></form></div></section>';
         self::end();
     }
