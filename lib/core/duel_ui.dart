@@ -743,6 +743,68 @@ Future<void> showDuelMessage(BuildContext context, {required String title, requi
       ),
     );
 
+/// Wallet shortfall: Buy Coin / Cancel. Returns true if the player chose Buy Coin.
+Future<bool> showNotEnoughBalanceDialog(BuildContext context, {int? need, int? have}) async {
+  final result = await showDuelDialog<bool>(
+    context,
+    barrierColor: const Color(0xB3000000),
+    builder: (dialog) => Consumer(
+      builder: (context, ref, _) {
+        final t = ref.watch(stringsProvider);
+        final body = (need != null && have != null)
+            ? t.notEnoughBalanceBody(formatCoins(need), formatCoins(have))
+            : t.notEnoughBalanceHint;
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: 440,
+            padding: const EdgeInsets.all(22),
+            decoration: duelPanel(rim: DuelColors.red),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.account_balance_wallet_rounded, color: DuelColors.gold, size: 38),
+                const SizedBox(height: 8),
+                Text(t.notEnoughBalance, textAlign: TextAlign.center, style: AppText.label(18, weight: FontWeight.w900)),
+                const SizedBox(height: 10),
+                Text(
+                  body,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontFamily: 'sans-serif', fontSize: 14, height: 1.4, color: DuelColors.silver),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    DuelButton(
+                      label: t.buyCoin,
+                      width: 160,
+                      height: 42,
+                      fontSize: 14,
+                      color: DuelColors.gold,
+                      onPressed: () => Navigator.of(dialog).pop(true),
+                    ),
+                    const SizedBox(width: 10),
+                    DuelButton(
+                      label: t.cancel,
+                      width: 160,
+                      height: 42,
+                      fontSize: 14,
+                      color: DuelColors.rimLight,
+                      onPressed: () => Navigator.of(dialog).pop(false),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ),
+  );
+  return result == true;
+}
+
 /// Two crossed cues as an icon.
 class CrossedCuesIcon extends StatelessWidget {
   const CrossedCuesIcon({super.key, required this.size, required this.color});

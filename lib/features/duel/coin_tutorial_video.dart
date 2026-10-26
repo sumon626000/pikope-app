@@ -29,7 +29,7 @@ String? youtubeVideoId(String url) {
 String youtubeEmbedUrl(String videoId, {bool autoplay = false}) =>
     'https://www.youtube.com/embed/$videoId?playsinline=1&rel=0&modestbranding=1${autoplay ? '&autoplay=1' : ''}';
 
-/// In-shop tutorial: 16:9 frame with thumbnail; tap plays YouTube in-app.
+/// Compact in-shop tutorial strip: small thumbnail + title, not a full 16:9 player.
 class CoinTutorialVideoFrame extends StatelessWidget {
   const CoinTutorialVideoFrame({
     super.key,
@@ -42,74 +42,96 @@ class CoinTutorialVideoFrame extends StatelessWidget {
   final String title;
   final String tapHint;
 
+  static const _thumbW = 118.0;
+  static const _h = 68.0;
+
   @override
   Widget build(BuildContext context) {
     final id = youtubeVideoId(youtubeUrl);
     if (id == null) return const SizedBox.shrink();
-    final thumb = 'https://img.youtube.com/vi/$id/hqdefault.jpg';
+    final thumb = 'https://img.youtube.com/vi/$id/mqdefault.jpg';
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(title, style: AppText.label(16, color: DuelColors.gold, weight: FontWeight.w900)),
-          const SizedBox(height: 8),
-          AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Material(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(14),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => CoinTutorialPlayerScreen(videoId: id, title: title),
-                  ),
-                ),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.network(
-                      thumb,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFF1A1A24)),
-                    ),
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, Colors.black.withValues(alpha: 0.55)],
-                        ),
-                      ),
-                    ),
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.45),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: DuelColors.gold, width: 2),
-                        ),
-                        child: const Icon(Icons.play_arrow_rounded, color: DuelColors.gold, size: 44),
-                      ),
-                    ),
-                    Positioned(
-                      left: 10,
-                      right: 10,
-                      bottom: 8,
-                      child: Text(
-                        tapHint,
-                        textAlign: TextAlign.center,
-                        style: AppText.label(12, color: Colors.white70),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: const Color(0xFF0A1228),
+        borderRadius: BorderRadius.circular(12),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => CoinTutorialPlayerScreen(videoId: id, title: title),
             ),
           ),
-        ],
+          child: Container(
+            height: _h,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: DuelColors.gold.withValues(alpha: 0.42)),
+              boxShadow: [
+                BoxShadow(color: DuelColors.gold.withValues(alpha: 0.12), blurRadius: 10),
+              ],
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: _thumbW,
+                  height: _h,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(
+                        thumb,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFF141A2E)),
+                      ),
+                      const ColoredBox(color: Color(0x66000000)),
+                      Center(
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.55),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: DuelColors.gold, width: 1.6),
+                          ),
+                          child: const Icon(Icons.play_arrow_rounded, color: DuelColors.gold, size: 18),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.label(13, color: DuelColors.gold, weight: FontWeight.w900),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          tapHint,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.label(11, color: DuelColors.silver),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(right: 10),
+                  child: Icon(Icons.play_circle_outline_rounded, color: DuelColors.gold, size: 22),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -146,7 +168,17 @@ class _CoinTutorialPlayerScreenState extends State<CoinTutorialPlayerScreen> {
         foregroundColor: Colors.white,
         title: Text(widget.title, style: AppText.label(16, weight: FontWeight.w800)),
       ),
-      body: SafeArea(child: WebViewWidget(controller: _web)),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: WebViewWidget(controller: _web),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

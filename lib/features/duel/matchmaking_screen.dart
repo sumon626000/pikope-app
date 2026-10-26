@@ -17,6 +17,7 @@ import 'duel_chrome.dart';
 import '../../l10n/strings.dart';
 import 'challenge_inbox_pulse.dart';
 import 'lobby_data.dart';
+import 'not_enough_balance.dart';
 
 /// Waits for opponents at the chosen bet level, then opens the match.
 class MatchmakingScreen extends ConsumerStatefulWidget {
@@ -78,7 +79,13 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Sing
       _watchLive();
       _maybeStart();
     } on ApiException catch (e) {
-      if (mounted) setState(() => _error = ref.read(stringsProvider).maybeApi(e.message));
+      if (!mounted) return;
+      if (isNotEnoughCoins(e)) {
+        await promptNotEnoughBalance(context, need: widget.level.buyIn, have: ref.read(settingsProvider).coins);
+        if (mounted) Navigator.of(context).pop();
+        return;
+      }
+      setState(() => _error = ref.read(stringsProvider).maybeApi(e.message));
     }
   }
 

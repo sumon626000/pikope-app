@@ -206,6 +206,14 @@ class AppStrings {
   String get walletNumberInvalid => _t('Enter your wallet number (11 digits).', 'ওয়ালেট নম্বর (১১ ডিজিট) লিখুন।');
   String get redeemSent => _t('REDEEM SENT', 'রিডিম পাঠানো');
   String get notEnoughCoin => _t('NOT ENOUGH PICO COIN', 'পিকো কয়েন কম');
+  String get notEnoughBalance => _t('NOT ENOUGH BALANCE', 'পর্যাপ্ত ব্যালেন্স নেই');
+  String get notEnoughBalanceHint =>
+      _t('You do not have enough Pico coin for this match.', 'এই ম্যাচের জন্য পর্যাপ্ত পিকো কয়েন নেই।');
+  String notEnoughBalanceBody(String need, String have) => _t(
+        'This needs $need. You have $have.',
+        'এতে $need দরকার। আপনার আছে $have।',
+      );
+  String get buyCoin => _t('BUY COIN', 'কয়েন কিনুন');
   String get coinAdded => _t('PICO COIN ADDED', 'পিকো কয়েন যোগ');
 
   // —— History / inbox ——
@@ -785,6 +793,10 @@ class AppStrings {
     if (!isBn) return message;
     final m = message.toLowerCase();
     if (m.contains('not enough')) return 'পর্যাপ্ত পিকো কয়েন নেই।';
+    if (m.contains('sms gateway') || m.contains('could not send otp') || m.contains('sms provider')) {
+      return 'OTP SMS যায়নি। Admin → SMS OTP-এ Live HTTP ও API key সেট করুন।';
+    }
+    if (m.contains('too many')) return 'অনেকবার চেষ্টা হয়েছে। একটু পরে আবার চেষ্টা করুন।';
     if (m.contains('offline') || m.contains('server')) return 'সার্ভারে যোগাযোগ হচ্ছে না।';
     if (m.contains('password')) return message;
     if (m.contains('trx')) return 'TrxID ইতিমধ্যে ব্যবহার হয়েছে বা ভুল।';

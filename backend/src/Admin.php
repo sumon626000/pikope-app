@@ -1645,10 +1645,14 @@ CSS;
         } catch (ApiError $e) {
             self::fail($e->getMessage(), '/admin/otp-sms');
         }
-        Sms::sendTest($phone);
+        try {
+            Sms::sendTest($phone);
+        } catch (ApiError $e) {
+            self::fail($e->getMessage(), '/admin/otp-sms');
+        }
         self::back(
             '/admin/otp-sms',
-            'Test SMS sent for ' . Phone::display($phone) . '. Check the phone, SMS_LOG, or server error log.'
+            'Test SMS sent for ' . Phone::display($phone) . '. Check the phone (or SMS_LOG).'
         );
     }
 
@@ -1658,8 +1662,18 @@ CSS;
         $c = OtpSms::config();
         $presetsJson = json_encode(OtpSms::providerPresets(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG);
         $preset = (string) ($c['providerPreset'] ?? 'custom');
+        $last = Sms::lastResult();
         self::begin('SMS OTP (forgot password)', 'otp-sms');
-        self::pageLead('Forgot password only — sign-up does not send OTP. Pick a Bangladesh SMS provider preset, paste your API key, save, then send a test SMS.');
+        self::pageLead('Forgot password only — sign-up does not send OTP. Pick a Bangladesh SMS provider preset, paste your API key, set Delivery to Live HTTP, save, then send a test SMS.');
+        if (($c['delivery'] ?? 'log') !== 'http' || trim((string) ($c['httpUrl'] ?? '')) === '') {
+            echo '<div class="alert bad" role="status">SMS will not reach phones until Delivery is <strong>Live HTTP SMS gateway</strong> and a gateway URL + API key are saved.</div>';
+        }
+        if ($last !== null) {
+            $when = self::e((string) ($last['at'] ?? ''));
+            $msg = self::e((string) ($last['msg'] ?? ''));
+            $ok = !empty($last['ok']);
+            echo '<div class="alert ', $ok ? 'ok' : 'bad', '" role="status">Last send (', $when, '): ', $msg, '</div>';
+        }
         echo '<section class="section"><div class="card"><form method="post" action="', self::e($base), '/admin/otp-sms" id="otp-form">', self::csrfField($csrf),
             '<label class="check"><input type="checkbox" name="enabled" value="1"', $c['enabled'] ? ' checked' : '', '> Enable forgot-password SMS</label>',
             '<div class="grid">',
@@ -1691,7 +1705,7 @@ CSS;
             '<label>Request body template (POST only; leave empty for GET)',
             '<textarea name="httpBodyTemplate" id="otp-body" rows="5" spellcheck="false">', self::e($c['httpBodyTemplate']), '</textarea></label>',
             '<p class="muted">Placeholders: <code>{phone}</code> (8801…), <code>{phone_local}</code> (01…), <code>{message}</code>, <code>{api_key}</code>, <code>{sender_id}</code>. Alpha: put API key in the field above — URL uses <code>{api_key}</code>, not Bearer.</p>',
-            '<p class="muted">Override for dev: <code>SMS_LOG</code> in .env writes every OTP to a file (ignores gateway).</p>',
+            '<p class="muted">Dev only: <code>SMS_LOG</code> in .env also writes OTPs to a file. Live sending still needs Delivery = HTTP.</p>',
             '<button type="submit">Save OTP settings</button></form></div></section>',
             '<section class="section"><div class="card"><h3>Send test SMS</h3>',
             '<form method="post" action="', self::e($base), '/admin/otp-sms/test">', self::csrfField($csrf),

@@ -19,6 +19,7 @@ import 'challenge_inbox_pulse.dart';
 import '../../l10n/strings.dart';
 import '../online/session.dart';
 import '../../data/api_client.dart';
+import 'not_enough_balance.dart';
 
 /// Pick what to play for: a row of tables, cheapest to richest, that scrolls
 /// sideways with the chosen one large in the middle.
@@ -82,7 +83,7 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
   void _play(BetLevel level) {
     final coins = ref.read(settingsProvider).coins;
     if (coins < level.buyIn) {
-      _open(const ShopScreen(initialTab: 0));
+      promptNotEnoughBalance(context, need: level.buyIn, have: coins);
       return;
     }
     final target = widget.challengeTarget;
@@ -109,6 +110,10 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
       );
     } on ApiException catch (e) {
       if (!mounted) return;
+      if (isNotEnoughCoins(e)) {
+        await promptNotEnoughBalance(context, need: level.buyIn, have: ref.read(settingsProvider).coins);
+        return;
+      }
       final t = ref.read(stringsProvider);
       showDuelMessage(context, title: t.challengePageTitle, body: t.maybeApi(e.message), icon: Icons.error_outline_rounded);
     }
@@ -476,7 +481,7 @@ class _LevelCard extends ConsumerWidget {
                         children: [
                           const Icon(Icons.lock_rounded, color: DuelColors.red, size: 20),
                           const SizedBox(width: 6),
-                          Text(t.notEnoughCoin, style: AppText.label(15, color: DuelColors.red, weight: FontWeight.w800)),
+                          Text(t.notEnoughBalance, style: AppText.label(15, color: DuelColors.red, weight: FontWeight.w800)),
                         ],
                       ),
               ),

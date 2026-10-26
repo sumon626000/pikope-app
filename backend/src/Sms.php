@@ -9,9 +9,7 @@ final class Sms
     public static function sendOtp(string $phoneNormalized, string $code): void
     {
         $message = OtpSms::message($code);
-        if (self::appendSmsLog($phoneNormalized, $code, $message)) {
-            return;
-        }
+        self::appendSmsLog($phoneNormalized, $code, $message);
         self::deliverGateway($phoneNormalized, $message);
     }
 
@@ -20,24 +18,40 @@ final class Sms
     {
         $code = OtpSms::generateCode();
         $message = OtpSms::message($code);
-        if (self::appendSmsLog($phoneNormalized, $code, $message)) {
-            return;
-        }
+        self::appendSmsLog($phoneNormalized, $code, $message);
         self::deliverGateway($phoneNormalized, $message);
     }
 
-    private static function appendSmsLog(string $phoneNormalized, string $code, string $message): bool
+    /** @return array{at: string, ok: bool, msg: string}|null */
+    public static function lastResult(): ?array
+    {
+        $row = Db::one("SELECT v FROM settings WHERE k = 'otp_sms_last'");
+        if ($row === null) {
+            return null;
+        }
+        $j = json_decode((string) $row['v'], true);
+        return is_array($j) ? $j : null;
+    }
+
+    private static function remember(bool $ok, string $msg): void
+    {
+        Db::run(
+            "INSERT INTO settings (k, v) VALUES ('otp_sms_last', ?) ON DUPLICATE KEY UPDATE v = VALUES(v)",
+            [json_encode(['at' => date('c'), 'ok' => $ok, 'msg' => $msg], JSON_UNESCAPED_UNICODE)]
+        );
+    }
+
+    private static function appendSmsLog(string $phoneNormalized, string $code, string $message): void
     {
         $log = Config::get('SMS_LOG');
         if ($log === '') {
-            return false;
+            return;
         }
         file_put_contents(
             $log,
             Phone::display($phoneNormalized) . "\nOTP code is $code\n$message\n---\n",
             FILE_APPEND | LOCK_EX
         );
-        return true;
     }
 
     private static function deliverGateway(string $phoneNormalized, string $message): void
@@ -48,6 +62,15 @@ final class Sms
             return;
         }
         error_log('[PikoPe SMS] ' . Phone::display($phoneNormalized) . ' — ' . $message);
+        if (Config::get('SMS_LOG') !== '') {
+            self::remember(true, 'Wrote OTP to SMS_LOG (no live gateway).');
+            return;
+        }
+        self::remember(false, 'Delivery is Log only — SMS was not sent to the phone.');
+        throw ApiError::conflict(
+            'SMS gateway is not live. Admin → Settings → SMS OTP: set Delivery to Live HTTP SMS gateway, paste API key, Save, then Send test OTP.',
+            'sms_not_configured'
+        );
     }
 
     /** @param array<string,mixed> $c */
@@ -107,12 +130,45 @@ final class Sms
         curl_setopt_array($ch, $opts);
         $raw = curl_exec($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        if ($raw === false || $status < 200 || $status >= 300) {
-            $err = curl_error($ch) ?: "HTTP $status body=" . substr((string) $raw, 0, 200);
-            curl_close($ch);
-            error_log("[PikoPe SMS] gateway failed ($err); " . Phone::display($phoneNormalized) . ' — ' . $message);
-            return;
-        }
+        $curlErr = curl_error($ch);
         curl_close($ch);
+
+        if ($raw === false || $status < 200 || $status >= 300) {
+            $err = $curlErr !== '' ? $curlErr : "HTTP $status body=" . substr((string) $raw, 0, 200);
+            error_log("[PikoPe SMS] gateway failed ($err); " . Phone::display($phoneNormalized) . ' — ' . $message);
+            self::remember(false, $err);
+            throw ApiError::conflict('Could not send OTP SMS. Check Admin → SMS OTP (API key, gateway, test send).', 'sms_failed');
+        }
+
+        $json = json_decode((string) $raw, true);
+        $reject = self::gatewayRejected(is_array($json) ? $json : null);
+        if ($reject !== null) {
+            error_log("[PikoPe SMS] gateway rejected ($reject); " . Phone::display($phoneNormalized));
+            self::remember(false, $reject);
+            throw ApiError::conflict('SMS provider refused the OTP: ' . $reject, 'sms_failed');
+        }
+        self::remember(true, 'Gateway HTTP ' . $status);
+    }
+
+    /** @param array<string,mixed>|null $json */
+    private static function gatewayRejected(?array $json): ?string
+    {
+        if ($json === null) {
+            return null;
+        }
+        if (array_key_exists('error', $json)) {
+            $e = $json['error'];
+            if ($e !== 0 && $e !== '0' && $e !== false && $e !== null && $e !== '') {
+                return (string) ($json['msg'] ?? $json['message'] ?? $json['error_message'] ?? "error=$e");
+            }
+        }
+        if (array_key_exists('success', $json) && $json['success'] === false) {
+            return (string) ($json['message'] ?? $json['msg'] ?? 'success=false');
+        }
+        $status = strtolower((string) ($json['status'] ?? ''));
+        if (in_array($status, ['fail', 'failed', 'error'], true)) {
+            return (string) ($json['message'] ?? $json['msg'] ?? $status);
+        }
+        return null;
     }
 }

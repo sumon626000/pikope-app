@@ -1266,18 +1266,18 @@ class _BonusRibbon extends StatelessWidget {
       top: 0,
       left: 0,
       child: SizedBox(
-        width: 50,
-        height: 50,
+        width: 30,
+        height: 30,
         child: OverflowBox(
-          maxWidth: 90,
-          maxHeight: 90,
+          maxWidth: 52,
+          maxHeight: 52,
           alignment: Alignment.topLeft,
           child: Transform.rotate(
             angle: -0.785398,
             child: Container(
-              width: 72,
-              margin: const EdgeInsets.only(top: 10, left: -18),
-              padding: const EdgeInsets.symmetric(vertical: 3),
+              width: 42,
+              margin: const EdgeInsets.only(top: 6, left: -11),
+              padding: const EdgeInsets.symmetric(vertical: 1),
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
@@ -1285,9 +1285,9 @@ class _BonusRibbon extends StatelessWidget {
                   end: Alignment.bottomRight,
                   colors: [_ShopUi.ribbonStart, _ShopUi.ribbonEnd],
                 ),
-                boxShadow: [BoxShadow(color: _ShopUi.ribbonStart.withValues(alpha: 0.6), blurRadius: 6)],
+                boxShadow: [BoxShadow(color: _ShopUi.ribbonStart.withValues(alpha: 0.45), blurRadius: 3)],
               ),
-              child: Text('+$percent%', style: AppText.label(10, color: Colors.white, weight: FontWeight.w900)),
+              child: Text('+$percent%', style: AppText.label(7, color: Colors.white, weight: FontWeight.w900)),
             ),
           ),
         ),

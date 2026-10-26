@@ -8,6 +8,7 @@ import '../../data/api_client.dart';
 import '../../l10n/strings.dart';
 import '../online/session.dart';
 import 'challenge_flow.dart';
+import 'not_enough_balance.dart';
 
 /// Compact top banner (not a full-screen dialog) for an incoming 1v1 invite.
 Future<void> showIncomingChallengeBanner(BuildContext context, WidgetRef ref, Map<String, dynamic> ch) async {
@@ -73,7 +74,17 @@ class _IncomingTopBannerState extends ConsumerState<_IncomingTopBanner> {
     return int.tryParse(raw.toString());
   }
 
+  bool get _shortBalance {
+    if (_buyIn <= 0) return false;
+    return ref.watch(sessionProvider).walletCoins < _buyIn;
+  }
+
   Future<void> _accept() async {
+    final coins = ref.read(sessionProvider).walletCoins;
+    if (_buyIn > 0 && coins < _buyIn) {
+      await promptNotEnoughBalance(context, need: _buyIn, have: coins);
+      return;
+    }
     setState(() => _busy = true);
     try {
       final room = await ref.read(sessionProvider.notifier).acceptChallenge(widget.ch['id'] as int);
@@ -81,7 +92,12 @@ class _IncomingTopBannerState extends ConsumerState<_IncomingTopBanner> {
       Navigator.of(context).pop();
       await openChallengeRoom(context, ref, room);
     } on ApiException catch (e) {
-      if (mounted) setState(() => _error = e.message);
+      if (!mounted) return;
+      if (isNotEnoughCoins(e)) {
+        await promptNotEnoughBalance(context, need: _buyIn > 0 ? _buyIn : null, have: ref.read(sessionProvider).walletCoins);
+        return;
+      }
+      setState(() => _error = e.message);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -168,7 +184,10 @@ class _IncomingTopBannerState extends ConsumerState<_IncomingTopBanner> {
                   _detailChip(Icons.timer_outlined, t.challengeExpiresSec(widget.ch['expiresIn'] as int)),
               ],
             ),
-            if (_error != null) ...[
+            if (_shortBalance) ...[
+              const SizedBox(height: 6),
+              Text(t.notEnoughBalance, style: AppText.label(12, color: DuelColors.red, weight: FontWeight.w800)),
+            ] else if (_error != null) ...[
               const SizedBox(height: 6),
               Text(_error!.toUpperCase(), style: AppText.label(11, color: DuelColors.red)),
             ],
