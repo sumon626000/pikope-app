@@ -13,6 +13,7 @@ import 'lobby_data.dart';
 import '../../l10n/strings.dart';
 import 'coin_transfer_tab.dart';
 import 'coin_tutorial_video.dart';
+import 'shop_tab_insets.dart';
 import 'zini_pay_checkout.dart';
 
 /// Shop-only accents (UI); logic unchanged.
@@ -45,58 +46,76 @@ abstract final class _ShopUi {
     return id;
   }
 
-  static double coinArtSize(int coins) {
-    if (coins >= 10000) return 52;
-    if (coins >= 5000) return 48;
-    if (coins >= 1000) return 44;
-    if (coins >= 500) return 42;
-    return 40;
+  static double coinIconSize(int coins, double slot) {
+    final base = slot * 0.88;
+    if (coins >= 10000) return base.clamp(44, 72);
+    if (coins >= 5000) return base.clamp(42, 68);
+    if (coins >= 1000) return base.clamp(40, 64);
+    if (coins >= 500) return base.clamp(38, 60);
+    return base.clamp(36, 56);
   }
 
-  static Widget packCoinArt(int coins) {
-    final size = coinArtSize(coins);
+  /// [slot] is the square region width reserved for coin art (scales with card width).
+  static Widget packCoinArt(int coins, double slot) {
+    final icon = coinIconSize(coins, slot);
+    final h = slot * 0.82;
     if (coins >= 200) {
       return SizedBox(
-        width: 56,
-        height: 48,
+        width: slot,
+        height: h,
         child: Stack(
           clipBehavior: Clip.none,
           alignment: Alignment.center,
           children: [
-            Positioned(left: 2, bottom: 2, child: PikoCoinIcon(size: size * 0.78)),
-            Positioned(right: 2, top: 0, child: PikoCoinIcon(size: size * 0.92)),
+            Positioned(left: slot * 0.06, bottom: 0, child: PikoCoinIcon(size: icon * 0.78)),
+            Positioned(right: slot * 0.06, top: 0, child: PikoCoinIcon(size: icon * 0.92)),
           ],
         ),
       );
     }
     return SizedBox(
-      width: 56,
-      height: 48,
-      child: Center(child: PikoCoinIcon(size: size)),
+      width: slot,
+      height: h,
+      child: Center(child: PikoCoinIcon(size: icon)),
     );
   }
 }
 
-/// Seven standard packs: 2-up on phones (last row full width), 3-up on wide screens.
+/// Seven standard packs: 4+3 on wide landscape, else 3- or 2-up from measured width.
 class _CoinPackGrid extends StatelessWidget {
   const _CoinPackGrid({
     required this.packs,
     required this.columns,
+    required this.layoutWidth,
     required this.bestId,
     required this.onBuy,
   });
 
   final List<CoinShopPack> packs;
   final int columns;
+  final double layoutWidth;
   final String? bestId;
   final Future<void> Function(CoinShopPack) onBuy;
 
-  static const _gap = 12.0;
-  static const _cardH = 168.0;
+  static const _gap = 10.0;
 
-  Widget _card(CoinShopPack pack) {
+  static int columnsForWidth(double w) {
+    if (w >= 820) return 4;
+    if (w >= 540) return 3;
+    return 2;
+  }
+
+  static double _cellWidth(double layoutWidth, int cols) =>
+      (layoutWidth - (cols - 1) * _gap) / cols;
+
+  static double cardHeightFor(double layoutWidth, int cols) {
+    final cellW = _cellWidth(layoutWidth, cols);
+    return (cellW * 0.64).clamp(158.0, 212.0);
+  }
+
+  Widget _card(CoinShopPack pack, double cardH) {
     return SizedBox(
-      height: _cardH,
+      height: cardH,
       child: _CoinPackCard(
         pack: pack,
         isBestValue: bestId != null && pack.id == bestId,
@@ -105,46 +124,127 @@ class _CoinPackGrid extends StatelessWidget {
     );
   }
 
+  Widget _rowCells(List<CoinShopPack> slice, double cardH) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < slice.length; i++) ...[
+          if (i > 0) const SizedBox(width: _gap),
+          Expanded(child: _card(slice[i], cardH)),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (columns >= 3) {
-      return GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          mainAxisSpacing: _gap,
-          crossAxisSpacing: _gap,
-          mainAxisExtent: _cardH,
-        ),
-        itemCount: packs.length,
-        itemBuilder: (context, i) => _card(packs[i]),
+    final cols = columns;
+    final cardH = cardHeightFor(layoutWidth, cols);
+
+    // Reference layout: four packs, then three (seven standard packs).
+    if (cols >= 4 && packs.length >= 7) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _rowCells(packs.sublist(0, 4), cardH),
+          const SizedBox(height: _gap),
+          _rowCells(packs.sublist(4, 7), cardH),
+        ],
       );
+    }
+
+    if (cols >= 3) {
+      final rows = <Widget>[];
+      for (var i = 0; i < packs.length; i += cols) {
+        final end = (i + cols > packs.length) ? packs.length : i + cols;
+        final slice = packs.sublist(i, end);
+        if (slice.length < cols) {
+          rows.add(
+            Row(
+              children: [
+                for (var j = 0; j < slice.length; j++) ...[
+                  if (j > 0) const SizedBox(width: _gap),
+                  Expanded(child: _card(slice[j], cardH)),
+                ],
+              ],
+            ),
+          );
+        } else {
+          rows.add(_rowCells(slice, cardH));
+        }
+        if (end < packs.length) rows.add(const SizedBox(height: _gap));
+      }
+      return Column(mainAxisSize: MainAxisSize.min, children: rows);
     }
 
     final rows = <Widget>[];
     for (var i = 0; i < packs.length;) {
       final remaining = packs.length - i;
       if (remaining == 1) {
-        rows.add(_card(packs[i]));
+        rows.add(_card(packs[i], cardH));
         break;
       }
-      rows.add(
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: _card(packs[i])),
-            const SizedBox(width: _gap),
-            Expanded(child: _card(packs[i + 1])),
-          ],
-        ),
-      );
+      rows.add(_rowCells([packs[i], packs[i + 1]], cardH));
       i += 2;
-      if (i < packs.length) {
-        rows.add(const SizedBox(height: _gap));
-      }
+      if (i < packs.length) rows.add(const SizedBox(height: _gap));
     }
     return Column(mainAxisSize: MainAxisSize.min, children: rows);
+  }
+}
+
+/// Shop uses the full landscape viewport instead of the scaled 1600×900 [DuelCanvas].
+class _ShopViewportFrame extends ConsumerWidget {
+  const _ShopViewportFrame({required this.title, this.sub, required this.body});
+
+  final String title;
+  final String? sub;
+  final Widget body;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(stringsProvider);
+    final inset = MediaQuery.paddingOf(context);
+    return Scaffold(
+      backgroundColor: DuelColors.ink,
+      resizeToAvoidBottomInset: true,
+      body: DuelBackdrop(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(inset.left, inset.top, inset.right, inset.bottom),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const DuelTopBar(showProfile: false, showShortcuts: false),
+              DuelTitle(title, size: 34, sub: sub),
+              const SizedBox(height: 4),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4, right: 2),
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        child: NavTile(
+                          icon: Icons.reply_rounded,
+                          label: t.navBack,
+                          onTap: () => Navigator.of(context).pop(),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(0, 0, 10, 6),
+                        child: body,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -225,13 +325,10 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
     final data = lobby.valueOrNull;
     final global = data?.coinShop.globalDiscountPercent ?? 0;
 
-    return DuelPage(
+    return _ShopViewportFrame(
       title: t.picoCoin,
       sub: t.shopSub(global),
-      expanded: true,
-      sideBack: true,
-      contentTop: 198,
-      child: lobby.valueOrNull == null
+      body: lobby.valueOrNull == null
           ? Center(
               child: lobby.hasError
                   ? Text(t.offlineServer, style: AppText.label(20, color: DuelColors.red))
@@ -269,9 +366,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
                     ),
                     labelColor: Colors.white,
                     unselectedLabelColor: DuelColors.dim,
-                    labelStyle: AppText.label(17, weight: FontWeight.w900),
-                    unselectedLabelStyle: AppText.label(16, color: DuelColors.dim, weight: FontWeight.w700),
-                    labelPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    labelStyle: AppText.label(18, weight: FontWeight.w900),
+                    unselectedLabelStyle: AppText.label(17, color: DuelColors.dim, weight: FontWeight.w700),
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     tabs: [
                       Tab(text: t.tabBuy),
                       Tab(text: t.tabTransfer),
@@ -280,7 +377,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 Expanded(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
@@ -322,9 +419,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
   }
 }
 
-/// Shop tab content fills the tab area; panel stretches to at least full height.
-class _ShopPanel extends StatelessWidget {
-  const _ShopPanel({required this.child});
+/// Scrollable tab body; outer TabBarView already provides the panel chrome.
+class _ShopTabScroll extends StatelessWidget {
+  const _ShopTabScroll({required this.child});
 
   final Widget child;
 
@@ -333,12 +430,11 @@ class _ShopPanel extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(24, 22, 24, 26),
-              decoration: duelPanel(radius: 22),
+          padding: ShopTabInsets.scroll,
+          child: SizedBox(
+            width: double.infinity,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
               child: child,
             ),
           ),
@@ -361,31 +457,28 @@ class _BuyTab extends ConsumerWidget {
     final bestId = _ShopUi.bestValuePackId(packs);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cols = constraints.maxWidth >= 880 ? 3 : 2;
+        final cols = _CoinPackGrid.columnsForWidth(constraints.maxWidth);
         final tutorials = data.coinTutorials;
-        return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 20),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight - 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                CoinTutorialVideoFrame(
-                  youtubeUrl: tutorials.deposit,
-                  title: t.coinTutorialDepositTitle,
-                  tapHint: t.coinTutorialTapPlay,
+        return _ShopTabScroll(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              CoinTutorialVideoFrame(
+                youtubeUrl: tutorials.deposit,
+                title: t.coinTutorialDepositTitle,
+                tapHint: t.coinTutorialTapPlay,
+              ),
+              if (packs.isEmpty)
+                Center(child: Text(t.noPacks, style: AppText.label(18, color: DuelColors.dim)))
+              else
+                _CoinPackGrid(
+                  packs: packs,
+                  columns: cols,
+                  layoutWidth: constraints.maxWidth,
+                  bestId: bestId,
+                  onBuy: onBuy,
                 ),
-                if (packs.isEmpty)
-                  Center(child: Text(t.noPacks, style: AppText.label(18, color: DuelColors.dim)))
-                else
-                  _CoinPackGrid(
-                    packs: packs,
-                    columns: cols,
-                    bestId: bestId,
-                    onBuy: onBuy,
-                  ),
-              ],
-            ),
+            ],
           ),
         );
       },
@@ -792,7 +885,7 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
     final input = AppText.label(28, color: Colors.white);
     const fieldPad = EdgeInsets.symmetric(horizontal: 22, vertical: 22);
     final fieldLabel = AppText.label(20, color: DuelColors.dim);
-    return _ShopPanel(
+    return _ShopTabScroll(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -959,12 +1052,13 @@ class _ActivityTabState extends ConsumerState<_ActivityTab> {
                 ),
               );
             }
-            return Container(
-              width: double.infinity,
-              height: constraints.maxHeight,
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-              decoration: duelPanel(radius: 22),
-              child: body,
+            return Padding(
+              padding: ShopTabInsets.scroll,
+              child: SizedBox(
+                width: double.infinity,
+                height: constraints.maxHeight,
+                child: body,
+              ),
             );
           },
         );
@@ -1128,169 +1222,167 @@ class _CoinPackCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
-    final bonus = pack.discountPercent;
-    final borderColor = isBestValue ? _ShopUi.bestBorder : _ShopUi.cardBorder;
-    final buyBdt = pack.free ? t.claimNow : '৳${formatCoins(pack.coins, compact: true)}';
-    final amountLabel = formatCoins(pack.coins, compact: true);
-    return GestureDetector(
-      onTap: () {
-        AudioService.tap();
-        onTap();
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [_ShopUi.cardFillTop, _ShopUi.cardFillMid, _ShopUi.cardFillBot],
-          ),
-          border: Border.all(
-            color: borderColor.withValues(alpha: isBestValue ? 1 : 0.9),
-            width: isBestValue ? 1.8 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: (isBestValue ? _ShopUi.bestBorder : Colors.black).withValues(alpha: isBestValue ? 0.4 : 0.45),
-              blurRadius: isBestValue ? 16 : 14,
-              offset: const Offset(0, 4),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final h = constraints.maxHeight;
+        final bonus = pack.discountPercent;
+        final borderColor = isBestValue ? _ShopUi.bestBorder : _ShopUi.cardBorder;
+        final buyBdt = pack.free ? t.claimNow : '৳${formatCoins(pack.coins, compact: true)}';
+        final amountLabel = formatCoins(pack.coins, compact: true);
+        final amountSize = (w * 0.115).clamp(22.0, 34.0);
+        final subSize = (w * 0.062).clamp(11.0, 15.0);
+        final btnH = (h * 0.24).clamp(38.0, 48.0);
+        final btnFont = (w * 0.075).clamp(12.0, 15.0);
+        final coinSlot = (w * 0.34).clamp(52.0, 88.0);
+        final topInset = bonus > 0 || isBestValue ? 28.0 : 10.0;
+
+        return GestureDetector(
+          onTap: () {
+            AudioService.tap();
+            onTap();
+          },
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [_ShopUi.cardFillTop, _ShopUi.cardFillMid, _ShopUi.cardFillBot],
+              ),
+              border: Border.all(
+                color: borderColor.withValues(alpha: isBestValue ? 1 : 0.85),
+                width: isBestValue ? 2 : 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+                if (isBestValue)
+                  BoxShadow(color: _ShopUi.bestBorder.withValues(alpha: 0.25), blurRadius: 12, spreadRadius: -2),
+              ],
             ),
-            if (isBestValue)
-              BoxShadow(color: _ShopUi.bestBorder.withValues(alpha: 0.15), blurRadius: 8, spreadRadius: -2),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(13),
+              child: Stack(
+                clipBehavior: Clip.hardEdge,
                 children: [
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(10, topInset, 10, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const SizedBox(width: 4),
-                        _ShopUi.packCoinArt(pack.coins),
-                        const SizedBox(width: 6),
                         Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Text(
-                                amountLabel,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppText.label(20, color: Colors.white, weight: FontWeight.w900),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                t.youGetCoins(formatPicoCoins(pack.receiveCoins)),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppText.label(10, color: _ShopUi.skyLine, weight: FontWeight.w800),
+                              _ShopUi.packCoinArt(pack.coins, coinSlot),
+                              SizedBox(width: (w * 0.04).clamp(6.0, 12.0)),
+                              Expanded(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      amountLabel,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppText.label(amountSize, color: Colors.white, weight: FontWeight.w900),
+                                    ),
+                                    SizedBox(height: (h * 0.03).clamp(2.0, 6.0)),
+                                    Text(
+                                      t.youGetCoins(formatPicoCoins(pack.receiveCoins)),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppText.label(subSize, color: _ShopUi.skyLine, weight: FontWeight.w800),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
+                          ),
+                        ),
+                        SizedBox(height: (h * 0.04).clamp(4.0, 8.0)),
+                        Container(
+                          height: btnH,
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          decoration: BoxDecoration(
+                            color: _ShopUi.buyGreen,
+                            borderRadius: BorderRadius.circular(btnH / 2),
+                            boxShadow: const [
+                              BoxShadow(color: Color(0x5500C675), blurRadius: 6, offset: Offset(0, 2)),
+                            ],
+                          ),
+                          child: Text(
+                            pack.free ? buyBdt : '$buyBdt  ·  ${t.tabBuy} →',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: AppText.label(btnFont, color: _ShopUi.buyGreenText, weight: FontWeight.w900),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Container(
-                    height: 34,
-                    alignment: Alignment.center,
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                    decoration: BoxDecoration(
-                      color: _ShopUi.buyGreen,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: const [
-                        BoxShadow(color: Color(0x6600C675), blurRadius: 10, offset: Offset(0, 2)),
-                      ],
+                  if (bonus > 0) _BonusBadge(percent: bonus),
+                  if (isBestValue)
+                    Positioned(
+                      top: 6,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(colors: [Color(0xFFFBBF24), Color(0xFFEAB308)]),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.workspace_premium_rounded, size: 13, color: Colors.brown.shade900),
+                              const SizedBox(width: 4),
+                              Text('BEST VALUE', style: AppText.label(10, color: Colors.brown.shade900, weight: FontWeight.w900)),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: pack.free
-                          ? Text(buyBdt, style: AppText.label(12, color: _ShopUi.buyGreenText, weight: FontWeight.w900))
-                          : Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(buyBdt, style: AppText.label(12, color: _ShopUi.buyGreenText, weight: FontWeight.w900)),
-                                Text('  •  ', style: AppText.label(10, color: _ShopUi.buyGreenText.withValues(alpha: 0.75))),
-                                Text('${t.tabBuy} →', style: AppText.label(12, color: _ShopUi.buyGreenText, weight: FontWeight.w900)),
-                              ],
-                            ),
-                    ),
-                  ),
                 ],
               ),
             ),
-            if (bonus > 0) _BonusRibbon(percent: bonus),
-            if (isBestValue)
-              Positioned(
-                top: 6,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [Color(0xFFFBBF24), Color(0xFFEAB308)]),
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: const [BoxShadow(color: Color(0xCCFBBF24), blurRadius: 8)],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.workspace_premium_rounded, size: 12, color: Colors.brown.shade900),
-                      const SizedBox(width: 3),
-                      Text('BEST VALUE', style: AppText.label(9, color: Colors.brown.shade900, weight: FontWeight.w900)),
-                    ],
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
 
-class _BonusRibbon extends StatelessWidget {
-  const _BonusRibbon({required this.percent});
+class _BonusBadge extends StatelessWidget {
+  const _BonusBadge({required this.percent});
 
   final int percent;
 
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      top: 0,
-      left: 0,
-      child: SizedBox(
-        width: 30,
-        height: 30,
-        child: OverflowBox(
-          maxWidth: 52,
-          maxHeight: 52,
-          alignment: Alignment.topLeft,
-          child: Transform.rotate(
-            angle: -0.785398,
-            child: Container(
-              width: 42,
-              margin: const EdgeInsets.only(top: 6, left: -11),
-              padding: const EdgeInsets.symmetric(vertical: 1),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [_ShopUi.ribbonStart, _ShopUi.ribbonEnd],
-                ),
-                boxShadow: [BoxShadow(color: _ShopUi.ribbonStart.withValues(alpha: 0.45), blurRadius: 3)],
-              ),
-              child: Text('+$percent%', style: AppText.label(7, color: Colors.white, weight: FontWeight.w900)),
-            ),
+      top: 8,
+      left: 8,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [_ShopUi.ribbonStart, _ShopUi.ribbonEnd],
           ),
+          borderRadius: BorderRadius.circular(6),
+          boxShadow: [BoxShadow(color: _ShopUi.ribbonStart.withValues(alpha: 0.35), blurRadius: 4)],
         ),
+        child: Text('+$percent%', style: AppText.label(11, color: Colors.white, weight: FontWeight.w900)),
       ),
     );
   }

@@ -12,6 +12,7 @@ import '../../l10n/strings.dart';
 import '../online/session.dart';
 import 'coin_tutorial_video.dart';
 import 'lobby_data.dart';
+import 'shop_tab_insets.dart';
 
 /// Send Pico coin to another player by 6-digit game ID (registered only).
 class CoinTransferTab extends ConsumerStatefulWidget {
@@ -196,15 +197,14 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> {
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(24, 22, 24, 26),
-              decoration: duelPanel(radius: 22),
+          padding: ShopTabInsets.scroll,
+          child: SizedBox(
+            width: double.infinity,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
             CoinTutorialVideoFrame(
               youtubeUrl: widget.tutorialUrl,
               title: t.coinTutorialTransferTitle,
