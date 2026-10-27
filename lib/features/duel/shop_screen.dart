@@ -89,6 +89,7 @@ class _CoinPackGrid extends StatelessWidget {
     required this.layoutWidth,
     required this.bestId,
     required this.onBuy,
+    this.maxCardHeight,
   });
 
   final List<CoinShopPack> packs;
@@ -96,8 +97,11 @@ class _CoinPackGrid extends StatelessWidget {
   final double layoutWidth;
   final String? bestId;
   final Future<void> Function(CoinShopPack) onBuy;
+  /// When set (BUY tab), keeps two grid rows inside the visible tab viewport.
+  final double? maxCardHeight;
 
-  static const _gap = 10.0;
+  static const gap = 10.0;
+  static const _gap = gap;
 
   static int columnsForWidth(double w) {
     if (w >= 820) return 4;
@@ -139,7 +143,9 @@ class _CoinPackGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cols = columns;
-    final cardH = cardHeightFor(layoutWidth, cols);
+    var cardH = cardHeightFor(layoutWidth, cols);
+    final cap = maxCardHeight;
+    if (cap != null && cap >= 140) cardH = cardH.clamp(140.0, cap);
 
     // Reference layout: four packs, then three (seven standard packs).
     if (cols >= 4 && packs.length >= 7) {
@@ -189,62 +195,6 @@ class _CoinPackGrid extends StatelessWidget {
       if (i < packs.length) rows.add(const SizedBox(height: _gap));
     }
     return Column(mainAxisSize: MainAxisSize.min, children: rows);
-  }
-}
-
-/// Shop uses the full landscape viewport instead of the scaled 1600×900 [DuelCanvas].
-class _ShopViewportFrame extends ConsumerWidget {
-  const _ShopViewportFrame({required this.title, this.sub, required this.body});
-
-  final String title;
-  final String? sub;
-  final Widget body;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = ref.watch(stringsProvider);
-    final inset = MediaQuery.paddingOf(context);
-    return Scaffold(
-      backgroundColor: DuelColors.ink,
-      resizeToAvoidBottomInset: true,
-      body: DuelBackdrop(
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(inset.left, inset.top, inset.right, inset.bottom),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const DuelTopBar(showProfile: false, showShortcuts: false),
-              DuelTitle(title, size: 34, sub: sub),
-              const SizedBox(height: 4),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4, right: 2),
-                      child: Align(
-                        alignment: Alignment.topCenter,
-                        child: NavTile(
-                          icon: Icons.reply_rounded,
-                          label: t.navBack,
-                          onTap: () => Navigator.of(context).pop(),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(0, 0, 10, 6),
-                        child: body,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 
@@ -325,10 +275,13 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
     final data = lobby.valueOrNull;
     final global = data?.coinShop.globalDiscountPercent ?? 0;
 
-    return _ShopViewportFrame(
+    return DuelPage(
       title: t.picoCoin,
       sub: t.shopSub(global),
-      body: lobby.valueOrNull == null
+      expanded: true,
+      sideBack: true,
+      contentTop: 198,
+      child: lobby.valueOrNull == null
           ? Center(
               child: lobby.hasError
                   ? Text(t.offlineServer, style: AppText.label(20, color: DuelColors.red))
@@ -430,6 +383,7 @@ class _ShopTabScroll extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: ShopTabInsets.scroll,
           child: SizedBox(
             width: double.infinity,
@@ -459,6 +413,13 @@ class _BuyTab extends ConsumerWidget {
       builder: (context, constraints) {
         final cols = _CoinPackGrid.columnsForWidth(constraints.maxWidth);
         final tutorials = data.coinTutorials;
+        const tutorialReserve = 82.0;
+        const scrollPad = 28.0;
+        final rowCount = cols >= 4 && packs.length >= 7 ? 2 : (packs.length + cols - 1) ~/ cols;
+        double? maxCardH;
+        if (rowCount >= 2 && constraints.maxHeight.isFinite) {
+          maxCardH = (constraints.maxHeight - tutorialReserve - scrollPad - (rowCount - 1) * _CoinPackGrid.gap) / rowCount;
+        }
         return _ShopTabScroll(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -477,6 +438,7 @@ class _BuyTab extends ConsumerWidget {
                   layoutWidth: constraints.maxWidth,
                   bestId: bestId,
                   onBuy: onBuy,
+                  maxCardHeight: maxCardH,
                 ),
             ],
           ),

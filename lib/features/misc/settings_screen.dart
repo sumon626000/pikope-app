@@ -13,6 +13,7 @@ import '../../core/duel_ui.dart';
 import '../../core/env.dart';
 import '../../data/api_client.dart';
 import '../online/session.dart';
+import '../duel/duel_chrome.dart';
 import '../start/login_screen.dart';
 import 'legal_screen.dart';
 import 'page_frame.dart';
@@ -196,21 +197,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ref.read(sessionProvider.notifier).pushProfile();
   }
 
-  Widget _prefTile(String label, Widget control) {
+  Widget _settingsPanel(String label, Widget control, {double minHeight = 96}) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-      decoration: BoxDecoration(
-        color: AppColors.backgroundAlt.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.frame.withValues(alpha: 0.85)),
-      ),
+      constraints: BoxConstraints(minHeight: minHeight),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: duelPanel(radius: 16, rim: DuelColors.rim),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(label, style: AppText.label(10, color: AppColors.textDim, weight: FontWeight.w800)),
-          const SizedBox(height: 6),
+          Text(label, style: AppText.label(13, color: DuelColors.dim, weight: FontWeight.w800)),
+          const SizedBox(height: 10),
           control,
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, top: 4),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 16,
+            margin: const EdgeInsets.only(right: 10),
+            decoration: BoxDecoration(
+              color: DuelColors.gold,
+              borderRadius: BorderRadius.circular(2),
+              boxShadow: [BoxShadow(color: DuelColors.gold.withValues(alpha: 0.45), blurRadius: 8)],
+            ),
+          ),
+          Text(title, style: AppText.label(15, color: DuelColors.gold, weight: FontWeight.w900)),
         ],
       ),
     );
@@ -302,6 +322,140 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  Widget _avatarStrip(AppSettings s, bool canUpload) {
+    final t = ref.watch(stringsProvider);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: duelPanel(radius: 16, rim: DuelColors.rimLight),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(t.uploadPhoto, style: AppText.label(13, color: DuelColors.dim, weight: FontWeight.w800)),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 52,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: DemoData.avatars.length + 1,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, i) {
+                if (i == DemoData.avatars.length) {
+                  return GameButton(
+                    label: _uploading ? '…' : t.uploadPhoto,
+                    icon: Icons.cloud_upload_rounded,
+                    height: 44,
+                    width: 120,
+                    fontSize: 12,
+                    color: DuelColors.blue,
+                    onPressed: canUpload && !_uploading ? _uploadAvatar : null,
+                  );
+                }
+                final a = DemoData.avatars[i];
+                final selected = a == s.avatar;
+                return GestureDetector(
+                  onTap: () => _update((st) => st.copyWith(avatar: a)),
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: selected ? DuelColors.green : DuelColors.rim,
+                        width: selected ? 2.5 : 1.5,
+                      ),
+                      boxShadow: selected ? [BoxShadow(color: DuelColors.green.withValues(alpha: 0.35), blurRadius: 10)] : null,
+                    ),
+                    child: ClipOval(child: AvatarImage(a, size: 44)),
+                  ),
+                );
+              },
+            ),
+          ),
+          if (!canUpload) ...[
+            const SizedBox(height: 6),
+            Text(t.uploadNeedsServer, style: AppText.label(11, color: DuelColors.dim)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _referralCard(Map<String, dynamic> referral) {
+    final t = ref.watch(stringsProvider);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: duelPanel(radius: 16, rim: DuelColors.gold, glow: true),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text('${referral['code']}', style: AppText.label(28, weight: FontWeight.w900)),
+              ),
+              GameButton(
+                label: t.copy,
+                height: 40,
+                width: 88,
+                fontSize: 13,
+                color: DuelColors.blue,
+                onPressed: () => Clipboard.setData(ClipboardData(text: referral['code'] as String)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(t.invitedCount(referral['invited'] as int), style: AppText.label(12, weight: FontWeight.w800)),
+          Text(
+            '${t.referralEarn(referral['percent'] as int)} · ${t.referralTotals('${referral['earnedToday']}', '${referral['earnedMonth']}', '${referral['earned']}')}',
+            style: AppText.label(11, color: DuelColors.dim),
+          ),
+          const SizedBox(height: 8),
+          Text(t.playerIdHint, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppText.label(12, color: DuelColors.silver)),
+          if (referral['referredBy'] == null) ...[
+            const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _invite,
+                    maxLength: 6,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    style: AppText.label(16),
+                    decoration: InputDecoration(
+                      labelText: t.friendIdOptional,
+                      counterText: '',
+                      filled: true,
+                      fillColor: const Color(0xFF0E1430),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GameButton(
+                  label: _applying ? t.saving : t.useId,
+                  height: 44,
+                  width: 96,
+                  fontSize: 12,
+                  onPressed: _applying ? null : _applyInvite,
+                ),
+              ],
+            ),
+            if (_inviteError != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(_inviteError!, style: AppText.label(11, color: DuelColors.red)),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(settingsProvider);
@@ -311,356 +465,287 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final next = session.nameChangeAllowedAt?.toLocal();
     final canUpload = Env.hasBackend || ref.watch(cloudinaryProvider).canUpload;
     final referral = _referral;
-    return PageFrame(
+
+    return DuelPage(
       title: t.settingsTitle,
-      maxWidth: 1080,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SectionCard(
-            compact: true,
-            title: t.sectionPlayer,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      expanded: true,
+      sideBack: true,
+      contentTop: 168,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth >= 720;
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                FramedTile(size: 56, child: AvatarImage(s.avatar, size: 56)),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 5,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(session.phone ?? t.noPhoneYet, style: AppText.label(15, weight: FontWeight.w900)),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Text(t.winsGames(s.wins, s.games), style: AppText.label(10, color: AppColors.textDim)),
+                if (wide)
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(flex: 3, child: _profileColumn(s, session, t, canRename, next)),
+                        if (Env.hasBackend && referral != null) ...[
                           const SizedBox(width: 12),
-                          const PikoCoinIcon(size: 15),
-                          const SizedBox(width: 4),
-                          Text(formatPicoCoins(s.coins), style: AppText.label(11, color: AppColors.gold, weight: FontWeight.w800)),
+                          Expanded(flex: 2, child: _referralCard(referral)),
                         ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _name,
-                              enabled: canRename && !_savingName,
-                              maxLength: 16,
-                              inputFormatters: [FilteringTextInputFormatter.allow(RegExp('[A-Za-z0-9_]'))],
-                              style: AppText.label(14),
-                              decoration: InputDecoration(
-                                labelText: t.nicknameLabel,
-                                counterText: '',
-                                isDense: true,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          GameButton(
-                            label: t.saveName,
-                            height: 40,
-                            width: 84,
-                            fontSize: 11,
-                            onPressed: canRename && !_savingName ? _saveName : null,
-                          ),
-                        ],
-                      ),
-                      Text(
-                        canRename || next == null
-                            ? t.nameEvery7
-                            : t.nameNextChange(
-                                '${next.year}-${next.month.toString().padLeft(2, '0')}-${next.day.toString().padLeft(2, '0')}',
-                              ),
-                        style: AppText.label(9, color: AppColors.textDim),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 4,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(t.uploadPhoto, style: AppText.label(10, color: AppColors.textDim, weight: FontWeight.w800)),
-                      const SizedBox(height: 6),
-                      SizedBox(
-                        height: 42,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: DemoData.avatars.length + 1,
-                          separatorBuilder: (_, _) => const SizedBox(width: 6),
-                          itemBuilder: (context, i) {
-                            if (i == DemoData.avatars.length) {
-                              return GameButton(
-                                label: _uploading ? '…' : '+',
-                                icon: Icons.cloud_upload_rounded,
-                                height: 38,
-                                width: 44,
-                                fontSize: 10,
-                                color: AppColors.frame,
-                                onPressed: canUpload && !_uploading ? _uploadAvatar : null,
-                              );
-                            }
-                            final a = DemoData.avatars[i];
-                            return GestureDetector(
-                              onTap: () => _update((st) => st.copyWith(avatar: a)),
-                              child: FramedTile(
-                                size: 38,
-                                frameColor: a == s.avatar ? AppColors.active : AppColors.frame,
-                                child: AvatarImage(a, size: 38),
-                              ),
-                            );
-                          },
+                      ],
+                    ),
+                  )
+                else ...[
+                  _profileColumn(s, session, t, canRename, next),
+                  if (Env.hasBackend && referral != null) ...[
+                    const SizedBox(height: 10),
+                    _referralCard(referral),
+                  ],
+                ],
+                const SizedBox(height: 12),
+                _avatarStrip(s, canUpload),
+                const SizedBox(height: 14),
+                _sectionTitle(t.settingsPrefsBlock),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _settingsPanel(
+                        t.language,
+                        ChoiceRow<String>(
+                          options: {'en': t.languageEnglish, 'bn': t.languageBangla},
+                          value: s.languageCode == 'bn' ? 'bn' : 'en',
+                          onChanged: (v) => ref.read(settingsProvider.notifier).update((st) => st.copyWith(languageCode: v)),
                         ),
                       ),
-                      if (!canUpload) Text(t.uploadNeedsServer, style: AppText.label(9, color: AppColors.textDim)),
-                    ],
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _settingsPanel(
+                        t.sound,
+                        ChoiceRow<bool>(
+                          options: {true: t.on, false: t.off},
+                          value: s.soundOn,
+                          onChanged: (v) => _update((st) => st.copyWith(soundOn: v)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _settingsPanel(
+                        t.sectionShotClock,
+                        ChoiceRow<int>(
+                          options: {20: t.secLabel(20), 30: t.secLabel(30), 45: t.secLabel(45), 60: t.secLabel(60)},
+                          value: s.shotSeconds,
+                          onChanged: (v) => _update((st) => st.copyWith(shotSeconds: v)),
+                        ),
+                        minHeight: 108,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _settingsPanel(
+                        t.sectionBot,
+                        ChoiceRow<int>(
+                          options: {0: t.botEasy, 1: t.botNormal, 2: t.botHard},
+                          value: s.botLevel,
+                          onChanged: (v) => _update((st) => st.copyWith(botLevel: v)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (Env.hasBackend) ...[
+                  const SizedBox(height: 14),
+                  _sectionTitle(t.sectionChallenges),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: duelPanel(radius: 16),
+                    child: Row(
+                      children: [
+                        _challengeChip(t.challengeReceivePool, s.challengePoolEnabled, (v) => _setChallengeFamily(ChallengeFamily.pool, v)),
+                        const SizedBox(width: 8),
+                        _challengeChip(t.challengeReceiveLudo, s.challengeLudoEnabled, (v) => _setChallengeFamily(ChallengeFamily.ludo, v)),
+                        const SizedBox(width: 8),
+                        _challengeChip(t.challengeReceiveCarrom, s.challengeCarromEnabled, (v) => _setChallengeFamily(ChallengeFamily.carrom, v)),
+                      ],
+                    ),
                   ),
+                ],
+                const SizedBox(height: 14),
+                _sectionTitle('${t.sectionSupport} · ${t.sectionLegal}'),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    SizedBox(
+                      width: wide ? (constraints.maxWidth - 24) / 3 : constraints.maxWidth,
+                      child: GameButton(
+                        label: t.facebookSupport,
+                        icon: Icons.facebook_rounded,
+                        height: 44,
+                        width: double.infinity,
+                        fontSize: 13,
+                        color: const Color(0xFF1877F2),
+                        onPressed: () => _openSupport(_facebook),
+                      ),
+                    ),
+                    SizedBox(
+                      width: wide ? (constraints.maxWidth - 24) / 3 : constraints.maxWidth,
+                      child: GameButton(
+                        label: t.telegramSupport,
+                        icon: Icons.send_rounded,
+                        height: 44,
+                        width: double.infinity,
+                        fontSize: 13,
+                        color: const Color(0xFF229ED9),
+                        onPressed: () => _openSupport(_telegram),
+                      ),
+                    ),
+                    SizedBox(
+                      width: wide ? (constraints.maxWidth - 16) / 4 : (constraints.maxWidth - 8) / 2,
+                      child: GameButton(
+                        label: t.privacy,
+                        height: 44,
+                        width: double.infinity,
+                        fontSize: 12,
+                        color: DuelColors.blue,
+                        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LegalScreen(doc: LegalDoc.privacy))),
+                      ),
+                    ),
+                    SizedBox(
+                      width: wide ? (constraints.maxWidth - 16) / 4 : (constraints.maxWidth - 8) / 2,
+                      child: GameButton(
+                        label: t.terms,
+                        height: 44,
+                        width: double.infinity,
+                        fontSize: 12,
+                        color: DuelColors.blue,
+                        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LegalScreen(doc: LegalDoc.terms))),
+                      ),
+                    ),
+                    SizedBox(
+                      width: wide ? (constraints.maxWidth - 16) / 4 : constraints.maxWidth,
+                      child: GameButton(
+                        label: t.conditions,
+                        height: 44,
+                        width: double.infinity,
+                        fontSize: 12,
+                        color: DuelColors.blue,
+                        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LegalScreen(doc: LegalDoc.conditions))),
+                      ),
+                    ),
+                    SizedBox(
+                      width: wide ? (constraints.maxWidth - 16) / 4 : constraints.maxWidth,
+                      child: GameButton(
+                        label: t.logout,
+                        icon: Icons.logout_rounded,
+                        height: 44,
+                        width: double.infinity,
+                        fontSize: 13,
+                        color: DuelColors.red,
+                        onPressed: _logout,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _profileColumn(AppSettings s, SessionState session, AppStrings t, bool canRename, DateTime? next) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: duelPanel(radius: 18, rim: DuelColors.rimLight, glow: true),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitle(t.sectionPlayer),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                width: 76,
+                height: 76,
+                padding: const EdgeInsets.all(3),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFFFFE08A), Color(0xFF5C8BFF), Color(0xFFFF3B4E)],
+                  ),
+                ),
+                child: ClipOval(child: AvatarImage(s.avatar, size: 70)),
+              ),
+              const SizedBox(width: 14),
               Expanded(
-                flex: Env.hasBackend ? 1 : 2,
-                child: SectionCard(
-                  compact: true,
-                  title: t.settingsPrefsBlock,
-                  child: Column(
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _prefTile(
-                              t.language,
-                              ChoiceRow<String>(
-                                dense: true,
-                                options: {'en': t.languageEnglish, 'bn': t.languageBangla},
-                                value: s.languageCode == 'bn' ? 'bn' : 'en',
-                                onChanged: (v) => ref.read(settingsProvider.notifier).update((st) => st.copyWith(languageCode: v)),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _prefTile(
-                              t.sound,
-                              ChoiceRow<bool>(
-                                dense: true,
-                                options: {true: t.on, false: t.off},
-                                value: s.soundOn,
-                                onChanged: (v) => _update((st) => st.copyWith(soundOn: v)),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _prefTile(
-                              t.sectionShotClock,
-                              ChoiceRow<int>(
-                                dense: true,
-                                options: {20: t.secLabel(20), 30: t.secLabel(30), 45: t.secLabel(45), 60: t.secLabel(60)},
-                                value: s.shotSeconds,
-                                onChanged: (v) => _update((st) => st.copyWith(shotSeconds: v)),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _prefTile(
-                              t.sectionBot,
-                              ChoiceRow<int>(
-                                dense: true,
-                                options: {0: t.botEasy, 1: t.botNormal, 2: t.botHard},
-                                value: s.botLevel,
-                                onChanged: (v) => _update((st) => st.copyWith(botLevel: v)),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(session.phone ?? t.noPhoneYet, style: AppText.label(17, weight: FontWeight.w900)),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(t.winsGames(s.wins, s.games), style: AppText.label(12, color: DuelColors.dim)),
+                        const SizedBox(width: 14),
+                        const PikoCoinIcon(size: 18),
+                        const SizedBox(width: 6),
+                        Text(formatPicoCoins(s.coins), style: AppText.label(14, color: DuelColors.gold, weight: FontWeight.w800)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _name,
+                  enabled: canRename && !_savingName,
+                  maxLength: 16,
+                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp('[A-Za-z0-9_]'))],
+                  style: AppText.label(16),
+                  decoration: InputDecoration(
+                    labelText: t.nicknameLabel,
+                    counterText: '',
+                    filled: true,
+                    fillColor: const Color(0xFF0E1430),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                   ),
                 ),
               ),
-              if (Env.hasBackend) ...[
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    children: [
-                      if (referral != null)
-                      SectionCard(
-                        compact: true,
-                        title: t.sectionPlayerId,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Text('${referral['code']}', style: AppText.label(20, weight: FontWeight.w900)),
-                                const SizedBox(width: 8),
-                                GameButton(
-                                  label: t.copy,
-                                  height: 32,
-                                  width: 64,
-                                  fontSize: 10,
-                                  color: AppColors.frame,
-                                  onPressed: () => Clipboard.setData(ClipboardData(text: referral['code'] as String)),
-                                ),
-                                const Spacer(),
-                                Text(t.invitedCount(referral['invited'] as int), style: AppText.label(10, weight: FontWeight.w800)),
-                              ],
-                            ),
-                            Text(
-                              '${t.referralEarn(referral['percent'] as int)} · ${t.referralTotals('${referral['earnedToday']}', '${referral['earnedMonth']}', '${referral['earned']}')}',
-                              style: AppText.label(9, color: AppColors.textDim),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(t.playerIdHint, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.label(10, color: AppColors.text)),
-                            if (referral['referredBy'] == null) ...[
-                              const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _invite,
-                                      maxLength: 6,
-                                      keyboardType: TextInputType.number,
-                                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                                      style: AppText.label(14),
-                                      decoration: InputDecoration(
-                                        labelText: t.friendIdOptional,
-                                        counterText: '',
-                                        isDense: true,
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  GameButton(
-                                    label: _applying ? t.saving : t.useId,
-                                    height: 36,
-                                    width: 72,
-                                    fontSize: 10,
-                                    onPressed: _applying ? null : _applyInvite,
-                                  ),
-                                ],
-                              ),
-                              if (_inviteError != null)
-                                Text(_inviteError!, style: AppText.label(10, color: AppColors.danger)),
-                            ],
-                          ],
-                        ),
-                      ),
-                      SectionCard(
-                        compact: true,
-                        title: t.sectionChallenges,
-                        child: Row(
-                          children: [
-                            _challengeChip(t.challengeReceivePool, s.challengePoolEnabled, (v) => _setChallengeFamily(ChallengeFamily.pool, v)),
-                            const SizedBox(width: 6),
-                            _challengeChip(t.challengeReceiveLudo, s.challengeLudoEnabled, (v) => _setChallengeFamily(ChallengeFamily.ludo, v)),
-                            const SizedBox(width: 6),
-                            _challengeChip(t.challengeReceiveCarrom, s.challengeCarromEnabled, (v) => _setChallengeFamily(ChallengeFamily.carrom, v)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              const SizedBox(width: 10),
+              GameButton(
+                label: t.saveName,
+                height: 46,
+                width: 110,
+                fontSize: 13,
+                onPressed: canRename && !_savingName ? _saveName : null,
+              ),
             ],
           ),
-          SectionCard(
-            compact: true,
-            title: '${t.sectionSupport} · ${t.sectionLegal}',
-            child: Row(
-              children: [
-                Expanded(
-                  child: GameButton(
-                    label: t.facebookSupport,
-                    icon: Icons.facebook_rounded,
-                    height: 38,
-                    width: double.infinity,
-                    fontSize: 11,
-                    color: const Color(0xFF1877F2),
-                    onPressed: () => _openSupport(_facebook),
+          const SizedBox(height: 6),
+          Text(
+            canRename || next == null
+                ? t.nameEvery7
+                : t.nameNextChange(
+                    '${next.year}-${next.month.toString().padLeft(2, '0')}-${next.day.toString().padLeft(2, '0')}',
                   ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: GameButton(
-                    label: t.telegramSupport,
-                    icon: Icons.send_rounded,
-                    height: 38,
-                    width: double.infinity,
-                    fontSize: 11,
-                    color: const Color(0xFF229ED9),
-                    onPressed: () => _openSupport(_telegram),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: GameButton(
-                    label: t.privacy,
-                    height: 38,
-                    width: double.infinity,
-                    fontSize: 10,
-                    color: AppColors.frame,
-                    onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LegalScreen(doc: LegalDoc.privacy))),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: GameButton(
-                    label: t.terms,
-                    height: 38,
-                    width: double.infinity,
-                    fontSize: 10,
-                    color: AppColors.frame,
-                    onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LegalScreen(doc: LegalDoc.terms))),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: GameButton(
-                    label: t.conditions,
-                    height: 38,
-                    width: double.infinity,
-                    fontSize: 10,
-                    color: AppColors.frame,
-                    onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LegalScreen(doc: LegalDoc.conditions))),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                SizedBox(
-                  width: 120,
-                  child: GameButton(
-                    label: t.logout,
-                    icon: Icons.logout_rounded,
-                    height: 38,
-                    width: double.infinity,
-                    fontSize: 11,
-                    color: AppColors.danger,
-                    onPressed: _logout,
-                  ),
-                ),
-              ],
-            ),
+            style: AppText.label(11, color: DuelColors.dim),
           ),
         ],
       ),

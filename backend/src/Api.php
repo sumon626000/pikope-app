@@ -241,14 +241,20 @@ final class Api
         RateLimit::hit('forgot:' . $phone, (int) $otpCfg['maxPerPhonePerHour'], 3600);
         $user = Db::one('SELECT id FROM users WHERE phone = ? AND banned = 0', [$phone]);
         if ($user !== null) {
-            $code = OtpSms::generateCode();
-            $mins = (int) $otpCfg['validMinutes'];
-            Db::run('DELETE FROM password_resets WHERE user_id = ?', [$user['id']]);
-            Db::run(
-                "INSERT INTO password_resets (user_id, code_hash, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL $mins MINUTE))",
-                [$user['id'], hash('sha256', $user['id'] . ':' . $code)]
-            );
-            Sms::sendOtp($phone, $code);
+            try {
+                Db::transaction(static function () use ($user, $phone, $otpCfg): void {
+                    $code = OtpSms::generateCode();
+                    $mins = (int) $otpCfg['validMinutes'];
+                    Db::run('DELETE FROM password_resets WHERE user_id = ?', [$user['id']]);
+                    Db::run(
+                        "INSERT INTO password_resets (user_id, code_hash, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL $mins MINUTE))",
+                        [$user['id'], hash('sha256', $user['id'] . ':' . $code)]
+                    );
+                    Sms::sendOtp($phone, $code);
+                });
+            } catch (ApiError) {
+                // Rollback removes the reset row; same response whether the number exists.
+            }
         }
         return ['ok' => true];
     }

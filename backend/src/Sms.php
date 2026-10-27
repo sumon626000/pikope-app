@@ -49,7 +49,7 @@ final class Sms
         }
         file_put_contents(
             $log,
-            Phone::display($phoneNormalized) . "\nOTP code is $code\n$message\n---\n",
+            Phone::display($phoneNormalized) . "\nOTP sent (code redacted)\n---\n",
             FILE_APPEND | LOCK_EX
         );
     }
@@ -61,7 +61,7 @@ final class Sms
             self::httpGateway($c, $phoneNormalized, $message);
             return;
         }
-        error_log('[PikoPe SMS] ' . Phone::display($phoneNormalized) . ' — ' . $message);
+        error_log('[PikoPe SMS] OTP queued for ' . Phone::display($phoneNormalized));
         if (Config::get('SMS_LOG') !== '') {
             self::remember(true, 'Wrote OTP to SMS_LOG (no live gateway).');
             return;

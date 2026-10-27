@@ -177,6 +177,7 @@ final class ZiniPay
                 throw ApiError::conflict('Payment not started yet.', 'zini_pending');
             }
             $verified = self::verifyInvoice($invoiceId);
+            self::verifiedPaymentMatchesDeposit($verified, $row);
             $status = strtoupper((string) ($verified['status'] ?? 'PENDING'));
             Db::run(
                 'UPDATE zinipay_deposits SET zini_status = ?, zini_transaction_id = ? WHERE id = ?',
@@ -214,6 +215,24 @@ final class ZiniPay
                 'alreadyCredited' => false,
             ];
         });
+    }
+
+    /**
+     * When the gateway verify payload includes amount, it must match the stored BDT.
+     *
+     * @param array<string,mixed> $verified
+     * @param array<string,mixed> $row zinipay_deposits row
+     */
+    public static function verifiedPaymentMatchesDeposit(array $verified, array $row): void
+    {
+        if (!array_key_exists('amount', $verified)) {
+            return;
+        }
+        $paid = (float) $verified['amount'];
+        $expected = (float) (int) ($row['bdt_amount'] ?? 0);
+        if (abs($paid - $expected) > 0.009) {
+            throw ApiError::conflict('Payment amount does not match.', 'zini_amount_mismatch');
+        }
     }
 
     /** @param array<string,mixed> $body */

@@ -6,6 +6,8 @@ import 'package:billiard_poker/features/game/game_screen.dart';
 import 'package:billiard_poker/features/game/widgets/card_view.dart';
 import 'package:billiard_poker/features/game/widgets/hud.dart';
 import 'package:billiard_poker/features/game/widgets/table_view.dart';
+import 'package:billiard_poker/features/duel/duel_home_screen.dart';
+import 'package:billiard_poker/features/duel/lobby_data.dart';
 import 'package:billiard_poker/features/home/home_screen.dart';
 import 'package:billiard_poker/features/lobby/lobby_screen.dart';
 import 'package:billiard_poker/features/pool/pool_controller.dart';
@@ -17,10 +19,51 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Widget app(Widget home) => ProviderScope(
-      overrides: [audioProvider.overrideWithValue(AudioService(enabled: false))],
+Widget app(Widget home, {List<Override> overrides = const []}) => ProviderScope(
+      overrides: [
+        audioProvider.overrideWithValue(AudioService(enabled: false)),
+        ...overrides,
+      ],
       child: MaterialApp(theme: buildAppTheme(), home: home),
     );
+
+LobbyData _minimalTestLobby() => LobbyData(
+      levels: const {'billiard': [], 'poker': []},
+      online: 0,
+      jackpot: const [2, 3, 5],
+      daily: const DailyBonus(available: false, day: 0, rewards: [], secondsToNext: 3600),
+      cues: const [],
+      boardPrices: const {},
+      coinShop: const CoinShopInfo(globalDiscountPercent: 0, packs: []),
+      redeem: const RedeemConfig(
+        enabled: false,
+        minCoins: 300,
+        maxCoins: 200000,
+        maxPendingPerUser: 2,
+        coinPerBdt: 1,
+        providers: [],
+      ),
+      coinDeposit: const CoinDepositConfig(
+        enabled: false,
+        manualEnabled: false,
+        autoEnabled: false,
+        minBdt: 100,
+        maxBdt: 50000,
+        coinPerBdt: 1,
+        maxPendingPerUser: 3,
+        paymentType: 'personal',
+        agents: [],
+      ),
+      coinTransfer: const CoinTransferConfig(enabled: false, feePercent: 10, minCoins: 50, maxCoins: 500000),
+      coinTutorials: const CoinTutorialVideos(deposit: '', redeem: '', transfer: ''),
+      push: const PushConfig(enabled: false, channelId: 'test', channelName: 'Test'),
+      fetchedAt: DateTime(2026, 1, 1),
+    );
+
+class _TestLobbyNotifier extends LobbyNotifier {
+  @override
+  Future<LobbyData> build() async => _minimalTestLobby();
+}
 
 Future<void> useLandscape(WidgetTester tester) async {
   await tester.binding.setSurfaceSize(const Size(1950, 900));
@@ -213,6 +256,18 @@ void main() {
     await tester.pump();
     expect(c.state.calledPocket, 2);
     expect(c.canShoot, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('production DuelHomeScreen shell renders choose-table title', (tester) async {
+    await useLandscape(tester);
+    await tester.pumpWidget(app(
+      const DuelHomeScreen(),
+      overrides: [lobbyProvider.overrideWith(_TestLobbyNotifier.new)],
+    ));
+    await tester.pump();
+    expect(find.byType(DuelHomeScreen), findsOneWidget);
+    expect(find.text('CHOOSE YOUR TABLE'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 }

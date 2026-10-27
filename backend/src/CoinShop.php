@@ -10,12 +10,12 @@ final class CoinShop
         'globalDiscountPercent' => 0,
         'packs' => [
             ['id' => 'pack100', 'name' => '100', 'coins' => 100, 'discountPercent' => 5, 'priceCoins' => 100, 'active' => true, 'sort' => 0],
-            ['id' => 'pack200', 'name' => '200', 'coins' => 200, 'discountPercent' => 5, 'priceCoins' => 200, 'active' => true, 'sort' => 1],
-            ['id' => 'pack300', 'name' => '300', 'coins' => 300, 'discountPercent' => 5, 'priceCoins' => 300, 'active' => true, 'sort' => 2],
-            ['id' => 'pack500', 'name' => '500', 'coins' => 500, 'discountPercent' => 5, 'priceCoins' => 500, 'active' => true, 'sort' => 3],
-            ['id' => 'pack1000', 'name' => '1000', 'coins' => 1000, 'discountPercent' => 5, 'priceCoins' => 1000, 'active' => true, 'sort' => 4],
-            ['id' => 'pack5000', 'name' => '5000', 'coins' => 5000, 'discountPercent' => 10, 'priceCoins' => 5000, 'active' => true, 'sort' => 5],
-            ['id' => 'pack10000', 'name' => '10000', 'coins' => 10000, 'discountPercent' => 10, 'priceCoins' => 10000, 'active' => true, 'sort' => 6],
+            ['id' => 'pack200', 'name' => '200', 'coins' => 200, 'discountPercent' => 10, 'priceCoins' => 200, 'active' => true, 'sort' => 1],
+            ['id' => 'pack300', 'name' => '300', 'coins' => 300, 'discountPercent' => 15, 'priceCoins' => 300, 'active' => true, 'sort' => 2],
+            ['id' => 'pack500', 'name' => '500', 'coins' => 500, 'discountPercent' => 20, 'priceCoins' => 500, 'active' => true, 'sort' => 3],
+            ['id' => 'pack1000', 'name' => '1000', 'coins' => 1000, 'discountPercent' => 20, 'priceCoins' => 1000, 'active' => true, 'sort' => 4],
+            ['id' => 'pack5000', 'name' => '5000', 'coins' => 5000, 'discountPercent' => 20, 'priceCoins' => 5000, 'active' => true, 'sort' => 5],
+            ['id' => 'pack10000', 'name' => '10000', 'coins' => 10000, 'discountPercent' => 30, 'priceCoins' => 10000, 'active' => true, 'sort' => 6],
         ],
     ];
 
@@ -92,16 +92,19 @@ final class CoinShop
         return $out;
     }
 
-    /** Bonus % by pack size: 100–1000 → 5%, 5000–10000 → 10%. */
+    /** Bonus % by standard BDT pack size (badge + deposit credit). */
     public static function standardBonusPercent(int $coins): int
     {
-        if ($coins >= 5000 && $coins <= 10000) {
-            return 10;
-        }
-        if ($coins >= 100 && $coins <= 1000) {
-            return 5;
-        }
-        return 0;
+        return match (true) {
+            $coins >= 10000 => 30,
+            $coins >= 5000 => 20,
+            $coins >= 1000 => 20,
+            $coins >= 500 => 20,
+            $coins >= 300 => 15,
+            $coins >= 200 => 10,
+            $coins >= 100 => 5,
+            default => 0,
+        };
     }
 
     /** Coins credited on BDT deposit / free claim (base + bonus %, e.g. 100 @ 5% → 105). */
@@ -148,7 +151,8 @@ final class CoinShop
             }
             $price = (int) $p['priceCoins'];
             $free = $price <= 0;
-            $receive = $free ? self::receiveCoins($p) : self::receiveCoinsForCoinPurchase($p);
+            // Shop BUY = BDT deposit; show credited coins (base + bonus %), e.g. 100 @ 5% → 105.
+            $receive = self::receiveCoins($p);
             $claimed = $free && self::freeClaimed($userId, (string) $p['id']);
             $out[] = [
                 'id' => $p['id'],

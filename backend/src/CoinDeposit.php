@@ -93,7 +93,7 @@ final class CoinDeposit
             $pack = CoinShop::packForBdt($bdt, $qty);
         }
         if ($pack !== null) {
-            $discount = max(0, min(100, (int) $pack['discountPercent']));
+            $discount = CoinShop::effectiveBonusPercent($pack);
             $bonus = intdiv($base * $discount, 100);
             $coins = $base + $bonus;
             return [

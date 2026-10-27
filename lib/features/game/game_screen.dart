@@ -3,6 +3,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_state.dart';
+import '../../core/audio_service.dart';
 import '../../core/app_theme.dart';
 import '../../core/perf.dart';
 import '../../core/widgets.dart';
@@ -36,6 +37,7 @@ class GameScreen extends ConsumerStatefulWidget {
 }
 
 class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProviderStateMixin {
+  late final AudioService _audio;
   late final GameController _c;
   late final Ticker _ticker;
   Duration _last = Duration.zero;
@@ -49,9 +51,10 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    ref.read(audioProvider).playGameplayMusic();
+    _audio = ref.read(audioProvider);
+    _audio.playGameplayMusic();
     final driver = widget.driver;
-    _c = GameController(widget.config, ref.read(audioProvider), link: driver)..addListener(_onChanged);
+    _c = GameController(widget.config, _audio, link: driver)..addListener(_onChanged);
     if (driver != null) {
       driver
         ..onState = _c.applyRemote
@@ -141,7 +144,7 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
     _c
       ..removeListener(_onChanged)
       ..dispose();
-    ref.read(audioProvider).playMenuMusic();
+    _audio.playMenuMusic();
     super.dispose();
   }
 
