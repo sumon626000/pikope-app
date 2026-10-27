@@ -61,7 +61,23 @@ class _IncomingTopBannerState extends ConsumerState<_IncomingTopBanner> {
     final raw = widget.ch['buyIn'];
     if (raw is int) return raw;
     if (raw is num) return raw.round();
-    return (widget.ch['stake'] as int?) ?? 0;
+    return _stake + _fee;
+  }
+
+  int get _stake {
+    final raw = widget.ch['stake'];
+    if (raw is int) return raw;
+    if (raw is num) return raw.round();
+    return 0;
+  }
+
+  int get _fee {
+    final raw = widget.ch['fee'];
+    if (raw is int) return raw;
+    if (raw is num) return raw.round();
+    final buyInRaw = widget.ch['buyIn'];
+    if (buyInRaw is num && _stake > 0) return buyInRaw.round() - _stake;
+    return 0;
   }
 
   int get _prize => (widget.ch['prize'] as int?) ?? 0;
@@ -175,9 +191,9 @@ class _IncomingTopBannerState extends ConsumerState<_IncomingTopBanner> {
               children: [
                 _detailChip(Icons.sports_esports_rounded, title),
                 if (level != null) _detailChip(Icons.table_bar_rounded, t.challengeTableLevel(level)),
-                if (_buyIn > 0) ...[
+                if (_stake > 0) ...[
                   const PikoCoinIcon(size: 20),
-                  Text(t.buyInWin(_buyIn, formatCoins(_prize)), style: AppText.label(13, color: DuelColors.gold, weight: FontWeight.w800)),
+                  Text(t.playStakeWin(_stake, formatCoins(_prize)), style: AppText.label(13, color: DuelColors.gold, weight: FontWeight.w800)),
                 ] else
                   Text(t.friendlyNoStake, style: AppText.label(12, color: DuelColors.dim)),
                 if ((widget.ch['expiresIn'] as int?) != null && (widget.ch['expiresIn'] as int) > 0)

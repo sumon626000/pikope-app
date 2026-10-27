@@ -373,7 +373,7 @@ class AppStrings {
   String get practiceSubCarrom => _t('FREE — VS BOT', 'ফ্রি — বটের বিপক্ষে');
   String buyIn(int n) => _t('BUY IN: $n', 'বাই ইন: $n');
   String entryFee(int n) => _t('ENTRY: $n', 'এন্ট্রি: $n');
-  String stakeAmount(int n) => _t('STAKE $n', 'স্টেক $n');
+  String stakeAmount(int n) => _t('PLAY $n', 'খেলা $n');
   String minPrizePlayers(int prize) =>
       _t('MIN PRIZE ${formatCoinsDisplay(prize)}  -  4 PLAYERS', 'ন্যূন. পুরস্কার ${formatCoinsDisplay(prize)}  -  ৪ খেলোয়াড়');
   String get playersOnline => _t('PLAYERS ONLINE', 'খেলোয়াড় অনলাইন');
@@ -389,7 +389,10 @@ class AppStrings {
   String challengesYou(String title) => _t('CHALLENGES YOU TO $title', 'আপনাকে $title এ চ্যালেঞ্জ');
   String buyInWin(int buyIn, String prize) =>
       _t('BUY-IN ${formatCoinsDisplay(buyIn)}  -  WIN $prize', 'বাই-ইন ${formatCoinsDisplay(buyIn)}  -  জয় $prize');
-  String get friendlyNoStake => _t('FRIENDLY - NO STAKE', 'বন্ধুত্বপূর্ণ — স্টেক নেই');
+  /// Challenge invite: show the play tier the sender picked (matches bet-level "PLAY N"), not stake+fee.
+  String playStakeWin(int stake, String prize) =>
+      _t('PLAY ${formatCoinsDisplay(stake)}  -  WIN $prize', 'খেলা ${formatCoinsDisplay(stake)}  -  জয় $prize');
+  String get friendlyNoStake => _t('FRIENDLY - FREE', 'বন্ধুত্বপূর্ণ — ফ্রি');
   String get noPlayersOnline => _t('NO OTHER PLAYERS ONLINE RIGHT NOW', 'এখন অন্য কেউ অনলাইন নেই');
   String get inMatch => _t('IN MATCH', 'ম্যাচে');
   String waitingAccept(String name) =>
