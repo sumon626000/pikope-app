@@ -754,14 +754,13 @@ class AppStrings {
         'ROTATE YOUR PHONE OR WIDEN THE WINDOW FOR THE BEST PLAY VIEW',
         'ভালো ভিউতে খেলতে ফোন ঘোরান বা উইন্ডো চওড়া করুন',
       );
-  String get webRotateTitle => _t('ROTATE TO LANDSCAPE', 'LANDSCAPE-এ ঘোরান');
-  String get webRotateBody => _t(
-        'PikoPe on mobile web works in LANDSCAPE only.\nRotate your device to play.',
-        'মোবাইল ব্রাউজারে PikoPe শুধু LANDSCAPE-এ চলে।\nখেলতে ফোন ঘোরান।',
+  String get webPortraitPlayHint => _t(
+        'Portrait works — rotate to landscape for the best view.',
+        'Portrait-এ খেলা যায় — landscape-এ ভালো দেখাবে।',
       );
-  String get webRotatePortraitLock => _t(
-        'Portrait lock on? Turn it off in quick settings, then rotate.',
-        'Portrait lock চালু? Quick settings থেকে বন্ধ করে ঘোরান।',
+  String get webFullscreenTap => _t(
+        'Tap for full screen (hide browser bar)',
+        'Full screen — ব্রাউজার bar লুকাতে ট্যাপ করুন',
       );
   String get webApkPromoTitle => _t('Get the Android app', 'Android অ্যাপ নিন');
   String get webApkPromoHint => _t('Faster play & notifications', 'দ্রুত খেলা ও নোটিফিকেশন');
