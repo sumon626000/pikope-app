@@ -1,0 +1,63 @@
+name: Deploy web (main domain)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'pikope-web/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - 'assets/**'
+      - '.github/workflows/deploy-web-hostinger.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-web-hostinger
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Link shared assets into pikope-web
+        run: ln -sfn "${{ github.workspace }}/assets" pikope-web/assets
+
+      - name: Refresh PWA icons
+        run: |
+          src=assets/icon/app_icon.png
+          test -f "$src"
+          cp "$src" pikope-web/web/favicon.png
+          for f in Icon-192.png Icon-512.png Icon-maskable-192.png Icon-maskable-512.png; do
+            cp "$src" "pikope-web/web/icons/$f"
+          done
+
+      - name: flutter pub get
+        run: |
+          flutter pub get
+          cd pikope-web && flutter pub get
+
+      - name: Build web (release)
+        env:
+          PIKOPE_API_BASE_URL: ${{ vars.PIKOPE_API_BASE_URL }}
+        run: |
+          API="${PIKOPE_API_BASE_URL:-https://adminnew.pikope.com}"
+          cd pikope-web
+          flutter build web --release --base-href / --dart-define=API_BASE_URL="$API"
+
+      - name: Deploy to Hostinger (FTP)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.HOSTINGER_WEB_FTP_HOST }}
+          username: ${{ secrets.HOSTINGER_WEB_FTP_USER }}
+          password: ${{ secrets.HOSTINGER_WEB_FTP_PASSWORD }}
+          local-dir: pikope-web/build/web/
+          server-dir: ${{ secrets.HOSTINGER_WEB_FTP_REMOTE_DIR }}/
+          log-level: minimal
