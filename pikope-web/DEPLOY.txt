@@ -1,6 +1,8 @@
 PikoPe Web — Hostinger deploy (Phase 4)
 =======================================
 
+AUTO (Cursor → git push → Hostinger): see GIT_AUTO_DEPLOY.txt
+
 BUILD (local Windows)
   cd pikope-web
   .\setup-local.ps1
@@ -9,11 +11,19 @@ BUILD (local Windows)
   Subfolder install (e.g. https://pikope.com/play/):
   .\deploy-hostinger.ps1 -BaseHref '/play/'
 
-UPLOAD (MAIN DOMAIN)
+UPLOAD (MAIN DOMAIN — Flutter web ONLY, NOT backend/admin)
+  Manual:
   1. Hostinger → pikope.com → File Manager → public_html
   2. Remove old static landing files if any (index.html from marketing site).
   3. Upload ALL files from build/web (or extract deploy zip there).
   4. index.html must be at public_html root.
+
+  FTP (from this PC, after deploy-hostinger.ps1):
+  1. hPanel → FTP Accounts → create or use account whose folder IS public_html for pikope.com
+  2. Copy pikope-web/.env.hostinger.example → .env.hostinger (never commit)
+  3. .\upload-main-domain.ps1
+
+  Do NOT upload backend/ or public_html/pikope/ to the main domain — API+admin = adminnew.pikope.com.
 
   Optional subdomain play.pikope.com: same build to that vhost, or use -BaseHref '/play/'.
 

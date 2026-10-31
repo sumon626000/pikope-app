@@ -1,0 +1,70 @@
+Cursor → Git → Hostinger (auto update)
+=======================================
+
+Goal: Cursor-এ code save → git push → GitHub Actions → Hostinger-এ upload (হাতে zip নয়).
+
+IMPORTANT
+---------
+• Main domain (pikope.com) = শুধু Flutter WEB build — backend/admin folder এখানে নয়।
+• API + admin (adminnew.pikope.com) = backend/ → public_html/pikope/ (আলাদা workflow)।
+• hPanel “Git” দিয়ে পুরো repo public_html-এ pull করবেন না — landing/backend mix হয়ে যাবে।
+
+ONE-TIME SETUP (GitHub)
+-----------------------
+1) Repo GitHub-এ থাকা (যেমন sumon626000/pikope-app), branch main।
+
+2) GitHub → repo → Settings → Secrets and variables → Actions
+
+   WEB (pikope.com public_html):
+     HOSTINGER_WEB_FTP_HOST     = ftp.pikope.com (hPanel FTP-তে যেটা দেখায়)
+     HOSTINGER_WEB_FTP_USER     = FTP username (folder = pikope.com public_html)
+     HOSTINGER_WEB_FTP_PASSWORD = FTP password
+     HOSTINGER_WEB_FTP_REMOTE_DIR = /public_html
+       (কখনো /domains/pikope.com/public_html — hPanel FTP account-এর “Directory” দেখুন)
+
+   API (adminnew — optional, backend auto):
+     HOSTINGER_API_FTP_HOST
+     HOSTINGER_API_FTP_USER
+     HOSTINGER_API_FTP_PASSWORD
+     HOSTINGER_API_FTP_REMOTE_DIR = /public_html/pikope
+       (যেখানে public/, src/, bin/ আছে — document root public_html/pikope/public)
+
+   Optional variable (Repository → Variables):
+     PIKOPE_API_BASE_URL = https://adminnew.pikope.com
+     (web build-এ API ঠিকানা; না দিলে default adminnew)
+
+3) hPanel → FTP: দুটো account safe —
+   • Web account → শুধু main site public_html
+   • API account → শুধু pikope/ folder (ভুল path = সাইট মুছে যেতে পারে)
+
+4) Server .env একবার হাতে বানান (backend/.env) — GitHub deploy .env upload করে না।
+
+DAILY WORKFLOW (Cursor)
+-----------------------
+1) Cursor-এ code change
+2) Source Control → Commit message → Commit
+3) Push (Sync) → origin main
+4) GitHub → Actions tab:
+     “Deploy web (main domain)” — lib/assets/pikope-web change হলে
+     “Deploy backend (admin API)” — backend/ change হলে
+5) সবুজ tick = live। ২–৫ মিনিট wait করে pikope.com refresh (Ctrl+F5)
+
+MANUAL DEPLOY (zip ছাড়া)
+--------------------------
+GitHub → Actions → workflow → “Run workflow” (workflow_dispatch)
+
+LOCAL (backup)
+--------------
+  cd pikope-web
+  .\deploy-hostinger.ps1
+  .\upload-main-domain.ps1   (needs .env.hostinger)
+
+TROUBLESHOOT
+------------
+• Web deploy fail → FTP secret/path check; public_html-এ index.html আছে কিনা
+• Site পুরনো landing → public_html পুরনো index.html delete, workflow আবার run
+• API 500 after backend deploy → server .env / migrate unchanged; শুধু PHP file update
+• CORS → server .env CORS_ORIGIN=https://pikope.com
+
+Files: .github/workflows/deploy-web-hostinger.yml
+       .github/workflows/deploy-backend-hostinger.yml

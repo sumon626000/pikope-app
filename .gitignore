@@ -47,6 +47,7 @@ id_*
 pikope-web/.dart_tool/
 pikope-web/build/
 pikope-web/assets
+pikope-web/.env.hostinger
 
 # ---- Build output / packages ----
 backend/dist/

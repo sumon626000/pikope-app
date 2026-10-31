@@ -1,0 +1,61 @@
+FTP AUTO — ৫ ধাপ (push = Hostinger update)
+==========================================
+
+কাজ: Cursor → git push → GitHub Actions → FTP → pikope.com live
+
+ধাপ ১ — Hostinger FTP (web site)
+--------------------------------
+1. hPanel → Websites → pikope.com → Manage
+2. Files → FTP Accounts → Create FTP Account
+3. Username: যেকোনো (যেমন pikope_web)
+4. Directory: public_html  (MAIN domain root — এটাই গুরুত্বপূর্ণ)
+5. Password সেট → Save
+6. নোট করুন:
+   - FTP Host: সাধারণত ftp.pikope.com (panel-এ লেখা থাকে)
+   - User: u123456789.pikope_web (panel যেমন দেখায়)
+   - Pass: আপনার password
+
+ধাপ ২ — GitHub Secrets (একবার)
+-------------------------------
+Browser: https://github.com/sumon626000/pikope-app/settings/secrets/actions
+
+New repository secret — ৪টা (নাম ঠিক এভাবে):
+
+  HOSTINGER_WEB_FTP_HOST          → ftp.pikope.com
+  HOSTINGER_WEB_FTP_USER          → FTP username (ধাপ ১)
+  HOSTINGER_WEB_FTP_PASSWORD      → FTP password
+  HOSTINGER_WEB_FTP_REMOTE_DIR    → /public_html
+
+REMOTE_DIR না চললে panel-এ FTP account-এর “Directory” path copy করুন
+(কখনো /domains/pikope.com/public_html)
+
+Backend auto চাইলে আলাদা FTP → public_html/pikope + secrets HOSTINGER_API_FTP_*
+
+ধাপ ৩ — Workflow GitHub-এ যাবে (push)
+--------------------------------------
+PC তে (workflow permission লাগতে পারে):
+
+  gh auth refresh -h github.com -s workflow
+  git push origin main
+
+অথবা GitHub website → Upload workflow files manually (advanced).
+
+ধাপ ৪ — প্রথম deploy test
+--------------------------
+GitHub → Actions → “Deploy web (main domain)” → Run workflow → Run
+
+সবুজ ✓ হলে https://pikope.com খুলে Ctrl+F5
+
+ধাপ ৫ — প্রতিদিন
+-----------------
+Cursor → Commit → Push (main)
+→ lib / pikope-web / assets change হলে web auto upload
+→ backend/ change হলে API workflow (secrets থাকলে)
+
+মনে রাখুন
+---------
+• Main domain FTP = শুধু game web (Flutter build)
+• adminnew = backend folder — আলাদা FTP/path
+• Server .env GitHub দিয়ে যায় না — একবার hPanel-এ রাখুন
+
+বিস্তারি: GIT_AUTO_DEPLOY.txt

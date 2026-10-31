@@ -11,6 +11,8 @@ import 'core/brand.dart';
 import 'core/perf.dart';
 import 'core/push_service.dart';
 import 'core/root_nav.dart';
+import 'core/web_apk_promo.dart';
+import 'core/web_play.dart';
 import 'data/app_storage.dart';
 import 'features/duel/challenge_inbox_host.dart';
 import 'features/duel/zinipay_return.dart';
@@ -79,8 +81,12 @@ class BilliardPokerApp extends ConsumerWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       home: const AppStartGate(),
-      builder: (context, child) => ChallengeInboxHost(
-            child: ZiniPayReturnHost(child: child ?? const SizedBox.shrink()),
+      builder: (context, child) => WebLandscapeGate(
+            child: WebApkPromoHost(
+              child: ChallengeInboxHost(
+                child: ZiniPayReturnHost(child: child ?? const SizedBox.shrink()),
+              ),
+            ),
           ),
     );
   }

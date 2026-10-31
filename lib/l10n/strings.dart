@@ -754,6 +754,19 @@ class AppStrings {
         'ROTATE YOUR PHONE OR WIDEN THE WINDOW FOR THE BEST PLAY VIEW',
         'ভালো ভিউতে খেলতে ফোন ঘোরান বা উইন্ডো চওড়া করুন',
       );
+  String get webRotateTitle => _t('ROTATE TO LANDSCAPE', 'LANDSCAPE-এ ঘোরান');
+  String get webRotateBody => _t(
+        'PikoPe on mobile web works in LANDSCAPE only.\nRotate your device to play.',
+        'মোবাইল ব্রাউজারে PikoPe শুধু LANDSCAPE-এ চলে।\nখেলতে ফোন ঘোরান।',
+      );
+  String get webRotatePortraitLock => _t(
+        'Portrait lock on? Turn it off in quick settings, then rotate.',
+        'Portrait lock চালু? Quick settings থেকে বন্ধ করে ঘোরান।',
+      );
+  String get webApkPromoTitle => _t('Get the Android app', 'Android অ্যাপ নিন');
+  String get webApkPromoHint => _t('Faster play & notifications', 'দ্রুত খেলা ও নোটিফিকেশন');
+  String get webApkPromoDownload => _t('DOWNLOAD APK', 'APK ডাউনলোড');
+  String get webApkPromoHaveApp => _t('Installed', 'ইনস্টল আছে');
   String youWonAmount(String amount) => _t('YOU WON $amount', 'আপনি জিতেছেন $amount');
   String get betterLuckNext => _t('BETTER LUCK NEXT TIME', 'পরের বার ভালো হবে');
 
