@@ -10,6 +10,7 @@ import '../../game/carrom/carrom_rules.dart';
 import '../../game/physics/vec2.dart';
 import '../game/game_controller.dart' show SeatConfig;
 import '../online/game_link.dart';
+import '../online/opponent_presence.dart';
 import 'carrom_skins.dart';
 
 /// Quick-chat presets; only the index travels over the network.
@@ -471,6 +472,8 @@ class CarromController extends ChangeNotifier {
 
   Map<String, dynamic>? _remote;
   int _serverOffsetMs = 0;
+  int get serverOffsetMs => _serverOffsetMs;
+  OpponentPresenceSnapshot? opponentPresence;
   bool _started = false;
   bool _overAnnounced = false;
   final List<Map<String, dynamic>> _events = [];
@@ -479,10 +482,18 @@ class CarromController extends ChangeNotifier {
   _NetStage _stage = _NetStage.presenting;
   Map<String, dynamic>? _replaying;
 
+  void applyPresence(Object? raw, int serverNow) {
+    if (_disposed || !online) return;
+    _serverOffsetMs = serverNow - DateTime.now().millisecondsSinceEpoch;
+    opponentPresence = opponentPresenceFromPoll(raw, link!.seat, serverNowMs: serverNow);
+    notifyListeners();
+  }
+
   /// Newest view of the match from the server.
   void applyRemote(Map<String, dynamic> v, int serverNow) {
     if (_disposed || !online) return;
     _serverOffsetMs = serverNow - DateTime.now().millisecondsSinceEpoch;
+    opponentPresence = opponentPresenceFromState(v, link!.seat, serverNow) ?? opponentPresence;
     _remote = v;
     if (!_started) {
       _started = true;

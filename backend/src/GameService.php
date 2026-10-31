@@ -37,6 +37,11 @@ final class GameService
         // Seats played by the server's stand-in players (see Game\Bots).
         $state['bots'] = array_keys(array_filter($players, static fn (array $p): bool => !empty($p['bot'])));
         $state['lastActMs'] = self::nowMs();
+        $seen = self::nowMs();
+        foreach ($state['players'] as &$playerRow) {
+            $playerRow['lastSeenMs'] = $seen;
+        }
+        unset($playerRow);
         Db::run('INSERT INTO games (room_id, game, state, has_bots) VALUES (?, ?, ?, ?)',
             [$roomId, $game, json_encode($state), $state['bots'] === [] ? 0 : 1]);
         $gameId = Db::lastId();
@@ -60,6 +65,7 @@ final class GameService
     {
         // Server bookkeeping, not for players (which seats are bots stays private).
         unset($state['bots'], $state['lastActMs']);
+        self::attachPresenceView($state, $seat, self::nowMs());
         return [
             'id' => $gameId,
             'version' => $version,
@@ -94,8 +100,14 @@ final class GameService
             throw ApiError::notFound('Game not found');
         }
         $state = json_decode($row['state'], true);
-        if ($row['status'] === 'active' && self::nowMs() > $state['deadline'] + 1500) {
-            return self::withAim(self::mutate($gameId, $seat, static fn (array &$s): bool => false), $gameId);
+        $now = self::nowMs();
+        if ($row['status'] === 'active') {
+            if ($now > $state['deadline'] + 1500 || self::anyPlayerAbsent($state, $now)) {
+                return self::withAim(self::mutate($gameId, $seat, static fn (array &$s): bool => false), $gameId);
+            }
+            self::touchPresenceOnly($gameId, $seat);
+            $row = Db::one('SELECT version, status, state, aim FROM games WHERE id = ?', [$gameId]) ?? $row;
+            $state = json_decode($row['state'], true);
         }
         if ((int) $row['version'] <= $since) {
             return self::withAim([
@@ -103,6 +115,7 @@ final class GameService
                 'version' => (int) $row['version'],
                 'serverNow' => self::nowMs(),
                 'unchanged' => true,
+                'presence' => self::presenceSnapshot($state, $seat, self::nowMs()),
             ], $gameId, $row['aim']);
         }
         return self::withAim(self::view($gameId, (int) $row['version'], $state, $seat), $gameId, $row['aim']);
@@ -122,6 +135,7 @@ final class GameService
         if ($row === null || $row['status'] !== 'active') {
             return ['ok' => true];
         }
+        self::touchPresenceOnly($gameId, $seat);
         $state = json_decode($row['state'], true);
         $turn = (int) ($state['turn'] ?? $state['currentIndex'] ?? -1);
         $phase = (string) ($state['phase'] ?? '');
@@ -187,10 +201,10 @@ final class GameService
      * Locks the game, applies overdue timeouts, then $fn; stores the result.
      * @param callable(array<string,mixed>&):bool $fn returns whether it changed the state
      */
-    private static function mutate(int $gameId, int $seat, callable $fn): array
+    private static function mutate(int $gameId, int $seat, callable $fn, bool $touchPresence = true): array
     {
         self::ensureAimColumn();
-        return Db::transaction(static function () use ($gameId, $seat, $fn): array {
+        return Db::transaction(static function () use ($gameId, $seat, $fn, $touchPresence): array {
             $row = Db::one('SELECT version, status, state, room_id, game FROM games WHERE id = ? FOR UPDATE', [$gameId]);
             if ($row === null) {
                 throw ApiError::notFound('Game not found');
@@ -200,7 +214,12 @@ final class GameService
             if ($row['status'] !== 'active') {
                 return self::view($gameId, $version, $state, $seat);
             }
+            $now = self::nowMs();
+            if ($touchPresence && isset($state['players'][$seat])) {
+                $state['players'][$seat]['lastSeenMs'] = $now;
+            }
             $changed = self::tick($state);
+            $changed = self::applyDisconnectForfeits($state, $now) || $changed;
             $changed = $fn($state) || $changed;
             if ($changed) {
                 $version++;
@@ -286,10 +305,12 @@ final class GameService
         foreach ($rows as $row) {
             for ($i = 0; $i < 40; $i++) {
                 $state = json_decode(Db::one('SELECT state FROM games WHERE id = ?', [$row['id']])['state'], true);
-                if ($state['phase'] === 'gameOver' || self::nowMs() <= $state['deadline'] + 1500) {
+                $now = self::nowMs();
+                if ($state['phase'] === 'gameOver'
+                    || ($now <= $state['deadline'] + 1500 && !self::anyPlayerAbsent($state, $now))) {
                     break;
                 }
-                self::mutate((int) $row['id'], 0, static fn (array &$s): bool => false);
+                self::mutate((int) $row['id'], 0, static fn (array &$s): bool => false, false);
                 $touched++;
             }
         }
@@ -588,5 +609,137 @@ final class GameService
             }
         }
         throw ApiError::badRequest('Unknown action');
+    }
+
+    /** How long a human may be unreachable before they forfeit (ms). */
+    public static function disconnectGraceMs(): int
+    {
+        $sec = (int) Config::get('DISCONNECT_GRACE_SEC', '60');
+        return max(15, min(180, $sec)) * 1000;
+    }
+
+    /** @param array<string,mixed> $state */
+    private static function anyPlayerAbsent(array $state, int $nowMs): bool
+    {
+        if (($state['phase'] ?? '') === 'gameOver') {
+            return false;
+        }
+        $grace = self::disconnectGraceMs();
+        $bots = array_flip($state['bots'] ?? []);
+        $fallback = (int) ($state['lastActMs'] ?? $nowMs);
+        foreach ($state['players'] as $seat => $p) {
+            if (isset($bots[$seat])) {
+                continue;
+            }
+            if ($p['out'] ?? false) {
+                continue;
+            }
+            $last = (int) ($p['lastSeenMs'] ?? $fallback);
+            if ($nowMs - $last >= $grace) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** @param array<string,mixed> $state */
+    private static function applyDisconnectForfeits(array &$state, int $nowMs): bool
+    {
+        if (($state['phase'] ?? '') === 'gameOver') {
+            return false;
+        }
+        $grace = self::disconnectGraceMs();
+        $bots = array_flip($state['bots'] ?? []);
+        $fallback = (int) ($state['lastActMs'] ?? $nowMs);
+        foreach ($state['players'] as $seat => $p) {
+            if (isset($bots[$seat])) {
+                continue;
+            }
+            if ($p['out'] ?? false) {
+                continue;
+            }
+            $last = (int) ($p['lastSeenMs'] ?? $fallback);
+            if ($nowMs - $last < $grace) {
+                continue;
+            }
+            $kind = (string) ($state['kind'] ?? 'eight');
+            if ($kind === 'ludo') {
+                LudoEngine::forfeit($state, (int) $seat, $nowMs);
+            } elseif ($kind === 'carrom') {
+                CarromEngine::forfeit($state, (int) $seat, $nowMs);
+            } elseif ($kind === 'poker') {
+                PokerEngine::forfeit($state, (int) $seat, $nowMs);
+            } else {
+                PoolEngine::forfeit($state, (int) $seat, $nowMs);
+            }
+            if (($state['phase'] ?? '') === 'gameOver') {
+                $state['winReason'] = 'OPPONENT DISCONNECTED';
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private static function touchPresenceOnly(int $gameId, int $seat): void
+    {
+        Db::transaction(static function () use ($gameId, $seat): void {
+            $row = Db::one('SELECT status, state FROM games WHERE id = ? FOR UPDATE', [$gameId]);
+            if ($row === null || $row['status'] !== 'active') {
+                return;
+            }
+            $state = json_decode($row['state'], true);
+            if (($state['phase'] ?? '') === 'gameOver' || !isset($state['players'][$seat])) {
+                return;
+            }
+            $now = self::nowMs();
+            $last = (int) ($state['players'][$seat]['lastSeenMs'] ?? 0);
+            if ($now - $last < 2000) {
+                return;
+            }
+            $state['players'][$seat]['lastSeenMs'] = $now;
+            Db::run('UPDATE games SET state = ? WHERE id = ?', [json_encode($state), $gameId]);
+        });
+    }
+
+    /** @param array<string,mixed> $state @return array<int,array{online:bool,forfeitAt:int}> */
+    private static function presenceSnapshot(array $state, int $viewerSeat, int $nowMs): array
+    {
+        $grace = self::disconnectGraceMs();
+        $awayAfter = 4000;
+        $fallback = (int) ($state['lastActMs'] ?? $nowMs);
+        $out = [];
+        foreach ($state['players'] as $i => $p) {
+            if ($i === $viewerSeat || ($p['out'] ?? false)) {
+                continue;
+            }
+            $last = (int) ($p['lastSeenMs'] ?? $fallback);
+            $out[$i] = [
+                'online' => ($nowMs - $last) < $awayAfter,
+                'forfeitAt' => $last + $grace,
+            ];
+        }
+        return $out;
+    }
+
+    /** Adds opponent presence hints for the client; strips raw lastSeenMs. @param array<string,mixed> $state */
+    private static function attachPresenceView(array &$state, int $viewerSeat, int $nowMs): void
+    {
+        $grace = self::disconnectGraceMs();
+        $awayAfter = 4000;
+        $fallback = (int) ($state['lastActMs'] ?? $nowMs);
+        foreach ($state['players'] as $i => &$p) {
+            if ($i === $viewerSeat || ($p['out'] ?? false)) {
+                unset($p['lastSeenMs']);
+                continue;
+            }
+            $last = (int) ($p['lastSeenMs'] ?? $fallback);
+            unset($p['lastSeenMs']);
+            $awayMs = $nowMs - $last;
+            $p['presence'] = [
+                'online' => $awayMs < $awayAfter,
+                'forfeitAt' => $last + $grace,
+            ];
+        }
+        unset($p);
     }
 }

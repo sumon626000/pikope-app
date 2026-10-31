@@ -792,7 +792,7 @@ CSS;
             ['Notices', '/admin/notices', 'In-app news / banner', 0],
             ['Support links', '/admin/support', 'Facebook and Telegram', 0],
             ['App update', '/admin/app-update', 'In-app APK update', 0],
-            ['Landing page', '/admin/landing', 'pikope.com APK site', 0],
+            ['Landing page', '/admin/landing', 'APK + copy for landing/ backup', 0],
             ['Coin shop', '/admin/coin-shop', 'Packs and discount', 0],
             ['Coin help videos', '/admin/coin-tutorials', 'YouTube: add, redeem, transfer', 0],
             ['Item prices', '/admin/items', 'Cues and board prices', 0],
@@ -2667,7 +2667,8 @@ CSS;
         $support = SupportLinks::config();
         self::begin('Landing page (pikope.com)', 'landing');
         self::pageLead(
-            '<b>pikope.com</b> loads <code>/landing/public</code> (default language: Bangla). '
+            'Main domain <b>pikope.com</b> is the Flutter web app. Static landing backup lives in repo <code>landing/</code>. '
+            . 'This admin section feeds <code>/landing/public</code> if you deploy that site again (subdomain/path). '
             . 'Upload APK, hero background, screenshots, and live support links (Facebook / Telegram) here.'
         );
 

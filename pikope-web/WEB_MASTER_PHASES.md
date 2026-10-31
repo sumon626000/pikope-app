@@ -1,6 +1,6 @@
 # PikoPe Web — master plan (APK + Web, one admin)
 
-Same backend (`adminnew.pikope.com`), same users/coins/rooms. Mobile APK stays in repo root; browser client lives in **`pikope-web/`** (local now, deploy later e.g. `play.pikope.com`).
+Same backend (`adminnew.pikope.com`), same users/coins/rooms. Mobile APK stays in repo root; browser client lives in **`pikope-web/`** and deploys to **`https://pikope.com`** (main domain). Old marketing landing is archived in **`landing/`** (not on main domain).
 
 ---
 
@@ -31,7 +31,7 @@ Same backend (`adminnew.pikope.com`), same users/coins/rooms. Mobile APK stays i
 
 **Server example:**
 ```env
-CORS_ORIGIN=http://localhost:7357,http://127.0.0.1:7357,https://play.pikope.com
+CORS_ORIGIN=http://localhost:7357,http://127.0.0.1:7357,https://pikope.com
 ```
 After deploy, run `pikope-web/run-local.ps1` and sign in — lobby should load.
 
@@ -80,7 +80,7 @@ After ZiniPay pay, browser returns to web app and credits via `/deposit/zinipay/
 
 **Exit:** Public web URL, same admin, both clients in store/browser.
 
-**Status: READY TO UPLOAD.** Run `.\deploy-hostinger.ps1`, upload zip to `play.pikope.com` (or `/play/`), set CORS + WEB_APP_URL on API.
+**Status: READY TO UPLOAD.** Run `.\deploy-hostinger.ps1`, upload zip to `pikope.com` public_html, set CORS + WEB_APP_URL on API.
 
 ---
 
@@ -105,7 +105,7 @@ After ZiniPay pay, browser returns to web app and credits via `/deposit/zinipay/
 - [ ] Manual `SMOKE_CHECKLIST.txt` on live URL (your step).
 - [ ] Git tag `pikope-web-1.0.0+1` after push (see `RELEASE.txt`).
 
-**Exit:** `https://play.pikope.com` (or your URL) serves the web client; APK + web share one backend.
+**Exit:** `https://pikope.com` serves the web client; APK + web share one backend. Landing backup: `landing/`.
 
 **Status: REPO READY — deploy when DNS/API env are set.**
 
@@ -118,6 +118,7 @@ duelx/                 ← APK (Android), shared lib + assets
   lib/
   assets/
   backend/             ← one admin + API (unchanged)
+  landing/             ← archived static marketing site (backup; not main domain)
 pikope-web/            ← Web-only Flutter project (this folder)
   lib/main.dart
   web/

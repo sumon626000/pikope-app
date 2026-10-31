@@ -7,7 +7,7 @@ $define = @()
 if (Test-Path $envFile) {
     $define = @('--dart-define-from-file', $envFile)
 } else {
-    Write-Warning "No ../.env — copy .env.example to duelx/.env for API_BASE_URL."
+    Write-Warning "No ../.env - copy .env.example to duelx/.env for API_BASE_URL."
 }
 
 $flutter = 'C:\Users\sumon\Downloads\flutter_windows_3.44.5-stable\flutter\bin\flutter.bat'

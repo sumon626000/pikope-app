@@ -89,8 +89,12 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
     final api = ref.read(apiProvider);
     if (api == null || !ref.read(sessionProvider).signedIn) return;
     try {
-      final unread = await PushService.pollInbox(api);
-      if (mounted) ref.read(notificationUnreadProvider.notifier).set(unread);
+      final poll = await PushService.pollInbox(api);
+      if (mounted) ref.read(notificationUnreadProvider.notifier).set(poll.unread);
+      if (poll.walletChanged) {
+        await ref.read(sessionProvider.notifier).refresh();
+        if (mounted) ref.read(lobbyProvider.notifier).refresh();
+      }
     } on Object {
       // offline
     }
@@ -103,21 +107,7 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
   }
 
   Future<void> _rejoin(Map<String, dynamic> match) async {
-    final navigator = Navigator.of(context);
-    final wsUrl = await ref.read(sessionProvider.notifier).realtimeUrl();
-    await openOnlineMatch(
-      navigator,
-      ref.read(apiProvider)!,
-      gameId: match['gameId'] as int,
-      roomId: match['roomId'] as int,
-      gameKey: match['game'] as String,
-      seat: match['seat'] as int,
-      shotSeconds: match['shotSeconds'] as int,
-      players: (match['players'] as List).cast<Map<String, dynamic>>(),
-      wsUrl: wsUrl,
-      bet: match['bet'] as Map<String, dynamic>?,
-      replace: false,
-    );
+    await openOnlineMatchFromActivePayload(Navigator.of(context), ref, match);
     if (mounted) _reload();
   }
 

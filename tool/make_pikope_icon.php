@@ -8,7 +8,7 @@ $res = $root . '/android/app/src/main/res';
 $iconDir = $root . '/assets/icon';
 
 $sources = [
-    $root . '/site-pikope.com/assets/pikope_logo.png',
+    $root . '/landing/assets/pikope_logo.png',
     $iconDir . '/app_icon.jpg',
     $root . '/assets/images/pikope_logo.png',
 ];

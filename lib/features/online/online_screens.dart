@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/bd_phone.dart';
+import '../../core/env.dart';
 import '../../core/web_play.dart';
 import '../../core/app_state.dart';
 import '../../core/widgets/bd_phone_field.dart';
@@ -28,7 +29,61 @@ import 'game_link.dart';
 import 'realtime_socket.dart';
 import 'session.dart';
 import '../duel/lobby_data.dart';
+import '../../core/root_nav.dart';
 import '../../l10n/strings.dart';
+
+int _matchInt(Object? value) {
+  if (value is int) return value;
+  if (value is num) return value.round();
+  if (value is String) return int.tryParse(value) ?? 0;
+  return 0;
+}
+
+/// Opens the match screen from a `/me/active` payload (rejoin or browser refresh).
+Future<void> openOnlineMatchFromActivePayload(
+  NavigatorState navigator,
+  WidgetRef ref,
+  Map<String, dynamic> match, {
+  bool replace = false,
+}) async {
+  final api = ref.read(apiProvider);
+  if (api == null) return;
+  final wsUrl = await ref.read(sessionProvider.notifier).realtimeUrl();
+  await openOnlineMatch(
+    navigator,
+    api,
+    gameId: _matchInt(match['gameId']),
+    roomId: _matchInt(match['roomId']),
+    gameKey: match['game'] as String,
+    seat: _matchInt(match['seat']),
+    shotSeconds: _matchInt(match['shotSeconds']),
+    players: (match['players'] as List).cast<Map<String, dynamic>>(),
+    wsUrl: wsUrl,
+    bet: match['bet'] as Map<String, dynamic>?,
+    replace: replace,
+  );
+}
+
+/// After a full page reload on web, jump back into a seated match when the API still has one.
+Future<bool> resumeActiveOnlineMatch(WidgetRef ref) async {
+  final nav = rootNavigatorKey.currentState;
+  if (nav == null || !Env.hasBackend) return false;
+  if (ref.read(settingsProvider).authToken.isEmpty) return false;
+  try {
+    await ref.read(sessionProvider.notifier).ensureSignedIn();
+  } catch (_) {
+    return false;
+  }
+  Map<String, dynamic>? match;
+  try {
+    match = await ref.read(sessionProvider.notifier).activeMatch();
+  } catch (_) {
+    return false;
+  }
+  if (match == null) return false;
+  await openOnlineMatchFromActivePayload(nav, ref, match);
+  return true;
+}
 
 /// Opens the match screen for an online game - from a full room, or when
 /// rejoining a match that is already running.

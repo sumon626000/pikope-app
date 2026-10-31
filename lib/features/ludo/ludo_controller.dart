@@ -8,6 +8,7 @@ import '../../game/ludo/ludo_bot.dart';
 import '../../game/ludo/ludo_rules.dart';
 import '../game/game_controller.dart' show SeatConfig;
 import '../online/game_link.dart';
+import '../online/opponent_presence.dart';
 import 'ludo_board.dart';
 
 /// Quick-chat presets; only the index travels over the network.
@@ -153,6 +154,9 @@ class LudoController extends ChangeNotifier {
   }
 
   int get mySeatForChat => online ? _mySeat : 0;
+  int _serverOffsetMs = 0;
+  int get serverOffsetMs => _serverOffsetMs;
+  OpponentPresenceSnapshot? opponentPresence;
 
   /// Online turn clock: local time the current turn runs out.
   int? _deadlineAt;
@@ -219,9 +223,18 @@ class LudoController extends ChangeNotifier {
 
   // ---- online: reflect the server ----------------------------------------
 
+  void applyPresence(Object? raw, int serverNow) {
+    if (_disposed || !online) return;
+    _serverOffsetMs = serverNow - DateTime.now().millisecondsSinceEpoch;
+    opponentPresence = opponentPresenceFromPoll(raw, _mySeat, serverNowMs: serverNow);
+    notifyListeners();
+  }
+
   void applyRemote(Map<String, dynamic> view, int serverNow) {
     if (_disposed || !online) return;
     _mySeat = view['you'] as int? ?? 0;
+    _serverOffsetMs = serverNow - DateTime.now().millisecondsSinceEpoch;
+    opponentPresence = opponentPresenceFromState(view, _mySeat, serverNow) ?? opponentPresence;
     final fresh = LudoState.fromJson(view);
     final first = _state == null;
     final newSeq = (view['lastResult'] as Map?)?['seq'] as int? ?? 0;

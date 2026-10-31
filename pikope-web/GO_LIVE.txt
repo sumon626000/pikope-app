@@ -5,16 +5,17 @@ LOCAL
   1. cd pikope-web
   2. .\smoke-web.ps1          (all green or fix WARN)
   3. .\deploy-hostinger.ps1
-  4. Upload dist\*.zip to Hostinger (play.pikope.com document root)
+  4. Upload dist\*.zip to Hostinger (pikope.com public_html — main app, no landing)
 
 API (adminnew.pikope.com .env)
-  CORS_ORIGIN=https://play.pikope.com,http://localhost:7357
-  WEB_APP_URL=https://play.pikope.com
+  CORS_ORIGIN=https://pikope.com,http://localhost:7357
+  WEB_APP_URL=https://pikope.com
   WS_PUBLIC_URL=wss://adminnew.pikope.com/ws   (optional; else HTTP poll)
   Deploy PHP: Cors.php, Api.php, ZiniPay.php
 
 DNS + SSL
-  play.pikope.com → site A record, HTTPS on
+  pikope.com → A record, HTTPS on (document root = Flutter web build)
+  Old marketing landing: backup only in repo landing/ (not deployed)
 
 SMOKE (production URL)
   Guest login, shop transfer, one online match — SMOKE_CHECKLIST.txt

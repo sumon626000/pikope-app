@@ -17,6 +17,7 @@ import '../duel/match_overlays.dart';
 import '../game/widgets/overlays.dart';
 import '../misc/how_to_play_screen.dart';
 import '../online/game_link.dart';
+import '../online/opponent_presence.dart';
 import '../online/session.dart';
 import 'ludo_board.dart';
 import '../../l10n/strings.dart';
@@ -50,6 +51,7 @@ class _LudoScreenState extends ConsumerState<LudoScreen> with SingleTickerProvid
     if (driver != null) {
       driver
         ..onState = _c.applyRemote
+        ..onPresence = _c.applyPresence
         ..onChat = _c.showChat
         ..onError = _onNetError
         ..start();
@@ -81,6 +83,15 @@ class _LudoScreenState extends ConsumerState<LudoScreen> with SingleTickerProvid
 
   void _onNetError(ApiException e) {
     if (e.code != 'network') _c.onActionRejected();
+  }
+
+  String _opponentName() {
+    final st = _c.state;
+    if (st == null) return 'Player';
+    for (var i = 0; i < st.players.length; i++) {
+      if (i != _c.mySeat && !st.players[i].isBot) return st.players[i].name;
+    }
+    return 'Player';
   }
 
   Future<void> _quit() async {
@@ -186,11 +197,17 @@ class _LudoScreenState extends ConsumerState<LudoScreen> with SingleTickerProvid
                                 ),
                               ),
                             ),
-                            if (widget.driver != null)
+                            if (widget.driver != null) ...[
+                              OpponentDisconnectBanner(
+                                presence: _c.opponentPresence,
+                                serverOffsetMs: _c.serverOffsetMs,
+                                opponentName: _opponentName(),
+                              ),
                               ConnectionStatusLayer(
                                 offline: widget.driver!.offline,
                                 onLeave: () => Navigator.of(context).pop(),
                               ),
+                            ],
                             if (_c.over) _result(),
                             if (_paused)
                               PauseOverlay(
@@ -336,7 +353,7 @@ class _LudoScreenState extends ConsumerState<LudoScreen> with SingleTickerProvid
           ),
       ],
       bet: widget.config.bet,
-      reason: state.winReason,
+      reason: ref.read(stringsProvider).formatMatchWinReason(state.winReason),
       onBack: () => Navigator.of(context).pop(),
     );
   }

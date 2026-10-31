@@ -14,6 +14,7 @@ import '../../data/app_game.dart';
 import '../misc/how_to_play_screen.dart';
 import '../duel/match_overlays.dart';
 import '../online/game_link.dart';
+import '../online/opponent_presence.dart';
 import '../online/online_screens.dart';
 import '../online/session.dart';
 import 'game_controller.dart';
@@ -58,6 +59,7 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
     if (driver != null) {
       driver
         ..onState = _c.applyRemote
+        ..onPresence = _c.applyPresence
         ..onError = _onNetError
         ..onAim = _c.applyRemoteAim
         ..start();
@@ -292,12 +294,18 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
                   rematchLabel: widget.driver == null ? 'REMATCH' : 'PLAY AGAIN',
                   onHome: () => Navigator.of(context).pop(),
                 ),
-              if (widget.driver != null)
+              if (widget.driver != null) ...[
+                OpponentDisconnectBanner(
+                  presence: _c.opponentPresence,
+                  serverOffsetMs: _c.serverOffsetMs,
+                  opponentName: _c.players[1 - widget.driver!.seat].name,
+                ),
                 ConnectionStatusLayer(
                   offline: widget.driver!.offline,
                   // Still seated on the server: the home screen offers to rejoin.
                   onLeave: () => Navigator.of(context).pop(),
                 ),
+              ],
               if (_paused)
                 PauseOverlay(
                   soundOn: settings.soundOn,

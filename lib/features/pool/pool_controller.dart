@@ -12,6 +12,7 @@ import '../../game/pool/pool_rules.dart';
 import '../game/game_controller.dart' show SeatConfig;
 import '../game/shot_table.dart';
 import '../online/game_link.dart';
+import '../online/opponent_presence.dart';
 
 class PoolMatchConfig {
   const PoolMatchConfig({required this.game, required this.seats, this.shotSeconds = 30, this.seed, this.bet = const MatchBet()});
@@ -557,6 +558,8 @@ class PoolController extends ChangeNotifier implements ShotTable {
 
   Map<String, dynamic>? _remote;
   int _serverOffsetMs = 0;
+  int get serverOffsetMs => _serverOffsetMs;
+  OpponentPresenceSnapshot? opponentPresence;
   bool _started = false;
   bool _overAnnounced = false;
 
@@ -573,9 +576,17 @@ class PoolController extends ChangeNotifier implements ShotTable {
   Map<String, dynamic>? _replaying;
 
   /// Newest view of the match from the server (a poll or an action's reply).
+  void applyPresence(Object? raw, int serverNow) {
+    if (_disposed || !online) return;
+    _serverOffsetMs = serverNow - DateTime.now().millisecondsSinceEpoch;
+    opponentPresence = opponentPresenceFromPoll(raw, link!.seat, serverNowMs: serverNow);
+    notifyListeners();
+  }
+
   void applyRemote(Map<String, dynamic> v, int serverNow) {
     if (_disposed || !online) return;
     _serverOffsetMs = serverNow - DateTime.now().millisecondsSinceEpoch;
+    opponentPresence = opponentPresenceFromState(v, link!.seat, serverNow) ?? opponentPresence;
     _remote = v;
     if (!_started) {
       _started = true;

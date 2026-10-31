@@ -758,9 +758,23 @@ class AppStrings {
   String get betterLuckNext => _t('BETTER LUCK NEXT TIME', 'পরের বার ভালো হবে');
 
   String reconnectingDots(int n) => _t('RECONNECTING${'.' * n}', 'পুনঃসংযোগ${'.' * n}');
+  String opponentDisconnectBanner(String name, int seconds) => _t(
+        '$name is offline — you win in ${seconds}s if they don\'t return',
+        '$name অফলাইন — $seconds সেকেন্ডের মধ্যে না ফিরলে আপনি জিতবেন',
+      );
+  String formatMatchWinReason(String? raw) {
+    if (raw == null || raw.isEmpty) return '';
+    return switch (raw) {
+      'OPPONENT DISCONNECTED' => _t('OPPONENT DISCONNECTED — YOU WIN', 'প্রতিপক্ষ সংযোগ হারিয়েছে — আপনি জিতেছেন'),
+      'OPPONENT LEFT THE GAME' => _t('OPPONENT LEFT — YOU WIN', 'প্রতিপক্ষ চলে গেছে — আপনি জিতেছেন'),
+      'OPPONENTS LEFT' => _t('OPPONENTS LEFT — YOU WIN', 'প্রতিপক্ষরা চলে গেছে — আপনি জিতেছেন'),
+      _ => raw,
+    };
+  }
+
   String get connectionLostBody => _t(
-        'CHECK YOUR INTERNET. YOUR SEAT IS SAVED.\nTHE MATCH CONTINUES AS SOON AS YOU ARE BACK.',
-        'ইন্টারনেট দেখুন। আপনার সিট সেভ আছে।\nফিরে এলেই ম্যাচ চলবে।',
+        'CHECK YOUR INTERNET. YOU HAVE ABOUT 60 SECONDS TO RECONNECT\nBEFORE THE MATCH IS FORFEITED.',
+        'ইন্টারনেট দেখুন। পুনঃসংযোগের জন্য প্রায় ৬০ সেকেন্ড আছে,\nনা হলে ম্যাচ হারবেন।',
       );
   String get shotClockExitHint => _t(
         'THE SHOT CLOCK KEEPS RUNNING.\nIF YOU EXIT, REJOIN FROM THE HOME SCREEN.',

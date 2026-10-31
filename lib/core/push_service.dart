@@ -121,18 +121,30 @@ final class PushService {
     );
   }
 
+  static const _walletInboxKinds = {
+    'coin_received',
+    'coin_sent',
+    'wallet',
+    'deposit_approved',
+    'deposit_ok',
+    'redeem_approved',
+    'redeem_cancelled',
+  };
+
   /// Updates unread badge; shows local tray for new inbox rows (deduped via event id).
-  static Future<int> pollInbox(ApiClient api) async {
+  /// [walletChanged] is true when a new row should refresh `/me` (e.g. coin transfer).
+  static Future<({int unread, bool walletChanged})> pollInbox(ApiClient api) async {
     try {
       final j = await api.get('/me/notifications?limit=25');
       final unread = j['unread'] as int? ?? 0;
+      var walletChanged = false;
       final items = (j['items'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
       if (items.isNotEmpty) {
         final top = items.first['id'] as int? ?? 0;
         if (!_inboxBootstrapped) {
           _lastSeenInboxId = top;
           _inboxBootstrapped = true;
-          return unread;
+          return (unread: unread, walletChanged: false);
         }
         if (top > _lastSeenInboxId) {
           for (final item in items) {
@@ -142,6 +154,9 @@ final class PushService {
             if (_shownEventKeys.contains(dedupeKey)) continue;
             _shownEventKeys.add(dedupeKey);
             final kind = item['kind'] as String? ?? '';
+            if (_walletInboxKinds.contains(kind)) {
+              walletChanged = true;
+            }
             if (kind == 'challenge') {
               requestChallengeInboxPoll();
             } else {
@@ -155,9 +170,9 @@ final class PushService {
           _lastSeenInboxId = top;
         }
       }
-      return unread;
+      return (unread: unread, walletChanged: walletChanged);
     } on Object {
-      return 0;
+      return (unread: 0, walletChanged: false);
     }
   }
 }

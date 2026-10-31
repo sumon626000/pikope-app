@@ -112,17 +112,31 @@ class CoinShopPack {
   final bool free;
   final bool claimed;
 
-  factory CoinShopPack.fromJson(Map<String, dynamic> j) => CoinShopPack(
-        id: j['id'] as String,
-        name: j['name'] as String,
-        coins: _asInt(j['coins']),
-        discountPercent: _asInt(j['discountPercent']),
-        globalDiscountPercent: _asInt(j['globalDiscountPercent']),
-        receiveCoins: _asInt(j['receiveCoins']),
-        priceCoins: _asInt(j['priceCoins']),
-        free: j['free'] as bool? ?? false,
-        claimed: j['claimed'] as bool? ?? false,
-      );
+  /// Pico coin credited on BDT deposit (base + bonus %), e.g. 100 @ 5% → 105.
+  int get depositReceiveCoins {
+    if (receiveCoins > coins) return receiveCoins;
+    if (discountPercent > 0) return coins + (coins * discountPercent ~/ 100);
+    return receiveCoins > 0 ? receiveCoins : coins;
+  }
+
+  factory CoinShopPack.fromJson(Map<String, dynamic> j) {
+    final coins = _asInt(j['coins']);
+    final discount = _asInt(j['discountPercent']);
+    final fromApi = _asInt(j['receiveCoins']);
+    final withBonus = discount > 0 ? coins + (coins * discount ~/ 100) : coins;
+    final receive = fromApi >= withBonus ? fromApi : withBonus;
+    return CoinShopPack(
+      id: j['id'] as String,
+      name: j['name'] as String,
+      coins: coins,
+      discountPercent: discount,
+      globalDiscountPercent: _asInt(j['globalDiscountPercent']),
+      receiveCoins: receive,
+      priceCoins: _asInt(j['priceCoins']),
+      free: j['free'] as bool? ?? false,
+      claimed: j['claimed'] as bool? ?? false,
+    );
+  }
 }
 
 class CoinDepositConfig {

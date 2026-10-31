@@ -19,5 +19,5 @@ Tag:           RELEASE.txt (pikope-web-1.0.0+1)
 Phases: see WEB_MASTER_PHASES.md
 
 Phase 1: set server CORS_ORIGIN (comma-separated) then run-local.ps1.
-  Example: http://localhost:7357,https://play.pikope.com
+  Example: http://localhost:7357,https://pikope.com
   Deploy backend/src/Cors.php + Api.php to Hostinger.

@@ -17,7 +17,7 @@ ICON_DIR = os.path.join(ROOT, "assets", "icon")
 
 # Prefer the high-res horizontal mark; fall back to in-app assets.
 SOURCES = [
-    os.path.join(ROOT, "site-pikope.com", "assets", "pikope_logo.png"),
+    os.path.join(ROOT, "landing", "assets", "pikope_logo.png"),
     os.path.join(ICON_DIR, "app_icon.jpg"),
     os.path.join(ROOT, "assets", "images", "pikope_logo.png"),
 ]
@@ -33,7 +33,7 @@ def load_logo() -> Image.Image:
             img = Image.open(path).convert("RGBA")
             print(f"source: {path} ({img.size[0]}x{img.size[1]})")
             return img
-    raise SystemExit("No logo source found. Add site-pikope.com/assets/pikope_logo.png")
+    raise SystemExit("No logo source found. Add landing/assets/pikope_logo.png")
 
 
 def fit_center(layer: Image.Image, logo: Image.Image, scale: float) -> None:

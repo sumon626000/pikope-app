@@ -242,7 +242,7 @@ class _ZiniPayAutoPanelState extends ConsumerState<ZiniPayAutoPanel> {
 
   int get _coins {
     final pack = widget.pack;
-    if (pack != null) return pack.receiveCoins * widget.qty;
+    if (pack != null) return pack.depositReceiveCoins * widget.qty;
     final a = _amount ?? 0;
     final r = widget.config.coinPerBdt;
     return r <= 0 ? a : a * r;
@@ -295,7 +295,7 @@ class _ZiniPayAutoPanelState extends ConsumerState<ZiniPayAutoPanel> {
                     padding: const EdgeInsets.only(right: 10),
                     child: ChoiceChip(
                       label: Text(
-                        p.receiveCoins > p.coins ? '${p.coins} → ${p.receiveCoins}' : '${p.coins}',
+                        p.depositReceiveCoins > p.coins ? '${p.coins} → ${p.depositReceiveCoins}' : '${p.coins}',
                         style: AppText.label(18, weight: FontWeight.w800),
                       ),
                       selected: widget.pack?.id == p.id,

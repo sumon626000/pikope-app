@@ -51,6 +51,9 @@ class OnlineGameDriver implements GameLink {
   /// Called with the server's view of the game and the server clock (ms).
   void Function(Map<String, dynamic> state, int serverNow)? onState;
 
+  /// Opponent seats still connected; updated even when [onState] is skipped (unchanged poll).
+  void Function(Object? presence, int serverNow)? onPresence;
+
   /// Called with another player's cue position while they aim.
   void Function(Map<String, dynamic> aim)? onAim;
 
@@ -228,11 +231,16 @@ class OnlineGameDriver implements GameLink {
       .timeout(const Duration(seconds: 5), onTimeout: () => const []);
 
   bool _deliver(Map<String, dynamic> reply) {
-    if (_disposed || reply['unchanged'] == true) return false;
+    if (_disposed) return false;
+    final serverNow = reply['serverNow'] as int? ?? DateTime.now().millisecondsSinceEpoch;
+    if (reply.containsKey('presence')) {
+      onPresence?.call(reply['presence'], serverNow);
+    }
+    if (reply['unchanged'] == true) return false;
     final version = reply['version'] as int;
     if (version <= _version) return false;
     _version = version;
-    onState?.call(reply['state'] as Map<String, dynamic>, reply['serverNow'] as int);
+    onState?.call(reply['state'] as Map<String, dynamic>, serverNow);
     return true;
   }
 

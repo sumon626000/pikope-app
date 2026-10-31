@@ -18,6 +18,7 @@ import '../duel/match_overlays.dart';
 import '../game/widgets/overlays.dart';
 import '../misc/how_to_play_screen.dart';
 import '../online/game_link.dart';
+import '../online/opponent_presence.dart';
 import '../online/session.dart';
 import 'carrom_board.dart';
 import '../../l10n/strings.dart';
@@ -58,6 +59,7 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
     if (driver != null) {
       driver
         ..onState = _c.applyRemote
+        ..onPresence = _c.applyPresence
         ..onAim = _c.applyRemoteAim
         ..onChat = _c.showChat
         ..onError = _onNetError
@@ -224,6 +226,11 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
                         ),
                       ),
                       if (widget.driver != null)
+                        OpponentDisconnectBanner(
+                          presence: _c.opponentPresence,
+                          serverOffsetMs: _c.serverOffsetMs,
+                          opponentName: widget.config.seats[1 - widget.driver!.seat].name,
+                        ),
                         ConnectionStatusLayer(offline: widget.driver!.offline, onLeave: () => Navigator.of(context).pop()),
                       if (_c.over) _result(),
                       if (_paused)
@@ -334,7 +341,7 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
           ResultPlayer(name: state.players[i].name, avatar: state.players[i].avatar, won: i == w, me: i == _c.mySeat),
       ],
       bet: widget.config.bet,
-      reason: state.winReason,
+      reason: ref.read(stringsProvider).formatMatchWinReason(state.winReason),
       onBack: () => Navigator.of(context).pop(),
     );
   }

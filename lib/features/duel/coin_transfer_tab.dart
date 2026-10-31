@@ -13,6 +13,8 @@ import '../../l10n/strings.dart';
 import '../online/session.dart';
 import 'coin_tutorial_video.dart';
 import 'lobby_data.dart';
+import '../../core/push_service.dart';
+import '../online/notification_unread.dart';
 import 'shop_tab_insets.dart';
 
 /// Send Pico coin to another player by 6-digit game ID (registered only).
@@ -36,13 +38,40 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
   bool _lookupBusy = false;
   bool _busy = false;
   String? _error;
+  String? _success;
+  Timer? _walletPoll;
+
+  @override
+  void initState() {
+    super.initState();
+    _walletPoll = Timer.periodic(const Duration(seconds: 12), (_) => _pollWalletInbox());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _pollWalletInbox());
+  }
 
   @override
   void dispose() {
     _lookupDebounce?.cancel();
+    _walletPoll?.cancel();
     _gameId.dispose();
     _amount.dispose();
     super.dispose();
+  }
+
+  Future<void> _pollWalletInbox() async {
+    if (!mounted || _busy) return;
+    final api = ref.read(apiProvider);
+    if (api == null || !ref.read(sessionProvider).signedIn) return;
+    try {
+      final poll = await PushService.pollInbox(api);
+      if (!mounted) return;
+      ref.read(notificationUnreadProvider.notifier).set(poll.unread);
+      if (poll.walletChanged) {
+        await ref.read(sessionProvider.notifier).refresh();
+        if (mounted) ref.read(lobbyProvider.notifier).refresh();
+      }
+    } on Object {
+      // offline
+    }
   }
 
   int? get _amountInt => int.tryParse(_amount.text.replaceAll(RegExp(r'\D'), ''));
@@ -69,7 +98,7 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
           _lookupBusy = false;
         });
       } on ApiException catch (e) {
-        if (!mounted) return;
+        if (!mounted || _busy) return;
         setState(() {
           _profile = null;
           _lookupBusy = false;
@@ -146,13 +175,18 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
     setState(() {
       _busy = true;
       _error = null;
+      _success = null;
     });
     try {
       final transfer = await ref.read(sessionProvider.notifier).sendCoinTransfer(gameId: digits, amount: amount);
       final recipient = transfer['toName'] as String? ?? name;
       if (mounted) {
         _amount.clear();
-        setState(() => _profile = null);
+        setState(() {
+          _profile = null;
+          _success = t.transferSentBody(recipient, amount);
+        });
+        ref.read(lobbyProvider.notifier).refresh();
       }
       final dialogCtx = rootNavigatorKey.currentContext ?? (mounted ? context : null);
       if (dialogCtx != null && dialogCtx.mounted) {
@@ -221,7 +255,10 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
                 labelStyle: AppText.label(20, color: DuelColors.dim),
               ),
               onChanged: (_) {
-                setState(() => _error = null);
+                setState(() {
+                  _error = null;
+                  _success = null;
+                });
                 _scheduleLookup();
               },
             ),
@@ -246,9 +283,15 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
                 contentPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 22),
                 labelStyle: AppText.label(20, color: DuelColors.dim),
               ),
-              onChanged: (_) => setState(() => _error = null),
+              onChanged: (_) => setState(() {
+                    _error = null;
+                    _success = null;
+                  }),
             ),
-            if (_error != null) ...[
+            if (_success != null) ...[
+              const SizedBox(height: 10),
+              Text(_success!, style: AppText.label(22, color: DuelColors.green, weight: FontWeight.w800)),
+            ] else if (_error != null) ...[
               const SizedBox(height: 10),
               Text(_error!, style: AppText.label(22, color: DuelColors.red)),
             ],

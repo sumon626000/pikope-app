@@ -37,7 +37,7 @@ abstract final class _ShopUi {
     var bestRatio = -1.0;
     for (final p in packs) {
       if (p.free || p.coins <= 0) continue;
-      final ratio = p.receiveCoins / p.coins;
+      final ratio = p.depositReceiveCoins / p.coins;
       if (ratio > bestRatio) {
         bestRatio = ratio;
         id = p.id;
@@ -468,7 +468,7 @@ class _ManualDepositSheetState extends ConsumerState<_ManualDepositSheet> {
 
   int get _bdt => widget.pack.coins;
 
-  int get _coins => widget.pack.receiveCoins;
+  int get _coins => widget.pack.depositReceiveCoins;
 
   @override
   void initState() {
@@ -1255,7 +1255,7 @@ class _CoinPackCard extends ConsumerWidget {
                                     ),
                                     SizedBox(height: (h * 0.03).clamp(2.0, 6.0)),
                                     Text(
-                                      t.youGetCoins(formatPicoCoins(pack.receiveCoins)),
+                                      t.youGetCoins(formatPicoCoins(pack.depositReceiveCoins)),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                       style: AppText.label(subSize, color: _ShopUi.skyLine, weight: FontWeight.w800),

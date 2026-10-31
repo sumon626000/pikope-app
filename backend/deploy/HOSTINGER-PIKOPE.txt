@@ -2,7 +2,8 @@ PikoPe backend + admin — Hostinger
 ==================================
 
 API + admin: https://adminnew.pikope.com  → public_html/pikope/public
-MAIN SITE:   https://pikope.com          → public_html/ (upload duelx/site-pikope.com/* ONLY here)
+MAIN SITE:   https://pikope.com          → public_html/ (Flutter web: pikope-web/deploy-hostinger.ps1 → upload build/web)
+LANDING:     archived in repo landing/   (not on main domain; optional subdomain later)
 
 1) Git deploy or upload into:
      .../public_html/pikope/
@@ -16,7 +17,8 @@ MAIN SITE:   https://pikope.com          → public_html/ (upload duelx/site-pik
      ADMIN_PASS=...   (12+ characters)
      APP_DEBUG=0
      APP_TEST_HOOKS=0
-     CORS_ORIGIN=   (leave empty)
+     CORS_ORIGIN=https://pikope.com,http://localhost:7357
+     WEB_APP_URL=https://pikope.com
      Optional: FCM_SERVER_KEY=...
      Then: php bin/migrate.php && php bin/doctor.php
 

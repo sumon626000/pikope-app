@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,6 +9,7 @@ import '../../core/app_theme.dart';
 import '../../core/brand.dart';
 import '../../core/duel_ui.dart';
 import '../../core/env.dart';
+import '../online/online_screens.dart';
 import '../online/session.dart';
 import 'login_screen.dart';
 import 'start_route.dart';
@@ -67,6 +69,12 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
         transitionDuration: const Duration(milliseconds: 250),
       ),
     );
+    // Browser F5: same account token in storage → auto rejoin seated match.
+    if (kIsWeb && toHome) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(resumeActiveOnlineMatch(ref));
+      });
+    }
   }
 
   Future<void> _restoreSession() async {

@@ -9,23 +9,24 @@ BUILD (local Windows)
   Subfolder install (e.g. https://pikope.com/play/):
   .\deploy-hostinger.ps1 -BaseHref '/play/'
 
-UPLOAD
-  1. Hostinger → File Manager → site document root
-     - Subdomain play.pikope.com → that subdomain's public_html
-     - OR folder public_html/play for path /play/
-  2. Upload ALL files from build/web (or extract deploy zip there).
-  3. Ensure index.html is at the folder root you mapped.
+UPLOAD (MAIN DOMAIN)
+  1. Hostinger → pikope.com → File Manager → public_html
+  2. Remove old static landing files if any (index.html from marketing site).
+  3. Upload ALL files from build/web (or extract deploy zip there).
+  4. index.html must be at public_html root.
+
+  Optional subdomain play.pikope.com: same build to that vhost, or use -BaseHref '/play/'.
 
 BACKEND (same admin as APK — adminnew.pikope.com)
   .env on API server:
-    CORS_ORIGIN=https://play.pikope.com,http://localhost:7357
-    WEB_APP_URL=https://play.pikope.com
+    CORS_ORIGIN=https://pikope.com,http://localhost:7357
+    WEB_APP_URL=https://pikope.com
     WS_PUBLIC_URL=wss://adminnew.pikope.com/ws   (proxy to ws-server; optional)
 
   Deploy PHP changes: Cors.php, ZiniPay.php, Api.php
 
 DNS
-  play.pikope.com → A record to Hostinger site IP, SSL ON (Let's Encrypt)
+  pikope.com → A record to Hostinger site IP, SSL ON (Let's Encrypt)
 
 PWA
   Users can "Install app" from Chrome menu when manifest + icons present.

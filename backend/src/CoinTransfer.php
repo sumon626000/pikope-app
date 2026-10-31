@@ -121,8 +121,10 @@ final class CoinTransfer
         $fee = intdiv($amount * $feePct, 100);
         $total = $amount + $fee;
 
+        // DDL must not run inside Db::transaction (MySQL implicit commit breaks commit()).
+        self::ensureTable();
+
         $payload = Db::transaction(static function () use ($fromId, $toId, $amount, $fee, $total): array {
-            self::ensureTable();
             Economy::move($fromId, -$total, 'transfer_out');
             Economy::move($toId, $amount, 'transfer_in');
             Db::run(
@@ -139,11 +141,18 @@ final class CoinTransfer
                  WHERE t.id = ?',
                 [$id]
             );
+            if ($row === null) {
+                throw new \RuntimeException('Transfer row missing after insert');
+            }
             $toName = (string) ($row['to_name'] ?? '');
             return ['row' => $row, 'fromId' => $fromId, 'toId' => $toId, 'toName' => $toName, 'transferId' => $id];
         });
 
-        $from = Auth::publicUser(Db::one('SELECT * FROM users WHERE id = ?', [$fromId]));
+        $fromRow = Db::one('SELECT * FROM users WHERE id = ?', [$fromId]);
+        if ($fromRow === null) {
+            throw new ApiError(500, 'server_error', 'Account not found after transfer.');
+        }
+        $from = Auth::publicUser($fromRow);
         $senderName = (string) ($from['displayName'] ?? 'Player');
         try {
             Push::notifyUser(

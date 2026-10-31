@@ -16,6 +16,7 @@ import '../../data/api_client.dart';
 import '../../data/app_game.dart';
 import '../misc/how_to_play_screen.dart';
 import '../online/game_link.dart';
+import '../online/opponent_presence.dart';
 import '../online/online_screens.dart';
 import '../online/session.dart';
 import '../../l10n/strings.dart';
@@ -61,6 +62,7 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
     if (driver != null) {
       driver
         ..onState = _c.applyRemote
+        ..onPresence = _c.applyPresence
         ..onError = _onNetError
         ..onAim = _c.applyRemoteAim
         ..start();
@@ -297,7 +299,7 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
                       ),
                   ],
                   bet: widget.config.bet,
-                  reason: s.winReason,
+                  reason: ref.read(stringsProvider).formatMatchWinReason(s.winReason),
                   onBack: () => Navigator.of(context).pop(),
                 )
               else if (over)
@@ -314,12 +316,18 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
                         },
                   onHome: () => Navigator.of(context).pop(),
                 ),
-              if (widget.driver != null)
+              if (widget.driver != null) ...[
+                OpponentDisconnectBanner(
+                  presence: _c.opponentPresence,
+                  serverOffsetMs: _c.serverOffsetMs,
+                  opponentName: _c.players[1 - widget.driver!.seat].name,
+                ),
                 ConnectionStatusLayer(
                   offline: widget.driver!.offline,
                   // Still seated on the server: the home screen offers to rejoin.
                   onLeave: () => Navigator.of(context).pop(),
                 ),
+              ],
               if (_paused)
                 PauseOverlay(
                   soundOn: settings.soundOn,

@@ -1,0 +1,16 @@
+ARCHIVED — do not upload to pikope.com root (main domain is the web app now).
+See landing/README.txt and pikope-web/DEPLOY.txt.
+
+--- Original landing deploy notes (backup reference) ---
+
+PikoPe — static landing (was: pikope.com document root)
+=====================================================
+
+Upload index.html + assets/ to a Hostinger folder when you want this site live
+(subdomain or path), NOT the main pikope.com root.
+
+Loads copy and APK URL from:
+  https://adminnew.pikope.com/landing/public
+
+Admin → Landing page:
+  https://adminnew.pikope.com/admin/landing

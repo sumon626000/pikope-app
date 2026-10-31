@@ -36,5 +36,5 @@ Pop-Location
 Write-Host ""
 Write-Host "Built: $out"
 Write-Host "Zip:   $ZipOut"
-Write-Host "Upload zip contents to Hostinger public_html (or play subdomain document root)."
+Write-Host "Upload zip contents to pikope.com public_html (main app). Landing site: repo landing/ (backup only)."
 Write-Host "See DEPLOY.txt"
