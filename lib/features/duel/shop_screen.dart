@@ -1076,7 +1076,7 @@ class _ActivityRow extends ConsumerWidget {
       return _rowShell(
         badge: sent ? t.badgeTransferSuccess : t.badgeTransfer,
         badgeColor: sent ? DuelColors.green : DuelColors.green,
-        title: sent ? '→ $peer' : '← $peer',
+        title: sent ? '${t.transferHistorySentTitle} → $peer' : '← $peer',
         sub: sent
             ? '${t.transferHistorySuccess(amount, fee)} · ID $peerId'
             : '${t.transferHistoryReceived(amount)} · ID $peerId',

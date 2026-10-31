@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/duel_ui.dart';
+import '../../core/root_nav.dart';
 import '../../core/widgets.dart';
 import '../../data/api_client.dart';
 import '../../l10n/strings.dart';
@@ -25,7 +26,9 @@ class CoinTransferTab extends ConsumerStatefulWidget {
   ConsumerState<CoinTransferTab> createState() => _CoinTransferTabState();
 }
 
-class _CoinTransferTabState extends ConsumerState<CoinTransferTab> {
+class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   final _gameId = TextEditingController();
   final _amount = TextEditingController();
   Timer? _lookupDebounce;
@@ -145,34 +148,21 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> {
       _error = null;
     });
     try {
-      await ref.read(sessionProvider.notifier).sendCoinTransfer(gameId: digits, amount: amount);
-      if (!mounted) return;
-      _amount.clear();
-      setState(() => _profile = null);
-      await showDuelDialog<void>(
-        context,
-        barrierDismissible: true,
-        builder: (ctx) => Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            width: 440,
-            padding: const EdgeInsets.all(26),
-            decoration: duelPanel(rim: DuelColors.green, glow: true),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.check_circle_rounded, color: DuelColors.green, size: 56),
-                const SizedBox(height: 12),
-                Text(t.transferSent, style: AppText.label(24, color: DuelColors.green, weight: FontWeight.w900)),
-                const SizedBox(height: 10),
-                Text(t.transferSentBody(name, amount), textAlign: TextAlign.center, style: AppText.label(16, color: DuelColors.silver)),
-                const SizedBox(height: 18),
-                DuelButton(label: t.ok, width: 160, height: 46, color: DuelColors.gold, onPressed: () => Navigator.of(ctx).pop()),
-              ],
-            ),
-          ),
-        ),
-      );
+      final transfer = await ref.read(sessionProvider.notifier).sendCoinTransfer(gameId: digits, amount: amount);
+      final recipient = transfer['toName'] as String? ?? name;
+      if (mounted) {
+        _amount.clear();
+        setState(() => _profile = null);
+      }
+      final dialogCtx = rootNavigatorKey.currentContext ?? (mounted ? context : null);
+      if (dialogCtx != null && dialogCtx.mounted) {
+        await showDuelMessage(
+          dialogCtx,
+          title: t.transferSent,
+          body: t.transferSentBody(recipient, amount),
+          icon: Icons.check_circle_rounded,
+        );
+      }
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = t.maybeApi(e.message));
     } finally {
@@ -182,6 +172,7 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final t = ref.watch(stringsProvider);
     final cfg = widget.config;
     final session = ref.watch(sessionProvider);
