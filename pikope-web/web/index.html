@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="PikoPe Web — Pool, Ludo and Carrom (same account as the Android app).">
+
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="PikoPe Web">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>PikoPe Web</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    html, body { margin: 0; height: 100%; background: #070A18; }
+    #load {
+      box-sizing: border-box;
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      font-family: system-ui, sans-serif;
+      color: #e9ecf5;
+      text-align: center;
+    }
+    #load p { opacity: 0.85; font-size: 14px; max-width: 320px; }
+    .spin {
+      width: 40px; height: 40px; margin-bottom: 16px;
+      border: 3px solid rgba(245, 200, 66, 0.25);
+      border-top-color: #f5c842;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div id="load" aria-live="polite">
+    <div class="spin" aria-hidden="true"></div>
+    <strong>PikoPe</strong>
+    <p>Loading game… first visit may take a moment.</p>
+  </div>
+  <script src="flutter_bootstrap.js" async></script>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var el = document.getElementById('load');
+      if (el) el.remove();
+    });
+  </script>
+</body>
+</html>

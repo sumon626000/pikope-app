@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../core/app_theme.dart';
@@ -12,6 +14,7 @@ import '../../l10n/strings.dart';
 import '../online/session.dart';
 import 'duel_chrome.dart';
 import 'lobby_data.dart';
+import 'zinipay_return.dart';
 
 /// Opens hosted checkout after server creates a ZiniPay invoice.
 Future<void> openZiniPayDeposit(
@@ -47,12 +50,22 @@ Future<void> openZiniPayDeposit(
     final url = r['paymentUrl'] as String;
     final deposit = r['deposit'] as Map<String, dynamic>;
     final returnPath = r['returnPath'] as String? ?? '/deposit/zinipay/return';
+    final depositId = deposit['id'] as int;
     if (!context.mounted) return;
+    if (kIsWeb) {
+      await rememberPendingZiniPayDeposit(depositId);
+      final ok = await launchUrl(Uri.parse(url), webOnlyWindowName: '_self');
+      if (!ok && context.mounted) {
+        showDuelMessage(context,
+            title: t.addCoinTitle, body: t.paymentUnavailable, icon: Icons.open_in_browser_rounded);
+      }
+      return;
+    }
     pushScreen(
       context,
       ZiniPayCheckoutScreen(
         paymentUrl: url,
-        depositId: deposit['id'] as int,
+        depositId: depositId,
         returnPath: returnPath,
       ),
     );

@@ -1,0 +1,25 @@
+PikoPe Web release tagging
+==========================
+
+Version lives in pikope-web/pubspec.yaml (e.g. 1.0.0+1).
+
+Before tag:
+  .\smoke-web.ps1
+  .\deploy-hostinger.ps1
+
+Git tag (from repo root, after commit):
+  git tag -a pikope-web-1.0.0+1 -m "PikoPe web client 1.0.0"
+  git push origin pikope-web-1.0.0+1
+
+Monitoring (ops):
+  - Hostinger uptime on play subdomain
+  - adminnew.pikope.com /health
+  - Admin alerts for transfer_abuse / redeem_abuse
+  - Compare APK vs web coin ledger on test accounts
+
+Rollback:
+  Re-upload prior zip from pikope-web/dist/
+  Revert API .env CORS/WEB_APP_URL if needed
+
+Rate limits:
+  Web uses the same API tokens and throttles as APK (no bypass).

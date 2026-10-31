@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_state.dart';
 import '../../core/env.dart';
+import '../../core/web_play.dart';
 import '../../data/api_client.dart';
 import '../../core/bd_phone.dart';
 import '../../data/app_game.dart';
@@ -270,10 +271,10 @@ class SessionNotifier extends Notifier<SessionState> {
   /// Address of the WebSocket server, or null when the backend has none (the
   /// app then plays over HTTP). Asked once per run.
   Future<String?> realtimeUrl() async {
-    if (Env.wsUrl.isNotEmpty) return Env.wsUrl;
+    if (Env.wsUrl.isNotEmpty) return normalizeWebSocketForWeb(Env.wsUrl);
     if (_wsAsked) return _wsUrl;
     try {
-      _wsUrl = (await _api.get('/config'))['ws'] as String?;
+      _wsUrl = normalizeWebSocketForWeb((await _api.get('/config'))['ws'] as String?);
       _wsAsked = true;
     } on ApiException {
       // Ask again next time.

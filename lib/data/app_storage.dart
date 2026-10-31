@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -20,10 +21,12 @@ class PrefsStorage implements AppStorage {
 
   static const _profileKey = 'billiard_poker_profile_v1';
   static const _tokenKey = 'auth_token';
+  static const _tokenPrefsFallbackKey = 'auth_token_prefs_fallback';
 
-  static const _tokenStore = FlutterSecureStorage(
-    aOptions: AndroidOptions(),
-  );
+  static FlutterSecureStorage get _tokenStore => FlutterSecureStorage(
+        aOptions: const AndroidOptions(),
+        webOptions: const WebOptions(),
+      );
 
   static Future<PrefsStorage> open() async {
     final prefs = await SharedPreferences.getInstance();
@@ -47,7 +50,13 @@ class PrefsStorage implements AppStorage {
     try {
       token = await _secure.read(key: _tokenKey) ?? '';
     } catch (_) {
-      token = legacy is String ? legacy : '';
+      token = '';
+    }
+    if (token.isEmpty) {
+      token = _prefs.getString(_tokenPrefsFallbackKey) ?? '';
+    }
+    if (token.isEmpty && legacy is String) {
+      token = legacy;
     }
     if (token.isEmpty && legacy is String && legacy.isNotEmpty) {
       token = legacy;
@@ -67,9 +76,17 @@ class PrefsStorage implements AppStorage {
   Future<void> save(Map<String, dynamic> data) async {
     final token = data['authToken'] as String? ?? '';
     if (token.isEmpty) {
-      await _secure.delete(key: _tokenKey);
+      try {
+        await _secure.delete(key: _tokenKey);
+      } catch (_) {}
+      await _prefs.remove(_tokenPrefsFallbackKey);
     } else {
-      await _secure.write(key: _tokenKey, value: token);
+      try {
+        await _secure.write(key: _tokenKey, value: token);
+      } catch (_) {}
+      if (kIsWeb) {
+        await _prefs.setString(_tokenPrefsFallbackKey, token);
+      }
     }
     final prefsJson = Map<String, dynamic>.from(data)..remove('authToken');
     await _prefs.setString(_profileKey, jsonEncode(prefsJson));

@@ -43,6 +43,11 @@ backend/deploy/docker/.env
 *_rsa
 id_*
 
+# ---- Web client (local asset junction) ----
+pikope-web/.dart_tool/
+pikope-web/build/
+pikope-web/assets
+
 # ---- Build output / packages ----
 backend/dist/
 *.apk

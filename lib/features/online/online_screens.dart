@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/bd_phone.dart';
+import '../../core/web_play.dart';
 import '../../core/app_state.dart';
 import '../../core/widgets/bd_phone_field.dart';
 import '../../core/app_theme.dart';
@@ -40,32 +41,37 @@ Future<void> openOnlineMatch(
   required int seat,
   required int shotSeconds,
   required List<Map<String, dynamic>> players,
-  required String? wsUrl,
+  required String?   wsUrl,
   Map<String, dynamic>? bet,
   bool intro = false,
   bool replace = true,
 }) {
+  final liveWs = normalizeWebSocketForWeb(wsUrl);
   final seats = [
     for (final p in players)
       SeatConfig(name: p['name'] as String, avatar: p['avatar'] as String, cue: p['cue'] as String? ?? 'classic'),
   ];
   final stake = MatchBet.fromJson(bet);
-  final driver = OnlineGameDriver(api, gameId, seat, roomId: roomId, wsUrl: wsUrl);
+  final driver = OnlineGameDriver(api, gameId, seat, roomId: roomId, wsUrl: liveWs);
   final MaterialPageRoute<void> route;
   if (gameKey.startsWith('ludo')) {
     route = MaterialPageRoute<void>(
-      builder: (_) => LudoScreen(
-        config: LudoMatchConfig(seats: players.length, players: seats, shotSeconds: shotSeconds, bet: stake),
-        driver: driver,
+      builder: (_) => WebPlayScope(
+        child: LudoScreen(
+          config: LudoMatchConfig(seats: players.length, players: seats, shotSeconds: shotSeconds, bet: stake),
+          driver: driver,
+        ),
       ),
     );
   } else if (gameKey == 'carrom') {
     route = MaterialPageRoute<void>(
       builder: (_) => Consumer(builder: (context, ref, _) {
         final prefs = ref.read(settingsProvider);
-        return CarromScreen(
-          config: CarromMatchConfig(seats: seats, shotSeconds: shotSeconds, bet: stake, strikerSkin: prefs.carromStriker, pieceSkin: prefs.carromPieces, boardSkin: prefs.carromBoard),
-          driver: driver,
+        return WebPlayScope(
+          child: CarromScreen(
+            config: CarromMatchConfig(seats: seats, shotSeconds: shotSeconds, bet: stake, strikerSkin: prefs.carromStriker, pieceSkin: prefs.carromPieces, boardSkin: prefs.carromBoard),
+            driver: driver,
+          ),
         );
       }),
     );
@@ -73,13 +79,15 @@ Future<void> openOnlineMatch(
     final game = AppGameInfo.fromApi(gameKey);
     final pool = game.poolGame;
     route = MaterialPageRoute<void>(
-      builder: (_) => pool == null
-          ? GameScreen(config: MatchConfig(seats: seats, shotSeconds: shotSeconds, bet: stake), driver: driver, intro: intro)
-          : PoolScreen(
-              config: PoolMatchConfig(game: pool, seats: seats, shotSeconds: shotSeconds, bet: stake),
-              driver: driver,
-              intro: intro,
-            ),
+      builder: (_) => WebPlayScope(
+        child: pool == null
+            ? GameScreen(config: MatchConfig(seats: seats, shotSeconds: shotSeconds, bet: stake), driver: driver, intro: intro)
+            : PoolScreen(
+                config: PoolMatchConfig(game: pool, seats: seats, shotSeconds: shotSeconds, bet: stake),
+                driver: driver,
+                intro: intro,
+              ),
+      ),
     );
   }
   return replace ? navigator.pushReplacement<void, void>(route) : navigator.push(route);

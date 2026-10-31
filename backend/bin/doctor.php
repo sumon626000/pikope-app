@@ -40,7 +40,7 @@ $adminOff = $adminUser === '' && $adminPass === '';
 $adminStrong = $adminUser !== '' && strlen($adminPass) >= 12;
 $line($adminOff || $adminStrong, 'ADMIN_PASS is strong (or admin disabled)', 'use 12+ characters for ADMIN_PASS, or leave ADMIN_USER empty');
 $cors = trim(Config::get('CORS_ORIGIN', ''));
-$line($cors !== '*', 'CORS_ORIGIN is not *', 'leave CORS_ORIGIN empty for mobile-only, or set one https origin');
+$line($cors !== '*', 'CORS_ORIGIN is not *', 'leave empty for mobile-only, or comma-separated https origins for web');
 $line(true, 'Forgot-password OTP: configure in admin → SMS OTP (or SMS_LOG in .env for tests)');
 // The physics must give the same answer on every server. The expected sum
 // belongs to the current physics; update it if src/Game/Physics.php changes.

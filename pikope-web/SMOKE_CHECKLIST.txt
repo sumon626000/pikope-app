@@ -1,0 +1,34 @@
+PikoPe Web — manual smoke (Chrome + phone browser)
+==================================================
+Run smoke-web.ps1 first. Then check each item on deployed or local run-local.ps1.
+
+AUTH / LOBBY
+ [ ] Guest login loads home (coins, modes)
+ [ ] Register / login with phone works
+ [ ] Logout and re-login keeps balance
+
+SHOP
+ [ ] Buy tab: ZiniPay or manual deposit request
+ [ ] Transfer to another game ID + SUCCESS popup
+ [ ] Redeem form submits (pending in history)
+ [ ] History tab shows transfer/deposit rows
+
+ONLINE
+ [ ] Quick match or private room joins
+ [ ] Pool: aim with mouse or finger, shot registers
+ [ ] Ludo / Carrom online starts (or HTTP poll if no WS)
+ [ ] Challenge send + accept from two browsers
+
+ADMIN / ABUSE (same as APK)
+ [ ] Transfer rate limit still applies (server throttled)
+ [ ] Invalid transfer ID does not debit coins
+
+PWA / DEVICES
+ [ ] Chrome desktop landscape layout OK
+ [ ] Android Chrome: rotate hint in portrait, play in landscape
+ [ ] Install prompt / Add to Home Screen (optional)
+
+ROLLBACK
+ [ ] Previous zip in pikope-web/dist/ re-uploads cleanly
+
+Tag release: git tag pikope-web-1.0.0+1

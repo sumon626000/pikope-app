@@ -266,9 +266,18 @@ final class ZiniPay
         $msg = $status === 'cancel'
             ? 'You can close this and try again in the app.'
             : 'Return to PikoPe — your coin will appear in a moment.';
+        $webApp = rtrim(trim(Config::get('WEB_APP_URL', '')), '/');
+        $jump = '';
+        if ($webApp !== '' && $deposit > 0) {
+            $q = http_build_query(['zinipay_deposit' => (string) $deposit, 'status' => $status]);
+            $target = htmlspecialchars($webApp . '/?' . $q, ENT_QUOTES, 'UTF-8');
+            $jump = '<meta http-equiv="refresh" content="0;url=' . $target . '">'
+                . '<script>location.replace(' . json_encode($webApp . '/?' . $q) . ');</script>';
+        }
         header('Content-Type: text/html; charset=utf-8');
         header('Cache-Control: no-store');
         echo '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">',
+            $jump,
             '<title>', htmlspecialchars($title), '</title>',
             '<style>body{font-family:sans-serif;background:#070a18;color:#e9ecf5;text-align:center;padding:48px 24px}',
             'h1{color:#f5c842}p{opacity:.85}</style></head><body>',

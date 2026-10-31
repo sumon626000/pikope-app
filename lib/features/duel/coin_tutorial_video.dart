@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../core/app_theme.dart';
@@ -57,11 +59,18 @@ class CoinTutorialVideoFrame extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => CoinTutorialPlayerScreen(videoId: id, title: title),
-            ),
-          ),
+          onTap: () async {
+            if (kIsWeb) {
+              await launchUrl(Uri.parse('https://www.youtube.com/watch?v=$id'), webOnlyWindowName: '_blank');
+              return;
+            }
+            if (!context.mounted) return;
+            await Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => CoinTutorialPlayerScreen(videoId: id, title: title),
+              ),
+            );
+          },
           child: Container(
             height: _h,
             decoration: BoxDecoration(

@@ -1,4 +1,5 @@
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 
 enum Sfx {
   ballHit, cueHit, cushion, pocket, card, tick, foul, success, extra, win, turn, tap, matchStart,
@@ -69,6 +70,8 @@ class AudioService {
     } catch (_) {
       // Older platforms: keep the default context.
     }
+    // Web: skip preloading every WAV (faster first paint); play() loads on demand.
+    if (kIsWeb) return;
     for (final sfx in Sfx.values) {
       try {
         final player = AudioPlayer()..positionUpdater = null;

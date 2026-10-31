@@ -195,6 +195,7 @@ class AppStrings {
   String get pleaseWait => _t('PLEASE WAIT…', 'অপেক্ষা করুন…');
   String get autoAddSuccess => _t('PAYMENT OK', 'পেমেন্ট সফল');
   String get autoAddSuccessBody => _t('Pico coin has been added to your wallet.', 'পিকো কয়েন ওয়ালেটে যোগ হয়েছে।');
+  String get paymentCancelled => _t('Payment was cancelled.', 'পেমেন্ট বাতিল হয়েছে।');
   String get autoAddPending => _t('PAYMENT PENDING', 'পেমেন্ট অপেক্ষমান');
   String get autoAddWebHint => _t('Complete payment in this window. When done, you return to the app automatically.', 'এই উইন্ডোতে পেমেন্ট শেষ করুন। শেষ হলে অ্যাপে ফিরে আসবেন।');
   String get amountBdt => _t('Amount (BDT)', 'পরিমাণ (টাকা)');
@@ -749,6 +750,10 @@ class AppStrings {
   String playerWins(String name) => _t('${name.toUpperCase()} WINS!', '${name.toUpperCase()} জিতেছে!');
   String winningPrize(String amount) => _t('WINNING PRIZE: $amount', 'জয়ের পুরস্কার: $amount');
   String get practiceFriendlyNoCoin => _t('PRACTICE / FRIENDLY — NO PICO COIN', 'অভ্যাস / বন্ধুত্ব — কোনো পিকো কয়েন নেই');
+  String get webPlayLandscapeHint => _t(
+        'ROTATE YOUR PHONE OR WIDEN THE WINDOW FOR THE BEST PLAY VIEW',
+        'ভালো ভিউতে খেলতে ফোন ঘোরান বা উইন্ডো চওড়া করুন',
+      );
   String youWonAmount(String amount) => _t('YOU WON $amount', 'আপনি জিতেছেন $amount');
   String get betterLuckNext => _t('BETTER LUCK NEXT TIME', 'পরের বার ভালো হবে');
 

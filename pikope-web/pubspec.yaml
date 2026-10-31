@@ -1,0 +1,35 @@
+name: pikope_web
+description: "PikoPe browser client — shares game code with the Android app in .."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  billiard_poker:
+    path: ..
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/images/tables/
+    - assets/images/avatars/
+    - assets/audio/
+  fonts:
+    - family: Orbitron
+      fonts:
+        - asset: assets/fonts/Orbitron.ttf
+    - family: DMSerifDisplay
+      fonts:
+        - asset: assets/fonts/DMSerifDisplay-Regular.ttf

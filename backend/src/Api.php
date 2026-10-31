@@ -21,12 +21,7 @@ final class Api
             $body = json_decode($raw, true);
             Http::json(ZiniPay::webhook(is_array($body) ? $body : []));
         }
-        $origin = trim(Config::get('CORS_ORIGIN', ''));
-        if ($origin !== '') {
-            header("Access-Control-Allow-Origin: $origin");
-            header('Access-Control-Allow-Headers: Authorization, Content-Type');
-            header('Access-Control-Allow-Methods: GET, POST, PATCH, OPTIONS');
-        }
+        Cors::apply();
         header('X-Content-Type-Options: nosniff');
         header('Referrer-Policy: no-referrer');
         if (Http::method() === 'OPTIONS') {
