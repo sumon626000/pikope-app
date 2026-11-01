@@ -49,8 +49,6 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
         const AssetImage(PicoCoin.asset),
       ];
       final audio = ref.read(audioProvider);
-      // Registered accounts only — no guest restore on splash.
-      unawaited(_restoreRegisteredSession());
       final work = Future.wait<void>([
         for (final image in images)
           precacheImage(image, context).catchError((_) {}),
@@ -58,7 +56,12 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
       unawaited(
         audio.warmUp().then((_) => audio.playMenuMusic()).catchError((_) {}),
       );
-      await Future.wait<void>([work, Future<void>.delayed(_minimum)]);
+      // Finish session restore before home so Shop/wallet do not flash login.
+      await Future.wait<void>([
+        work,
+        _restoreRegisteredSession(),
+        Future<void>.delayed(_minimum),
+      ]);
     } catch (_) {
       // Still open home — a saved login restores in background.
     }

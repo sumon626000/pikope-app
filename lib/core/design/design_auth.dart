@@ -17,6 +17,11 @@ abstract final class DesignAuth {
   static const loginPanelPadding = EdgeInsets.fromLTRB(48, 40, 48, 36);
   static const loginPanelRadius = 32.0;
 
+  /// Home-overlay sign-in (not full [LoginScreen] route).
+  static const loginPopupMaxWidth = 540.0;
+  static const loginPopupPadding = EdgeInsets.fromLTRB(24, 20, 24, 20);
+  static const loginPopupRadius = 24.0;
+
   /// [SettingsScreen] on [DuelPage] — centered column, panel grid, footer actions.
   static const settingsContentMaxWidth = 1340.0;
   static const settingsPanelMinHeight = 108.0;
