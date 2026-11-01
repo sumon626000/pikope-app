@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_theme.dart';
+import '../../core/design/design.dart';
 import '../../l10n/strings.dart';
 import 'page_frame.dart';
 
@@ -31,10 +32,10 @@ class LegalScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(content.lastUpdated, style: AppText.label(12, color: AppColors.textDim)),
-          const SizedBox(height: 16),
+          const SizedBox(height: DesignSpacing.x4),
           for (var i = 0; i < sections.length; i += 2)
             Padding(
-              padding: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.only(bottom: DesignSpacing.x4),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

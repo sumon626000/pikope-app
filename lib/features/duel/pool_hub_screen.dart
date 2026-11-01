@@ -3,10 +3,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/design/design.dart';
 import '../../core/duel_ui.dart';
 import '../../l10n/strings.dart';
 import 'bet_level_screen.dart';
-import 'duel_chrome.dart';
 import 'duel_home_screen.dart' show GameCard, HomeBanner, PokerArt;
 import 'lobby_data.dart';
 
@@ -14,8 +14,6 @@ import 'lobby_data.dart';
 /// with its jackpot, the random quick duel, free practice and the cue shop.
 class PoolHubScreen extends ConsumerWidget {
   const PoolHubScreen({super.key});
-
-  static const _cardW = 240.0, _cardGap = 16.0, _left = 120.0;
 
   Future<void> _open(BuildContext context, WidgetRef ref, Widget screen) async {
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
@@ -27,49 +25,48 @@ class PoolHubScreen extends ConsumerWidget {
     final t = ref.watch(stringsProvider);
     final data = ref.watch(lobbyProvider).valueOrNull;
     final tables = [
-      (DuelMode.eight, 8, t.eightBallTitle, t.eightBallSubShort, const Color(0xFF2E8B57)),
+      (DuelMode.eight, 8, t.eightBallTitle, t.eightBallSubShort, DesignColors.poolEightAccent),
       (DuelMode.nine, 9, t.nineBallTitle, t.nineBallSubShort, DuelColors.gold),
-      (DuelMode.ten, 10, t.tenBallTitle, t.tenBallSubShort, const Color(0xFF2F6BFF)),
+      (DuelMode.ten, 10, t.tenBallTitle, t.tenBallSubShort, DuelColors.blue),
     ];
     return DuelCanvas(
-      child: Stack(
-        children: [
-          const Positioned(left: 0, right: 0, top: 6, child: DuelTopBar()),
-          Positioned(
-            left: _left,
-            width: 4 * _cardW + 3 * _cardGap,
-            top: 124,
-            child: DuelTitle(t.poolHubTitle, size: 50, sub: t.poolHubSub),
-          ),
-          for (var i = 0; i < tables.length; i++)
-            Positioned(
-              left: _left + i * (_cardW + _cardGap),
-              top: 234,
-              child: GameCard(
-                width: _cardW,
-                color: tables[i].$5,
-                title: tables[i].$3,
-                sub: tables[i].$4,
-                art: _BallArt(tables[i].$2),
-                onPlay: () => _open(context, ref, BetLevelScreen(mode: tables[i].$1)),
-              ),
+      child: LobbyScaffold(
+        title: DuelTitle(t.poolHubTitle, size: 50, sub: t.poolHubSub),
+        centerPadding: EdgeInsets.zero,
+        center: Align(
+          alignment: Alignment.topCenter,
+          child: Padding(
+            padding: const EdgeInsets.only(top: DesignSpacing.x6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < tables.length; i++) ...[
+                  if (i > 0) const SizedBox(width: DesignLayout.poolHubCardGap),
+                  GameCard(
+                    width: DesignLayout.poolHubCardWidth,
+                    color: tables[i].$5,
+                    title: tables[i].$3,
+                    sub: tables[i].$4,
+                    art: _BallArt(tables[i].$2),
+                    onPlay: () => _open(context, ref, BetLevelScreen(mode: tables[i].$1)),
+                  ),
+                ],
+                const SizedBox(width: DesignLayout.poolHubCardGap),
+                GameCard(
+                  width: DesignLayout.poolHubCardWidth,
+                  color: DuelColors.purple,
+                  title: t.billiardPokerCardTitle,
+                  sub: null,
+                  art: const PokerArt(),
+                  onPlay: () => _open(context, ref, const BetLevelScreen(mode: DuelMode.poker)),
+                ),
+              ],
             ),
-          Positioned(
-            left: _left + 3 * (_cardW + _cardGap),
-            top: 234,
-            child: GameCard(
-              width: _cardW,
-              color: DuelColors.purple,
-              title: t.billiardPokerCardTitle,
-              sub: null,
-              art: const PokerArt(),
-              onPlay: () => _open(context, ref, const BetLevelScreen(mode: DuelMode.poker)),
-            ),
           ),
-          Positioned(
-            left: 1178,
-            top: 132,
-            child: HomeBanner(
+        ),
+        rightRail: Column(
+          children: [
+            HomeBanner(
               title: t.jackpotUpTo(data == null ? '10,000' : formatCoins(data.jackpot.reduce(max))),
               sub: t.jackpotSubLine,
               colors: const [Color(0xFF3A2606), Color(0xFF15100A)],
@@ -78,26 +75,19 @@ class PoolHubScreen extends ConsumerWidget {
               icon: const PikoCoinIcon(size: 96),
               onTap: () => _open(context, ref, const BetLevelScreen(mode: DuelMode.poker)),
             ),
-          ),
-          Positioned(
-            left: 1178,
-            top: 318,
-            child: HomeBanner(
+            const SizedBox(height: DesignSpacing.x3),
+            HomeBanner(
               title: t.quickDuel,
               sub: t.quickDuelSubRandom,
               colors: const [Color(0xFF0B2A66), Color(0xFF070E24)],
-              rim: const Color(0xFF2F6BFF),
+              rim: DuelColors.blue,
               titleColor: const Color(0xFF9CC2FF),
               icon: const Icon(Icons.shuffle_rounded, color: Color(0xFF9CC2FF), size: 84),
               onTap: () => _open(context, ref, const BetLevelScreen(mode: DuelMode.billiard)),
             ),
-          ),
-          Positioned(
-            left: 42,
-            bottom: 34,
-            child: NavTile(icon: Icons.reply_rounded, label: t.back, onTap: () => Navigator.of(context).pop()),
-          ),
-        ],
+          ],
+        ),
+        bottomLeading: LobbyBackNav(label: t.back, onTap: () => Navigator.of(context).pop()),
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/bd_phone.dart';
+import '../../core/design/design.dart';
 import '../../core/duel_ui.dart';
 import '../../core/env.dart';
 import '../../core/widgets.dart';
@@ -124,47 +125,47 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     final t = ref.watch(stringsProvider);
     return PageFrame(
       title: t.forgotPasswordTitle,
-      maxWidth: 560,
+      maxWidth: DesignAuth.forgotPasswordMaxWidth,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(t.forgotPasswordSteps, style: AppText.label(15, color: AppColors.textDim)),
-          const SizedBox(height: 16),
+          const SizedBox(height: DesignSpacing.x4),
           BdPhoneField(
             controller: _phone,
-            decoration: InputDecoration(labelText: t.mobile880),
+            decoration: DesignAuth.fieldDecoration(t.mobile880, dense: true),
           ),
           if (!_otpSent) ...[
-            const SizedBox(height: 20),
+            const SizedBox(height: DesignSpacing.x5),
             GameButton(
               label: t.sendOtp,
-              height: 52,
-              fontSize: 16,
+              height: DesignLayout.formButtonHeight - 12,
+              fontSize: DesignLayout.formButtonFontSize - 4,
               onPressed: _busy ? null : _sendOtp,
             ),
           ] else ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: DesignSpacing.x4),
             TextField(
               controller: _code,
               enabled: !_busy,
               keyboardType: TextInputType.number,
               maxLength: 8,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(labelText: t.otpSms, counterText: ''),
+              decoration: DesignAuth.fieldDecoration(t.otpSms, dense: true),
               autofocus: true,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: DesignSpacing.x3),
             TextField(
               controller: _password,
               enabled: !_busy,
               obscureText: true,
-              decoration: InputDecoration(labelText: t.newPassword8),
+              decoration: DesignAuth.fieldDecoration(t.newPassword8, dense: true),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: DesignSpacing.x5),
             GameButton(
               label: t.setNewPassword,
-              height: 52,
-              fontSize: 16,
+              height: DesignLayout.formButtonHeight - 12,
+              fontSize: DesignLayout.formButtonFontSize - 4,
               color: AppColors.gold,
               onPressed: _busy ? null : _savePassword,
             ),
@@ -176,12 +177,12 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           ],
           if (_info != null)
             Padding(
-              padding: const EdgeInsets.only(top: 14),
+              padding: const EdgeInsets.only(top: DesignSpacing.x4),
               child: Text(_info!, style: AppText.label(14, color: DuelColors.gold)),
             ),
           if (_error != null)
             Padding(
-              padding: const EdgeInsets.only(top: 14),
+              padding: const EdgeInsets.only(top: DesignSpacing.x4),
               child: Text(_error!, style: AppText.label(14, color: AppColors.danger)),
             ),
         ],

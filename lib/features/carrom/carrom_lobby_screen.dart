@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
+import '../../core/design/design.dart';
 import '../../core/duel_ui.dart';
 import '../duel/bet_level_screen.dart';
 import '../duel/duel_chrome.dart';
@@ -22,68 +23,50 @@ class CarromLobbyScreen extends ConsumerWidget {
     final striker = strikerSkinOf(settings.carromStriker);
     final pieces = pieceSkinOf(settings.carromPieces);
     return DuelCanvas(
-      child: Stack(
-        children: [
-          const Positioned(left: 0, right: 0, top: 6, child: DuelTopBar(showProfile: false, showShortcuts: false)),
-          Positioned(left: 0, right: 0, top: 96, child: DuelTitle(t.carromTitle, size: 48, sub: t.carromLobbySub)),
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 196,
-            child: Center(
-              child: _Picker(
-                title: t.yourStriker,
-                selectedName: striker.name,
-                children: [
-                  for (final sk in strikerSkins)
-                    _Swatch(
-                      selected: sk.id == settings.carromStriker,
-                      onTap: () => ref.read(settingsProvider.notifier).update((s) => s.copyWith(carromStriker: sk.id)),
-                      child: CustomPaint(size: const Size(64, 64), painter: _DiscPreview(const [DiscKind.striker], sk, pieces)),
-                    ),
-                ],
-              ),
+      child: LobbyScaffold(
+        topBar: const DuelTopBar(showProfile: false, showShortcuts: false),
+        title: Center(child: DuelTitle(t.carromTitle, size: 48, sub: t.carromLobbySub)),
+        centerPadding: EdgeInsets.zero,
+        center: Column(
+          children: [
+            const SizedBox(height: DesignSpacing.x5),
+            _Picker(
+              title: t.yourStriker,
+              selectedName: striker.name,
+              children: [
+                for (final sk in strikerSkins)
+                  _Swatch(
+                    selected: sk.id == settings.carromStriker,
+                    onTap: () => ref.read(settingsProvider.notifier).update((s) => s.copyWith(carromStriker: sk.id)),
+                    child: CustomPaint(size: const Size(64, 64), painter: _DiscPreview(const [DiscKind.striker], sk, pieces)),
+                  ),
+              ],
             ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 350,
-            child: Center(
-              child: _Picker(
-                title: t.yourPieces,
-                selectedName: pieces.name,
-                children: [
-                  for (final pk in pieceSkins)
-                    _Swatch(
-                      selected: pk.id == settings.carromPieces,
-                      onTap: () => ref.read(settingsProvider.notifier).update((s) => s.copyWith(carromPieces: pk.id)),
-                      child: CustomPaint(size: const Size(150, 64), painter: _DiscPreview(const [DiscKind.light, DiscKind.queen, DiscKind.dark], striker, pk)),
-                    ),
-                ],
-              ),
+            const SizedBox(height: DesignSpacing.x10),
+            _Picker(
+              title: t.yourPieces,
+              selectedName: pieces.name,
+              children: [
+                for (final pk in pieceSkins)
+                  _Swatch(
+                    selected: pk.id == settings.carromPieces,
+                    onTap: () => ref.read(settingsProvider.notifier).update((s) => s.copyWith(carromPieces: pk.id)),
+                    child: CustomPaint(size: const Size(150, 64), painter: _DiscPreview(const [DiscKind.light, DiscKind.queen, DiscKind.dark], striker, pk)),
+                  ),
+              ],
             ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 540,
-            child: Center(
-              child: DuelButton(
-                label: t.playForCoin,
-                width: 420,
-                height: 72,
-                color: DuelColors.gold,
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BetLevelScreen(mode: DuelMode.carrom))),
-              ),
+            const Spacer(),
+            DuelButton(
+              label: t.playForCoin,
+              width: 420,
+              height: 72,
+              color: DuelColors.gold,
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BetLevelScreen(mode: DuelMode.carrom))),
             ),
-          ),
-          Positioned(
-            left: 42,
-            bottom: 34,
-            child: NavTile(icon: Icons.reply_rounded, label: t.back, onTap: () => Navigator.of(context).pop()),
-          ),
-        ],
+            const SizedBox(height: DesignSpacing.x8),
+          ],
+        ),
+        bottomLeading: LobbyBackNav(label: t.back, onTap: () => Navigator.of(context).pop()),
       ),
     );
   }
@@ -104,7 +87,7 @@ class _Picker extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(title, style: AppText.label(16, color: DuelColors.dim, weight: FontWeight.w800)),
-              const SizedBox(width: 12),
+              const SizedBox(width: DesignSpacing.x3),
               Text(selectedName, style: AppText.label(16, color: DuelColors.gold, weight: FontWeight.w900)),
             ],
           ),
@@ -130,7 +113,7 @@ class _Swatch extends StatelessWidget {
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 7),
           padding: const EdgeInsets.all(10),
-          decoration: duelPanel(radius: 16, rim: selected ? DuelColors.green : DuelColors.rim, glow: selected, fill: selected ? const Color(0xE60C2414) : const Color(0xCC0B0E1C)),
+          decoration: duelPanel(radius: DesignRadii.md, rim: selected ? DuelColors.green : DuelColors.rim, glow: selected, fill: selected ? const Color(0xE60C2414) : const Color(0xCC0B0E1C)),
           child: child,
         ),
       );

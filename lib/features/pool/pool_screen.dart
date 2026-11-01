@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_state.dart';
 import '../../core/audio_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/design/design.dart';
 import '../../core/duel_ui.dart';
 import '../../core/widgets.dart';
 import '../../data/demo_data.dart';
@@ -49,8 +50,7 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
   bool _resultBooked = false;
   int? _reward;
 
-  /// Fills the screen below the player bar, like the classic pool games.
-  static const _tableRect = Rect.fromLTWH(339, 150, 1272, 744);
+  static const _tableRect = DesignGameplay.poolTableRect;
 
   @override
   void initState() {

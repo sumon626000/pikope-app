@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
+import '../../core/design/design.dart';
 import '../../core/duel_ui.dart';
 import '../../core/widgets.dart';
 import '../../data/match_bet.dart';
@@ -68,7 +69,7 @@ class _GameRevealOverlayState extends ConsumerState<GameRevealOverlay> with Sing
         child: FadeTransition(
           opacity: CurvedAnimation(parent: _c, curve: const Interval(0.9, 1, curve: Curves.easeIn)).drive(Tween(begin: 1.0, end: 0.0)),
           child: Container(
-            color: const Color(0x8C000000),
+            color: DesignGameplay.overlayScrimReveal,
             alignment: Alignment.center,
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -76,7 +77,7 @@ class _GameRevealOverlayState extends ConsumerState<GameRevealOverlay> with Sing
                 Text(settled ? t.nBallLabel(widget.ball) : t.drawingTheGame,
                     style: AppText.label(46, color: settled ? DuelColors.gold : Colors.white, weight: FontWeight.w900)
                         .copyWith(shadows: const [Shadow(color: Colors.black, blurRadius: 12)])),
-                const SizedBox(height: 30),
+                const SizedBox(height: DesignSpacing.x8),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -92,7 +93,7 @@ class _GameRevealOverlayState extends ConsumerState<GameRevealOverlay> with Sing
                               if (i == _lit) BoxShadow(color: DuelColors.gold.withValues(alpha: settled ? 0.9 : 0.5), blurRadius: settled ? 60 : 30, spreadRadius: 4),
                             ],
                           ),
-                          child: BallIcon(_balls[i], size: 170, opacity: i == _lit || !settled ? 1 : 0.45),
+                          child: BallIcon(_balls[i], size: DesignGameplay.revealBallSize, opacity: i == _lit || !settled ? 1 : 0.45),
                         ),
                       ),
                   ],
@@ -184,7 +185,7 @@ class _JackpotWheelOverlayState extends ConsumerState<JackpotWheelOverlay> with 
           child: FadeTransition(
             opacity: CurvedAnimation(parent: _c, curve: const Interval(0.94, 1, curve: Curves.easeIn)).drive(Tween(begin: 1.0, end: 0.0)),
             child: Container(
-              color: const Color(0xA6000000),
+              color: DesignGameplay.overlayScrimJackpot,
               alignment: Alignment.center,
               child: Stack(
                 alignment: Alignment.center,
@@ -192,7 +193,7 @@ class _JackpotWheelOverlayState extends ConsumerState<JackpotWheelOverlay> with 
                   AnimatedBuilder(
                     animation: _c,
                     builder: (context, _) => CustomPaint(
-                      size: const Size.square(640),
+                      size: const Size.square(DesignGameplay.jackpotWheelSize),
                       painter: _WheelPainter(_prizes, _angle, _landed ? _target : -1, _c.value),
                     ),
                   ),
@@ -201,7 +202,7 @@ class _JackpotWheelOverlayState extends ConsumerState<JackpotWheelOverlay> with 
                       bottom: 60,
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 44, vertical: 16),
-                        decoration: duelPanel(radius: 22, rim: DuelColors.gold, glow: true, fill: const Color(0xF2101426)),
+                        decoration: duelPanel(radius: DesignRadii.dialog, rim: DuelColors.gold, glow: true, fill: DesignColors.glass),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -411,13 +412,13 @@ class _DuelResultOverlayState extends ConsumerState<DuelResultOverlay> with Sing
   }
 
   Offset _winnerSpot(int count, double tile) {
-    final vs = count > 2 ? 96.0 : 120.0;
+    final vs = count > 2 ? DesignGameplay.resultVsFourPlayer : DesignGameplay.resultVsWide;
     var total = tile;
     if (count > 1) total += vs + tile;
     for (var i = 2; i < count; i++) {
       total += 34 + tile;
     }
-    return Offset((1600 - total) / 2 + tile / 2, 340 + tile / 2);
+    return Offset((DesignLayout.canvasSize.width - total) / 2 + tile / 2, 340 + tile / 2);
   }
 
   static const _gray = ColorFilter.matrix(<double>[
@@ -437,7 +438,7 @@ class _DuelResultOverlayState extends ConsumerState<DuelResultOverlay> with Sing
     final me = players.firstWhere((p) => p.me, orElse: () => players.first);
     final settings = ref.watch(settingsProvider);
     final four = players.length > 2;
-    final tile = four ? 230.0 : 260.0;
+    final tile = four ? DesignGameplay.resultSeatCompact : DesignGameplay.resultSeatLarge;
     // Winner first, as in the mockup.
     final ordered = [winner, for (final p in players) if (!identical(p, winner)) p];
     final spot = _winnerSpot(ordered.length, tile);
@@ -445,13 +446,13 @@ class _DuelResultOverlayState extends ConsumerState<DuelResultOverlay> with Sing
       child: Container(
         decoration: const BoxDecoration(
           boxShadow: [BoxShadow(color: Color(0xF205070F), spreadRadius: 900)],
-          gradient: RadialGradient(center: Alignment(0, -0.3), radius: 1.1, colors: [Color(0xFF16205A), Color(0xFF0A0E26), Color(0xFF05070F)]),
+          gradient: RadialGradient(center: Alignment(0, -0.3), radius: 1.1, colors: DesignGameplay.resultGradient),
         ),
         child: Stack(
           children: [
-            const Positioned(left: 40, top: 20, child: DuelLogo()),
+            Positioned(left: DesignSpacing.screenEdge - 2, top: DesignSpacing.x5, child: const DuelLogo()),
             Positioned(
-              right: 40,
+              right: DesignSpacing.screenEdge - 2,
               top: 22,
               child: Row(
                 children: [
@@ -480,7 +481,7 @@ class _DuelResultOverlayState extends ConsumerState<DuelResultOverlay> with Sing
                   for (var i = 0; i < ordered.length; i++) ...[
                     if (i == 1)
                       SizedBox(
-                        width: four ? 96 : 120,
+                        width: four ? DesignGameplay.resultVsFourPlayer : DesignGameplay.resultVsWide,
                         height: tile,
                         child: OverflowBox(
                           maxWidth: 220,
@@ -492,7 +493,7 @@ class _DuelResultOverlayState extends ConsumerState<DuelResultOverlay> with Sing
                         ),
                       )
                     else if (i > 1)
-                      const SizedBox(width: 34),
+                      SizedBox(width: DesignGameplay.resultPlayerGap),
                     Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -504,7 +505,7 @@ class _DuelResultOverlayState extends ConsumerState<DuelResultOverlay> with Sing
                               height: tile,
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: ordered[i].won ? const Color(0xFFFFE21A) : const Color(0xFF4A4973),
+                                color: ordered[i].won ? DesignColors.duelGold : DesignColors.appFrame,
                                 borderRadius: BorderRadius.circular(tile * 0.14),
                                 boxShadow: [
                                   if (ordered[i].won) const BoxShadow(color: Color(0x99FFD21A), blurRadius: 40),
@@ -573,10 +574,14 @@ class _DuelResultOverlayState extends ConsumerState<DuelResultOverlay> with Sing
                 ),
               ),
             ),
-            Positioned(left: 44, bottom: 34, child: NavTile(icon: Icons.reply_rounded, label: t.back, onTap: widget.onBack)),
             Positioned(
-              right: 44,
-              bottom: 34,
+              left: DesignSpacing.screenEdge,
+              bottom: DesignLayout.bottomBarInset,
+              child: NavTile(icon: Icons.reply_rounded, label: t.back, onTap: widget.onBack),
+            ),
+            Positioned(
+              right: DesignSpacing.screenEdge,
+              bottom: DesignLayout.bottomBarInset,
               child: NavTile(icon: Icons.query_stats_rounded, label: t.navData, onTap: () => pushScreen(context, const HistoryScreen())),
             ),
           ],

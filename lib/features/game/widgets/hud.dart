@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../l10n/strings.dart';
 
 import '../../../core/app_theme.dart';
+import '../../../core/design/design.dart';
 import '../../../core/audio_service.dart';
 import '../../../core/turn_life_dots.dart';
 import '../../../core/widgets.dart';
@@ -21,6 +22,7 @@ import 'card_view.dart';
 /// (0 bottom = the viewer, 1 left, 2 top, 3 right). The table takes the
 /// middle of the screen; hands sit in the margins around it.
 class SeatLayout {
+  /// Poker / legacy table on the 1950×900 canvas (pool uses [DesignGameplay.poolTableRect]).
   static const tableRect = Rect.fromLTWH(420, 96, 1180, 690);
 
   static const avatarSizes = [92.0, 96.0, 84.0, 96.0];

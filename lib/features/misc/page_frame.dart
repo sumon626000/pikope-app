@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
+import '../../core/design/design.dart';
 import '../../core/duel_ui.dart';
 
 /// Shared chrome for the menu screens: back button, title, scrolling body.
 class PageFrame extends StatelessWidget {
-  const PageFrame({super.key, required this.title, required this.child, this.maxWidth = 980, this.action});
+  const PageFrame({
+    super.key,
+    required this.title,
+    required this.child,
+    this.maxWidth = DesignAuth.pageFrameMaxWidth,
+    this.action,
+  });
 
   final String title;
   final Widget child;
@@ -17,13 +24,13 @@ class PageFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: DuelColors.ink,
+      backgroundColor: DesignColors.ink,
       body: DuelBackdrop(
         child: SafeArea(
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                padding: const EdgeInsets.fromLTRB(DesignSpacing.x3, DesignSpacing.x2, DesignSpacing.x3, DesignSpacing.x1),
                 child: Row(
                   children: [
                     IconButton(
@@ -31,7 +38,7 @@ class PageFrame extends StatelessWidget {
                       icon: const Icon(Icons.arrow_back_rounded, color: AppColors.text),
                       tooltip: 'Back',
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: DesignSpacing.x2),
                     Expanded(child: Text(title, style: AppText.label(20, weight: FontWeight.w900))),
                     ?action,
                   ],
@@ -39,7 +46,7 @@ class PageFrame extends StatelessWidget {
               ),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(14, 2, 14, 14),
+                  padding: const EdgeInsets.fromLTRB(DesignSpacing.x4, DesignSpacing.x1, DesignSpacing.x4, DesignSpacing.x4),
                   child: Center(
                     child: ConstrainedBox(
                       constraints: BoxConstraints(maxWidth: maxWidth),
@@ -67,12 +74,15 @@ class SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      margin: EdgeInsets.only(bottom: compact ? 8 : 14),
-      padding: EdgeInsets.fromLTRB(compact ? 12 : 16, compact ? 8 : 12, compact ? 12 : 16, compact ? 8 : 12),
-      decoration: panelDecoration(radius: compact ? 12 : 16).copyWith(
-        boxShadow: compact
-            ? const [BoxShadow(color: Color(0x22000000), blurRadius: 10, offset: Offset(0, 4))]
-            : null,
+      margin: EdgeInsets.only(bottom: compact ? DesignSpacing.x2 : DesignSpacing.x4),
+      padding: EdgeInsets.fromLTRB(
+        compact ? DesignSpacing.x3 : DesignSpacing.x4,
+        compact ? DesignSpacing.x2 : DesignSpacing.x3,
+        compact ? DesignSpacing.x3 : DesignSpacing.x4,
+        compact ? DesignSpacing.x2 : DesignSpacing.x3,
+      ),
+      decoration: panelDecoration(radius: compact ? DesignRadii.sm : DesignRadii.md).copyWith(
+        boxShadow: compact ? const [BoxShadow(color: Color(0x22000000), blurRadius: 10, offset: Offset(0, 4))] : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,7 +92,7 @@ class SectionCard extends StatelessWidget {
               Container(
                 width: 3,
                 height: compact ? 12 : 14,
-                margin: const EdgeInsets.only(right: 8),
+                margin: const EdgeInsets.only(right: DesignSpacing.x2),
                 decoration: BoxDecoration(
                   color: AppColors.gold,
                   borderRadius: BorderRadius.circular(2),
@@ -93,7 +103,7 @@ class SectionCard extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: compact ? 6 : 8),
+          SizedBox(height: compact ? 6 : DesignSpacing.x2),
           child,
         ],
       ),
@@ -119,17 +129,17 @@ class ChoiceRow<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Wrap(
-      spacing: dense ? 5 : 8,
-      runSpacing: dense ? 5 : 8,
+      spacing: dense ? 5 : DesignSpacing.x2,
+      runSpacing: dense ? 5 : DesignSpacing.x2,
       children: [
         for (final e in options.entries)
           GestureDetector(
             onTap: () => onChanged(e.key),
             child: Container(
-              padding: EdgeInsets.symmetric(horizontal: dense ? 10 : 16, vertical: dense ? 5 : 10),
+              padding: EdgeInsets.symmetric(horizontal: dense ? 10 : DesignSpacing.x4, vertical: dense ? 5 : 10),
               decoration: BoxDecoration(
                 color: e.key == value ? AppColors.active : AppColors.backgroundAlt,
-                borderRadius: BorderRadius.circular(dense ? 8 : 12),
+                borderRadius: BorderRadius.circular(dense ? DesignSpacing.x2 : DesignSpacing.x3),
                 border: Border.all(color: e.key == value ? AppColors.active : AppColors.frame, width: dense ? 1.5 : 2),
               ),
               child: Text(

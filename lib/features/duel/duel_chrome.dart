@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
+import '../../core/design/design.dart';
 import '../../core/duel_ui.dart';
 import '../../core/icon_motion.dart';
 import '../../core/widgets.dart';
@@ -208,34 +209,35 @@ class DuelPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
-    final bodyTop = contentTop ?? (expanded ? 168.0 : 226.0);
-    final backTop = sideBack ? (contentTop != null ? contentTop! - 14.0 : (expanded ? 178.0 : 210.0)) : 0.0;
+    final bodyTop = DesignSecondaryPage.bodyTop(expanded: expanded, override: contentTop);
+    final backTop = DesignSecondaryPage.backTop(expanded: expanded, sideBack: sideBack, contentTop: contentTop);
+    final pad = DesignSecondaryPage.contentPadding(expanded: expanded, sideBack: sideBack);
     return DuelCanvas(
-        child: Stack(
-          children: [
-            const Positioned(left: 0, right: 0, top: 6, child: DuelTopBar(showProfile: false, showShortcuts: false)),
-            Positioned(left: 0, right: 0, top: 118, child: Center(child: DuelTitle(title, size: 44, sub: sub))),
+      child: Stack(
+        children: [
+          const Positioned(left: 0, right: 0, top: 6, child: DuelTopBar(showProfile: false, showShortcuts: false)),
+          Positioned(left: 0, right: 0, top: DesignSecondaryPage.titleTop, child: Center(child: DuelTitle(title, size: 44, sub: sub))),
+          Positioned(
+            left: pad.left,
+            right: pad.right,
+            top: bodyTop,
+            bottom: pad.bottom,
+            child: child,
+          ),
+          if (sideBack)
             Positioned(
-              left: sideBack ? (expanded ? 168 : 188) : (expanded ? 28 : 210),
-              right: expanded ? 20 : 60,
-              top: bodyTop,
-              bottom: expanded ? 12 : 40,
-              child: child,
+              left: DesignSecondaryPage.backSideLeft,
+              top: backTop,
+              child: NavTile(icon: Icons.reply_rounded, label: t.navBack, onTap: () => Navigator.of(context).pop()),
+            )
+          else
+            Positioned(
+              left: DesignSecondaryPage.backLeft,
+              bottom: DesignLayout.bottomBarInset,
+              child: NavTile(icon: Icons.reply_rounded, label: t.navBack, onTap: () => Navigator.of(context).pop()),
             ),
-            if (sideBack)
-              Positioned(
-                left: 20,
-                top: backTop,
-                child: NavTile(icon: Icons.reply_rounded, label: t.navBack, onTap: () => Navigator.of(context).pop()),
-              )
-            else
-              Positioned(
-                left: 42,
-                bottom: 34,
-                child: NavTile(icon: Icons.reply_rounded, label: t.navBack, onTap: () => Navigator.of(context).pop()),
-              ),
-          ],
-        ),
-      );
+        ],
+      ),
+    );
   }
 }

@@ -26,7 +26,7 @@ Future<void> showIncomingChallengeBanner(BuildContext context, WidgetRef ref, Ma
         child: FadeTransition(opacity: curved, child: child),
       );
     },
-    pageBuilder: (context, _, __) {
+    pageBuilder: (context, _, _) {
       return SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 8, 14, 56),

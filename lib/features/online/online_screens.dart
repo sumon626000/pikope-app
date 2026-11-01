@@ -9,6 +9,7 @@ import '../../core/web_play.dart';
 import '../../core/app_state.dart';
 import '../../core/widgets/bd_phone_field.dart';
 import '../../core/app_theme.dart';
+import '../../core/design/design.dart';
 import '../../core/duel_ui.dart' show formatCoins;
 import '../../core/widgets.dart';
 import '../../data/api_client.dart';
@@ -645,7 +646,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     final guest = !session.signedIn || session.isGuest;
     return PageFrame(
       title: t.account,
-      maxWidth: 620,
+      maxWidth: DesignAuth.pageFrameFormMaxWidth,
       child: Column(
         children: [
           SectionCard(

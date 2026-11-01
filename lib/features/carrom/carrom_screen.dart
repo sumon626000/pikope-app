@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
+import '../../core/design/design.dart';
 import '../../core/duel_ui.dart';
 import '../../core/turn_life_dots.dart';
 import '../../core/widgets.dart';
@@ -44,11 +45,14 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
   bool _paused = false;
   bool _resultBooked = false;
 
-  static const _canvasW = 1950.0, _canvasH = 900.0;
-  static const _boardSize = 832.0;
-  static const _boardLeft = (_canvasW - _boardSize) / 2, _boardTop = 10.0;
-  static const _sliderW = 560.0, _sliderH = 46.0;
-  static const _sliderLeft = (_canvasW - _sliderW) / 2, _sliderTop = _boardTop + _boardSize + 10;
+  static const _canvasW = DesignGameplay.canvasWidth;
+  static const _boardSize = DesignGameplay.carromBoardSize;
+  static const _boardLeft = DesignGameplay.carromBoardLeft;
+  static const _boardTop = DesignGameplay.carromBoardTop;
+  static const _sliderW = DesignGameplay.carromSliderWidth;
+  static const _sliderH = DesignGameplay.carromSliderHeight;
+  static const _sliderLeft = DesignGameplay.carromSliderLeft;
+  static const _sliderTop = DesignGameplay.carromSliderTop;
 
   @override
   void initState() {
@@ -157,22 +161,16 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
       child: Scaffold(
         backgroundColor: const Color(0xFF2B0B0B),
         body: _CarromBackground(
-          child: SafeArea(
-            child: Center(
-              child: FittedBox(
-                fit: BoxFit.contain,
-                child: SizedBox(
-                  width: _canvasW,
-                  height: _canvasH,
-                  child: Stack(
-                    children: [
-                      Positioned(left: 64, top: 0, child: _MenuTab(onTap: () => setState(() => _paused = true))),
-                      if (widget.config.bet.staked)
-                        Positioned(
-                          left: 20,
-                          top: 58,
-                          child: MatchPrizeTile(prize: widget.config.bet.prize),
-                        ),
+          child: DesignCanvas(
+            child: Stack(
+              children: [
+                Positioned(left: DesignGameplay.menuTabLeft, top: 0, child: _MenuTab(onTap: () => setState(() => _paused = true))),
+                if (widget.config.bet.staked)
+                  Positioned(
+                    left: DesignGameplay.prizeTileLeft,
+                    top: DesignGameplay.prizeTileTop,
+                    child: MatchPrizeTile(prize: widget.config.bet.prize),
+                  ),
                       // The board.
                       Positioned(
                         left: _boardLeft,
@@ -207,7 +205,7 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
                         child: Text(
                           _c.hint,
                           textAlign: TextAlign.center,
-                          style: AppText.label(20, color: _c.canAim ? const Color(0xFFFFE45C) : Colors.white70, weight: FontWeight.w900)
+                          style: AppText.label(20, color: _c.canAim ? DesignGameplay.hintActive : DesignGameplay.hintIdle, weight: FontWeight.w900)
                               .copyWith(shadows: const [Shadow(color: Color(0xCC000000), blurRadius: 4, offset: Offset(0, 2))]),
                         ),
                       ),
@@ -220,7 +218,9 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
                           child: Center(
                             child: AnimatedSwitcher(
                               duration: const Duration(milliseconds: 180),
-                              child: _c.toast == null ? const SizedBox.shrink() : _Toast(key: ValueKey(_c.toast), toast: _c.toast!),
+                              child: _c.toast == null
+                                  ? const SizedBox.shrink()
+                                  : GameplayToastBanner(key: ValueKey(_c.toast), lines: _c.toast!.lines, good: _c.toast!.good),
                             ),
                           ),
                         ),
@@ -241,10 +241,7 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
                           onRules: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const HowToPlayScreen())),
                           onQuit: _quit,
                         ),
-                    ],
-                  ),
-                ),
-              ),
+              ],
             ),
           ),
         ),
@@ -592,33 +589,6 @@ class _SliderPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_SliderPainter old) => true;
-}
-
-class _Toast extends StatelessWidget {
-  const _Toast({super.key, required this.toast});
-
-  final CarromToast toast;
-
-  @override
-  Widget build(BuildContext context) {
-    final rim = switch (toast.good) { true => const Color(0xFF3BE34F), false => const Color(0xFFFF4A3D), null => const Color(0xFFF2C230) };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xE6101A3A),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: rim, width: 3),
-        boxShadow: const [BoxShadow(color: Color(0x88000000), blurRadius: 12)],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var i = 0; i < toast.lines.length; i++)
-            Text(toast.lines[i], style: AppText.label(i == 0 ? 30 : 20, color: i == 0 ? Colors.white : Colors.white70, weight: FontWeight.w900)),
-        ],
-      ),
-    );
-  }
 }
 
 class _ChatButton extends StatelessWidget {

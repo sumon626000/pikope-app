@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_state.dart';
-import '../../core/app_theme.dart';
+import '../../core/design/design.dart';
 import '../../core/duel_ui.dart';
 import '../../data/demo_data.dart';
 import '../../l10n/strings.dart';
@@ -22,56 +22,34 @@ Future<void> showOfflinePracticeModeDialog(
 }) {
   return showDuelDialog<void>(
     context,
-    barrierColor: const Color(0xB3000000),
+    barrierColor: DesignAuth.overlayScrim,
     builder: (dialog) {
       final t = ref.watch(stringsProvider);
-      return Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          width: 520,
-          padding: const EdgeInsets.all(22),
-          decoration: duelPanel(rim: DuelColors.rimLight),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(t.practice, style: AppText.label(18, weight: FontWeight.w900)),
-              const SizedBox(height: 6),
-              Text(
-                modeLabel ?? t.practiceLong,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontFamily: 'sans-serif', fontSize: 13, height: 1.4, color: DuelColors.dim),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  DuelButton(
-                    label: t.vsBots,
-                    width: 150,
-                    height: 44,
-                    fontSize: 14,
-                    onPressed: () {
-                      Navigator.of(dialog).pop();
-                      onVsBots();
-                    },
-                  ),
-                  const SizedBox(width: 10),
-                  DuelButton(
-                    label: t.passAndPlay,
-                    width: 160,
-                    height: 44,
-                    fontSize: 14,
-                    color: DuelColors.blue,
-                    onPressed: () {
-                      Navigator.of(dialog).pop();
-                      onPassAndPlay();
-                    },
-                  ),
-                ],
-              ),
-            ],
+      return DesignPromptDialog(
+        rim: DuelColors.rimLight,
+        width: DesignAuth.dialogPracticeWidth,
+        icon: const Icon(Icons.smart_toy_rounded, color: DuelColors.green, size: 36),
+        title: t.practice,
+        body: modeLabel ?? t.practiceLong,
+        actions: [
+          DesignCompactButton(
+            label: t.vsBots,
+            width: 150,
+            onPressed: () {
+              Navigator.of(dialog).pop();
+              onVsBots();
+            },
           ),
-        ),
+          DesignCompactButton(
+            label: t.passAndPlay,
+            width: 160,
+            color: DuelColors.blue,
+            onPressed: () {
+              Navigator.of(dialog).pop();
+              onPassAndPlay();
+            },
+          ),
+        ],
       );
     },
   );

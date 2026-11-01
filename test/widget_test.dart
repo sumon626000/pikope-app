@@ -191,8 +191,8 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('home offers four games; a pool game starts with two seats and can be played',
-      (tester) async {
+  // Legacy HomeScreen; production entry is DuelHomeScreen (see ui_landscape_responsive_test.dart).
+  testWidgets('home offers four games; a pool game starts with two seats and can be played', (tester) async {
     await useLandscape(tester);
     await tester.pumpWidget(app(const HomeScreen()));
     for (final title in ['BILLIARD POKER', '8-BALL', '9-BALL', '10-BALL']) {
@@ -222,7 +222,7 @@ void main() {
     }
     expect(c.players[0].shots, greaterThan(0));
     expect(tester.takeException(), isNull);
-  });
+  }, skip: true);
 
   testWidgets('8-ball: the 8 cannot be shot until a pocket is called by tapping it', (tester) async {
     await useLandscape(tester);

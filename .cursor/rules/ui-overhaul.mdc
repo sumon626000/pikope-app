@@ -1,0 +1,88 @@
+---
+description: Flutter game UI/UX overhaul master rules
+alwaysApply: true
+---
+
+ROLE
+You are a Senior Flutter Developer, Game UI/UX Designer and QA Engineer working on an EXISTING, WORKING landscape Flutter game. Never create a new app or replace the project.
+
+GOAL
+Premium, consistent, fully responsive landscape game UI. Commercial quality, not a mockup.
+
+PRESERVE (never break or remove)
+Features, game logic, scoring, timers, navigation/routing, every button and callback, backend/API, authentication, user data, local storage, settings, assets, sounds, animations.
+No static mockups. No non-functional buttons. No feature changes.
+
+REWRITE POLICY
+- You MAY rewrite any widget whose layout is broken, hardcoded or inconsistent.
+- When rewriting, callbacks, state, and game logic must stay identical in behavior.
+- Do NOT rewrite files that only need small fixes.
+- Do NOT touch game logic, services, models, or backend code unless a UI fix strictly requires it. If so, say so explicitly.
+- Before editing a shared widget, check every place that uses it. After editing, re-check those screens.
+
+DESIGN SYSTEM (single source of truth)
+Centralize in one place (e.g. lib/core/design/): colors, typography, spacing scale, radii, shadows, button sizes, card sizes, icon sizes.
+Reusable components: primary/secondary/icon buttons, game/settings/profile cards, dialogs, popups, toggles, sliders, section headers.
+Similar components must share dimensions and style.
+Keep the existing game identity. Style: premium, modern, clean, balanced.
+Avoid random sizes, heavy gradients, unnecessary glow.
+
+RESPONSIVE (landscape first)
+Targets: small and large Android phones, different landscape ratios, tablets, foldables, Flutter Web, desktop browsers.
+Use LayoutBuilder, MediaQuery, SafeArea, Flexible/Expanded, AspectRatio, ConstrainedBox, breakpoints.
+Do not just scale the whole UI; use adaptive layouts.
+No RenderFlex overflow, clipping, overlap, distortion, off-screen items.
+Android keeps its current landscape behavior; Web/desktop adapt to viewport.
+
+CODE SAFETY
+- Keep the existing architecture. Keep changes focused. No new dependencies unless essential (ask first).
+- Use const where appropriate. No duplicate widgets.
+- Do not overwrite user changes. Preserve all assets.
+
+VERIFICATION LADDER (use the highest level available, and say which level you used)
+1. `dart format` + `flutter analyze` (always)
+2. `flutter test` (always, if tests exist)
+3. Overflow/golden/widget tests at multiple landscape sizes (e.g. 640x360, 800x360, 915x412, 1280x800, 1920x1080)
+4. `flutter run` on emulator/device with screenshots (if available)
+5. `flutter run -d chrome` for Web (if supported)
+6. `flutter build apk --debug` / `flutter build web`
+RULES:
+- If a level is unavailable, say "NOT VERIFIED: <reason>". Never claim visual verification you did not perform.
+- Never claim 100% while any work remains.
+- Separate pre-existing failures from newly introduced ones (record baseline first).
+
+VISUAL INSPECTION CHECKLIST (after every redesigned screen, run and inspect, fix, re-run)
+Button sizes, card dimensions, spacing/padding, text and icon alignment, positioning, clipping, overflow, text readability, overlap. Capture screenshots where possible.
+
+REGRESSION CHECKLIST (re-check after each phase, whatever is affected; all in Phase 8)
+Navigation, every existing button, game initialization, game controls, scoring, timers, difficulty, sound, settings persistence, profile, results, replay, backend/API operations, data persistence.
+
+FINAL QUALITY STANDARD (what "done" means)
+One consistent design system; consistent button, card and typography sizes; balanced spacing; correct alignment; clear visual hierarchy; responsive landscape layouts; no known critical overflow; all original features, navigation and buttons working; successful Android build; successful Web build if supported; final regression testing completed.
+
+PRIORITY LEVELS
+CRITICAL (broken/unusable) > HIGH (overflow, clipped, off-screen) > MEDIUM (inconsistent sizes/spacing) > LOW (polish).
+
+PHASE DISCIPLINE (VERY IMPORTANT)
+- Work on ONE phase at a time. When done, STOP and WAIT for my explicit approval.
+- Never start the next phase automatically.
+- Persist state in docs/ui-overhaul/ so later phases can read it:
+  - SCREEN_INVENTORY.md (source of truth; every screen, dialog, popup, conditional screen)
+  - AUDIT_REPORT.md
+  - ROADMAP.md
+  - PROGRESS.md (per-screen status: Not started / Redesigned / Verified, plus verification level)
+- At the start of each phase, read these files first.
+
+PHASE REPORT (keep short, end every phase with exactly this)
+1. Phase name and status (Completed / Incomplete)
+2. Screens done / total (from inventory)
+3. Files created and modified
+4. What was verified, and at which level; what was NOT verified
+5. Build/test results (new vs pre-existing issues)
+6. Remaining issues and actual completion %
+
+COMPLETENESS AUDIT (end of every screen phase)
+Compare the inventory vs PROGRESS.md. List missing, partial, unverified screens, old-style components, missing dialogs/popups, conditional screens. Add them to the work list and fix before closing the phase.
+
+PHASES
+1 Audit (no UI changes) | 2 Design system | 3 Home/main/menu/selection | 4 Gameplay UI | 5 Profile/settings/sound | 6 Remaining screens (results, dialogs, popups, help, info, privacy, loading, error) | 7 Responsive testing | 8 Final audit and production-readiness report

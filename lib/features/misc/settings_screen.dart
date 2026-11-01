@@ -9,6 +9,7 @@ import '../duel/challenge_prefs.dart';
 import '../../core/app_theme.dart';
 import '../../core/widgets.dart';
 import '../../data/demo_data.dart';
+import '../../core/design/design.dart';
 import '../../core/duel_ui.dart';
 import '../../core/env.dart';
 import '../../data/api_client.dart';
@@ -86,50 +87,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final t = ref.read(stringsProvider);
     final ok = await showDuelDialog<bool>(
       context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          width: 440,
-          padding: const EdgeInsets.all(22),
-          decoration: duelPanel(rim: DuelColors.rimLight),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.logout_rounded, color: DuelColors.red, size: 38),
-              const SizedBox(height: 8),
-              Text(t.logoutConfirmTitle, style: AppText.label(18, weight: FontWeight.w900)),
-              const SizedBox(height: 10),
-              Text(
-                t.logoutConfirmBody,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontFamily: 'sans-serif', fontSize: 14, height: 1.4, color: DuelColors.silver),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  DuelButton(
-                    label: t.cancel,
-                    width: 160,
-                    height: 42,
-                    fontSize: 16,
-                    color: DuelColors.blue,
-                    onPressed: () => Navigator.of(ctx).pop(false),
-                  ),
-                  const SizedBox(width: 12),
-                  DuelButton(
-                    label: t.logout,
-                    width: 160,
-                    height: 42,
-                    fontSize: 16,
-                    color: DuelColors.red,
-                    onPressed: () => Navigator.of(ctx).pop(true),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
+      builder: (ctx) => DesignPromptDialog(
+        rim: DuelColors.rimLight,
+        icon: const Icon(Icons.logout_rounded, color: DuelColors.red, size: 38),
+        title: t.logoutConfirmTitle,
+        body: t.logoutConfirmBody,
+        actions: [
+          DesignCompactButton(label: t.cancel, onPressed: () => Navigator.of(ctx).pop(false)),
+          DesignCompactButton(label: t.logout, color: DuelColors.red, onPressed: () => Navigator.of(ctx).pop(true)),
+        ],
       ),
     );
     if (ok != true || !mounted) return;
@@ -201,8 +167,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Container(
       width: double.infinity,
       constraints: BoxConstraints(minHeight: minHeight),
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      decoration: duelPanel(radius: 16, rim: DuelColors.rim),
+      padding: const EdgeInsets.fromLTRB(DesignSpacing.x4, DesignSpacing.x3, DesignSpacing.x4, DesignSpacing.x3),
+      decoration: duelPanel(radius: DesignRadii.md, rim: DuelColors.rim),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -430,7 +396,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       labelText: t.friendIdOptional,
                       counterText: '',
                       filled: true,
-                      fillColor: const Color(0xFF0E1430),
+                      fillColor: DesignAuth.fieldFillLobby,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     ),
                   ),

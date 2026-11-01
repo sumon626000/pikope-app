@@ -10,26 +10,30 @@ export '../features/game/widgets/ball_painter.dart' show BallIcon;
 import 'app_theme.dart';
 import 'audio_service.dart';
 import 'brand.dart';
+import 'design/design_colors.dart';
+import 'design/design_layout.dart';
+import 'design/design_spacing.dart';
+import 'design/design_typography.dart';
 import 'icon_motion.dart';
 
 /// Look of the PikoPe lobby screens (client mockups): a dark blue pool hall,
 /// neon-rimmed glass panels, silver display type.
 class DuelColors {
-  static const ink = Color(0xFF070A18);
-  static const navy = Color(0xFF0E1433);
-  static const glass = Color(0xE6101426);
-  static const rim = Color(0xFF2B3566);
-  static const rimLight = Color(0xFF4A5AA8);
-  static const green = Color(0xFF3ED12F);
-  static const purple = Color(0xFF7B4DFF);
-  static const blue = Color(0xFF2F6BFF);
-  static const gold = Color(0xFFFFC93C);
-  static const red = Color(0xFFFF3B4E);
-  static const silver = Color(0xFFE9ECF5);
-  static const dim = Color(0xFF8E96B8);
+  static const ink = DesignColors.ink;
+  static const navy = DesignColors.navy;
+  static const glass = DesignColors.glass;
+  static const rim = DesignColors.rim;
+  static const rimLight = DesignColors.rimLight;
+  static const green = DesignColors.duelGreen;
+  static const purple = DesignColors.duelPurple;
+  static const blue = DesignColors.duelBlue;
+  static const gold = DesignColors.duelGold;
+  static const red = DesignColors.duelRed;
+  static const silver = DesignColors.silver;
+  static const dim = DesignColors.dim;
 
   /// Accent of each bet level, low to high (green, red, blue, gold, purple).
-  static const levels = [Color(0xFF35D05A), Color(0xFFFF4055), Color(0xFF3B6CFF), Color(0xFFE8D23A), Color(0xFFB04DFF)];
+  static const levels = DesignColors.betLevels;
   static Color level(int i) => levels[i % levels.length];
 }
 
@@ -218,7 +222,7 @@ class DuelBackdrop extends StatelessWidget {
 class DuelCanvas extends StatelessWidget {
   const DuelCanvas({super.key, required this.child});
 
-  static const size = Size(1600, 900);
+  static const size = DesignLayout.canvasSize;
 
   final Widget child;
 
@@ -720,21 +724,29 @@ Future<void> showDuelMessage(BuildContext context, {required String title, requi
           return Dialog(
             backgroundColor: Colors.transparent,
             child: Container(
-              width: 440,
-              padding: const EdgeInsets.all(22),
+              width: DesignLayout.dialogMaxWidth,
+              padding: const EdgeInsets.all(DesignSpacing.x5),
               decoration: duelPanel(rim: DuelColors.rimLight),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(icon, color: DuelColors.gold, size: 38),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: DesignSpacing.x2),
                   Text(title, textAlign: TextAlign.center, style: AppText.label(18, weight: FontWeight.w900)),
                   const SizedBox(height: 10),
-                  Text(body,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontFamily: 'sans-serif', fontSize: 14, height: 1.4, color: DuelColors.silver)),
-                  const SizedBox(height: 16),
-                  DuelButton(label: t.ok, width: 160, height: 42, fontSize: 16, onPressed: () => Navigator.of(context).pop()),
+                  Text(
+                    body,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontFamily: DesignTypography.displayFont, fontSize: 14, height: 1.4, color: DuelColors.silver),
+                  ),
+                  const SizedBox(height: DesignSpacing.x4),
+                  DuelButton(
+                    label: t.ok,
+                    width: DesignLayout.compactButtonWidth,
+                    height: DesignLayout.compactButtonHeight,
+                    fontSize: DesignLayout.compactButtonFontSize,
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
                 ],
               ),
             ),
@@ -747,7 +759,7 @@ Future<void> showDuelMessage(BuildContext context, {required String title, requi
 Future<bool> showNotEnoughBalanceDialog(BuildContext context, {int? need, int? have}) async {
   final result = await showDuelDialog<bool>(
     context,
-    barrierColor: const Color(0xB3000000),
+    barrierColor: DesignColors.dialogOverlayScrim,
     builder: (dialog) => Consumer(
       builder: (context, ref, _) {
         final t = ref.watch(stringsProvider);
@@ -757,39 +769,39 @@ Future<bool> showNotEnoughBalanceDialog(BuildContext context, {int? need, int? h
         return Dialog(
           backgroundColor: Colors.transparent,
           child: Container(
-            width: 440,
-            padding: const EdgeInsets.all(22),
+            width: DesignLayout.dialogMaxWidth,
+            padding: const EdgeInsets.all(DesignSpacing.x5),
             decoration: duelPanel(rim: DuelColors.red),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.account_balance_wallet_rounded, color: DuelColors.gold, size: 38),
-                const SizedBox(height: 8),
+                const SizedBox(height: DesignSpacing.x2),
                 Text(t.notEnoughBalance, textAlign: TextAlign.center, style: AppText.label(18, weight: FontWeight.w900)),
                 const SizedBox(height: 10),
                 Text(
                   body,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontFamily: 'sans-serif', fontSize: 14, height: 1.4, color: DuelColors.silver),
+                  style: TextStyle(fontFamily: DesignTypography.displayFont, fontSize: 14, height: 1.4, color: DuelColors.silver),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: DesignSpacing.x4),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     DuelButton(
                       label: t.buyCoin,
-                      width: 160,
-                      height: 42,
-                      fontSize: 14,
+                      width: DesignLayout.compactButtonWidth,
+                      height: DesignLayout.compactButtonHeight,
+                      fontSize: DesignLayout.compactButtonFontSize,
                       color: DuelColors.gold,
                       onPressed: () => Navigator.of(dialog).pop(true),
                     ),
                     const SizedBox(width: 10),
                     DuelButton(
                       label: t.cancel,
-                      width: 160,
-                      height: 42,
-                      fontSize: 14,
+                      width: DesignLayout.compactButtonWidth,
+                      height: DesignLayout.compactButtonHeight,
+                      fontSize: DesignLayout.compactButtonFontSize,
                       color: DuelColors.rimLight,
                       onPressed: () => Navigator.of(dialog).pop(false),
                     ),

@@ -91,7 +91,7 @@ class CoinTutorialVideoFrame extends StatelessWidget {
                       Image.network(
                         thumb,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFF141A2E)),
+                        errorBuilder: (_, _, _) => const ColoredBox(color: Color(0xFF141A2E)),
                       ),
                       const ColoredBox(color: Color(0x66000000)),
                       Center(

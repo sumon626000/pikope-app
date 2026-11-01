@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
+import '../../core/design/design.dart';
 import '../../core/duel_ui.dart';
 import '../../core/widgets.dart';
 import '../../data/api_client.dart';
@@ -213,69 +214,62 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Sing
         if (!didPop) _cancel();
       },
       child: DuelCanvas(
-        child: Stack(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Positioned(left: 0, right: 0, top: 6, child: DuelTopBar(showProfile: false, showShortcuts: false)),
-            Positioned(
-              left: 0,
-              right: 0,
-              top: 206,
-              child: DuelTitle(_started ? t.matchFound : t.matchmaking, size: 66, sub: prizeLine),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              top: 386,
-              child: Row(
+            const SizedBox(height: 6),
+            const DuelTopBar(showProfile: false, showShortcuts: false),
+            Expanded(
+              child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _Seat(size: tile, name: settings.name, avatar: settings.avatar),
-                  SizedBox(
-                    width: poker ? 96 : 110,
-                    height: tile,
-                    child: OverflowBox(
-                      maxWidth: 200,
-                      child: Text(t.vs,
-                          style: AppText.label(poker ? 60 : 92, color: DuelColors.gold, weight: FontWeight.w900).copyWith(shadows: const [
-                            Shadow(color: Color(0xFF7A4A00), offset: Offset(0, 5)),
-                            Shadow(color: Color(0xCC000000), blurRadius: 14, offset: Offset(0, 8)),
-                          ])),
-                    ),
+                  DuelTitle(_started ? t.matchFound : t.matchmaking, size: 66, sub: prizeLine),
+                  const SizedBox(height: DesignSpacing.x10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _Seat(size: tile, name: settings.name, avatar: settings.avatar),
+                      SizedBox(
+                        width: poker ? 96 : 110,
+                        height: tile,
+                        child: OverflowBox(
+                          maxWidth: 200,
+                          child: Text(t.vs,
+                              style: AppText.label(poker ? 60 : 92, color: DuelColors.gold, weight: FontWeight.w900).copyWith(shadows: const [
+                                Shadow(color: Color(0xFF7A4A00), offset: Offset(0, 5)),
+                                Shadow(color: Color(0xCC000000), blurRadius: 14, offset: Offset(0, 8)),
+                              ])),
+                        ),
+                      ),
+                      for (var i = 0; i < seats - 1; i++) ...[
+                        if (i > 0) SizedBox(width: poker ? 36 : 0),
+                        i < others.length
+                            ? _Seat(size: tile, name: others[i]['name'] as String, avatar: others[i]['avatar'] as String, looking: t.lookingForOpponent)
+                            : _Seat(size: tile, spin: _spin, looking: t.lookingForOpponent),
+                      ],
+                    ],
                   ),
-                  for (var i = 0; i < seats - 1; i++) ...[
-                    if (i > 0) SizedBox(width: poker ? 36 : 0),
-                    i < others.length
-                        ? _Seat(size: tile, name: others[i]['name'] as String, avatar: others[i]['avatar'] as String, looking: t.lookingForOpponent)
-                        : _Seat(size: tile, spin: _spin, looking: t.lookingForOpponent),
+                  if (_error != null) ...[
+                    const SizedBox(height: DesignSpacing.x8),
+                    Text(_error!.toUpperCase(), style: AppText.label(18, color: DuelColors.red)),
+                    const SizedBox(height: DesignSpacing.x3),
+                    DuelButton(label: t.back, color: DuelColors.rimLight, onPressed: () => Navigator.of(context).pop()),
                   ],
                 ],
               ),
             ),
-            if (_error != null)
-              Positioned(
-                left: 0,
-                right: 0,
-                top: 716,
-                child: Column(
-                  children: [
-                    Text(_error!.toUpperCase(), style: AppText.label(18, color: DuelColors.red)),
-                    const SizedBox(height: 12),
-                    DuelButton(label: t.back, color: DuelColors.rimLight, onPressed: () => Navigator.of(context).pop()),
-                  ],
+            if (!_started && _error == null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: DesignSpacing.x4),
+                child: Center(
+                  child: Text(t.buyInHeld, style: AppText.label(13, color: DuelColors.dim, weight: FontWeight.w700)),
                 ),
               ),
             if (!_started && _error == null)
-              Positioned(left: 42, bottom: 34, child: NavTile(icon: Icons.reply_rounded, label: t.cancel, onTap: _cancel)),
-            if (!_started && _error == null)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 70,
-                child: Center(
-                  child: Text(t.buyInHeld,
-                      style: AppText.label(13, color: DuelColors.dim, weight: FontWeight.w700)),
-                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(DesignSpacing.screenEdge, 0, DesignSpacing.screenEdge, DesignLayout.bottomBarInset),
+                child: LobbyBackNav(label: t.cancel, onTap: _cancel),
               ),
           ],
         ),

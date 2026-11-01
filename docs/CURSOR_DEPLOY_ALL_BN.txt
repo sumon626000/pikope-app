@@ -1,0 +1,62 @@
+Cursor → git push → Hostinger (main + admin + APK)
+=================================================
+
+DAILY (Cursor)
+--------------
+1. Code change
+2. Commit → Push branch **main**
+3. GitHub Actions (auto):
+   • **lib/** / **pikope-web/** change → **pikope.com** web
+   • **backend/** change → **adminnew** API + admin PHP
+   • **lib/** / **android/** / **pubspec** change → **APK** upload (pikope-latest.apk)
+4. One push with many folders → several workflows run together.
+
+Manual “everything now”:
+  Actions → **Deploy all (web + admin + APK)** → Run workflow
+
+ONE-TIME: GitHub Secrets (pikope-app repo)
+--------------------------------------------
+Already have (main site):
+  HOSTINGER_WEB_FTP_HOST
+  HOSTINGER_WEB_FTP_USER
+  HOSTINGER_WEB_FTP_PASSWORD
+  HOSTINGER_WEB_FTP_REMOTE_DIR   → /public_html
+
+Add for admin + APK (often same FTP user, different folder):
+  HOSTINGER_API_FTP_HOST         → 89.117.157.100 or ftp.pikope.com
+  HOSTINGER_API_FTP_USER
+  HOSTINGER_API_FTP_PASSWORD
+  HOSTINGER_API_FTP_REMOTE_DIR   → /public_html/pikope
+  HOSTINGER_APK_FTP_REMOTE_DIR   → /public_html/pikope/public/uploads/landing
+
+APK signing (never commit keystore):
+  ANDROID_KEYSTORE_BASE64   → base64 of upload-keystore.jks
+  ANDROID_STORE_PASSWORD
+  ANDROID_KEY_PASSWORD
+  ANDROID_KEY_ALIAS         → usually upload
+
+Encode keystore (Windows PowerShell, once):
+  [Convert]::ToBase64String([IO.File]::ReadAllBytes("android/upload-keystore.jks")) | Set-Clipboard
+
+Optional variable:
+  PIKOPE_API_BASE_URL = https://adminnew.pikope.com
+
+SERVER (once on Hostinger, not from Git)
+----------------------------------------
+  backend/.env on server (DB, ADMIN_PASS, CORS_ORIGIN=https://pikope.com)
+  Admin → App update: enable + versionCode matches pubspec build number
+  Admin → Landing: APK can also be managed there; CI overwrites pikope-latest.apk
+
+FTP ACCOUNTS (hPanel)
+---------------------
+  Account A → Directory **public_html** (web only)
+  Account B → Directory **public_html/pikope** (backend + APK path inside public/)
+
+Do NOT upload whole git repo to public_html.
+
+Workflow files
+--------------
+  .github/workflows/deploy-web-hostinger.yml
+  .github/workflows/deploy-backend-hostinger.yml
+  .github/workflows/deploy-apk-hostinger.yml
+  .github/workflows/deploy-hostinger-all.yml

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_theme.dart';
+import '../../../core/design/design.dart';
 import '../../../l10n/strings.dart';
 import '../../../core/duel_ui.dart';
 import '../../../core/widgets.dart';
@@ -277,12 +278,12 @@ class PauseOverlay extends ConsumerWidget {
     final t = ref.watch(stringsProvider);
     return Scrim(
       child: OverlayPanel(
-        width: 520,
+        width: DesignGameplay.pausePanelWidth,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(t.menu, style: AppText.label(34, weight: FontWeight.w900)),
-            const SizedBox(height: 24),
+            const SizedBox(height: DesignSpacing.x6),
             GameButton(label: t.resume, icon: Icons.play_arrow_rounded, width: 400, onPressed: onResume),
             const SizedBox(height: 14),
             GameButton(

@@ -1,37 +1,30 @@
 import 'package:flutter/material.dart';
 
+import 'design/design_colors.dart';
+import 'design/design_typography.dart';
+
 /// Palette and type taken from the client's game-screen mockups: dark slate
 /// room, indigo-framed tiles, green active ring, gold coins.
 class AppColors {
-  static const background = Color(0xFF1E1E21);
-  static const backgroundAlt = Color(0xFF26262A);
-  static const panel = Color(0xFF15151A);
-  static const frame = Color(0xFF4A4973);
-  static const frameLight = Color(0xFF6C6BA0);
-  static const active = Color(0xFF2EE84F);
-  static const gold = Color(0xFFFFC928);
-  static const danger = Color(0xFFFF4D4D);
-  static const text = Color(0xFFF2F2F5);
-  static const textDim = Color(0xFF9A9AA8);
-  static const cardBack = Color(0xFFD9263E);
+  static const background = DesignColors.appBackground;
+  static const backgroundAlt = DesignColors.appBackgroundAlt;
+  static const panel = DesignColors.appPanel;
+  static const frame = DesignColors.appFrame;
+  static const frameLight = DesignColors.appFrameLight;
+  static const active = DesignColors.appActive;
+  static const gold = DesignColors.appGold;
+  static const danger = DesignColors.appDanger;
+  static const text = DesignColors.appText;
+  static const textDim = DesignColors.appTextDim;
+  static const cardBack = DesignColors.cardBack;
 }
 
 class AppText {
-  // Plain system sans (Roboto on Android) for all UI text: the client asked
-  // for an ordinary, readable font, not a stylised one. Ball numbers keep
-  // their own display font in ball_painter.dart.
-  static const display = 'Roboto';
-  static const card = 'DMSerifDisplay';
+  static const display = DesignTypography.displayFont;
+  static const card = DesignTypography.cardFont;
 
   static TextStyle label(double size, {Color color = AppColors.text, FontWeight weight = FontWeight.w700}) =>
-      TextStyle(
-        fontFamily: display,
-        fontSize: size,
-        color: color,
-        fontWeight: weight,
-        letterSpacing: size * 0.01,
-        height: 1.15,
-      );
+      DesignTypography.label(size, color: color, weight: weight);
 }
 
 /// Shared surface for panels, pills and list rows: a soft top-lit gradient

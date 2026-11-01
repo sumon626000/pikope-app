@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
+import '../../core/design/design.dart';
 import '../../core/duel_ui.dart';
 import '../../data/app_game.dart';
 import '../lobby/lobby_screen.dart';
@@ -178,107 +179,96 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
     final coins = ref.watch(settingsProvider).coins;
     final levels = lobby.valueOrNull?.levelsFor(widget.mode);
     return DuelCanvas(
-      child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Positioned(left: 0, right: 0, top: 6, child: DuelTopBar()),
-          if (levels == null)
-            Positioned.fill(
-              child: Center(
-                child: lobby.hasError
-                    ? Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(t.offlineServer, style: AppText.label(22, color: DuelColors.red)),
-                          const SizedBox(height: 16),
-                          DuelButton(label: t.tryAgain, onPressed: () => ref.invalidate(lobbyProvider)),
-                        ],
-                      )
-                    : const CircularProgressIndicator(color: DuelColors.silver),
-              ),
-            )
-          else ...[
-            Positioned(
-              left: 36,
-              right: 36,
-              top: 152,
-              height: 64,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: levels.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 10),
-                itemBuilder: (context, i) {
-                  final on = i == _selected;
-                  return GestureDetector(
-                    onTap: () {
-                      AudioService.tap();
-                      _pages?.animateToPage(i, duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 22),
-                      alignment: Alignment.center,
-                      decoration: duelPanel(radius: 14, rim: on ? DuelColors.gold : DuelColors.rim, glow: on),
-                      child: Text(levels[i].displayName,
-                          style: AppText.label(18, color: on ? DuelColors.gold : Colors.white, weight: FontWeight.w900)),
-                    ),
-                  );
-                },
-              ),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              top: 220,
-              height: 490,
-              child: _Carousel(
-                controller: _controller(levels, coins),
-                levels: levels,
-                mode: widget.mode,
-                coins: coins,
-                cardWidth: _cardWidth,
-                selected: _selected,
-                onSelect: (i) => setState(() => _selected = i),
-                onPlay: _play,
-                challengeMode: widget.challengeTarget != null,
-              ),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              top: 126,
-              child: Center(
-                child: Text(
-                  widget.challengeTarget != null
-                      ? t.challengePlayer(widget.challengeTarget!.name)
-                      : t.modeSubtitle(widget.mode),
-                  textAlign: TextAlign.center,
-                  style: AppText.label(15, color: DuelColors.dim, weight: FontWeight.w700),
-                ),
-              ),
-            ),
-          ],
-          Positioned(
-            left: 42,
-            top: 722,
+          const SizedBox(height: 6),
+          const DuelTopBar(),
+          Expanded(
+            child: levels == null
+                ? Center(
+                    child: lobby.hasError
+                        ? Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(t.offlineServer, style: AppText.label(22, color: DuelColors.red)),
+                              const SizedBox(height: DesignSpacing.x4),
+                              DuelButton(label: t.tryAgain, onPressed: () => ref.invalidate(lobbyProvider)),
+                            ],
+                          )
+                        : const CircularProgressIndicator(color: DuelColors.silver),
+                  )
+                : Column(
+                    children: [
+                      const SizedBox(height: DesignSpacing.x2),
+                      Text(
+                        widget.challengeTarget != null
+                            ? t.challengePlayer(widget.challengeTarget!.name)
+                            : t.modeSubtitle(widget.mode),
+                        textAlign: TextAlign.center,
+                        style: AppText.label(15, color: DuelColors.dim, weight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: DesignSpacing.x4),
+                      SizedBox(
+                        height: 64,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: DesignSpacing.x4),
+                          itemCount: levels.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 10),
+                          itemBuilder: (context, i) {
+                            final on = i == _selected;
+                            return GestureDetector(
+                              onTap: () {
+                                AudioService.tap();
+                                _pages?.animateToPage(i, duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 22),
+                                alignment: Alignment.center,
+                                decoration: duelPanel(radius: 14, rim: on ? DuelColors.gold : DuelColors.rim, glow: on),
+                                child: Text(levels[i].displayName,
+                                    style: AppText.label(18, color: on ? DuelColors.gold : Colors.white, weight: FontWeight.w900)),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: DesignSpacing.x2),
+                      Expanded(
+                        child: _Carousel(
+                          controller: _controller(levels, coins),
+                          levels: levels,
+                          mode: widget.mode,
+                          coins: coins,
+                          cardWidth: _cardWidth,
+                          selected: _selected,
+                          onSelect: (i) => setState(() => _selected = i),
+                          onPlay: _play,
+                          challengeMode: widget.challengeTarget != null,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(DesignSpacing.screenEdge, DesignSpacing.x2, DesignSpacing.screenEdge, DesignLayout.bottomBarInset),
             child: Row(
               children: [
                 NavTile(
                   icon: Icons.local_police_rounded,
                   label: t.navClub,
-                  onTap: () => showDuelMessage(context,
-                      title: t.clubsTitle, body: t.clubsBody, icon: Icons.local_police_rounded),
+                  onTap: () => showDuelMessage(context, title: t.clubsTitle, body: t.clubsBody, icon: Icons.local_police_rounded),
                 ),
-                const SizedBox(width: 19),
+                const SizedBox(width: DesignSpacing.navGap),
                 NavTile(
                   icon: Icons.groups_rounded,
                   label: t.navFriends,
-                  onTap: () => showDuelMessage(context,
-                      title: t.friendsTitle,
-                      body: t.friendsNavBody,
-                      icon: Icons.groups_rounded),
+                  onTap: () => showDuelMessage(context, title: t.friendsTitle, body: t.friendsNavBody, icon: Icons.groups_rounded),
                 ),
-                const SizedBox(width: 19),
+                const SizedBox(width: DesignSpacing.navGap),
                 NavTile(icon: Icons.leaderboard_rounded, label: t.navRankings, onTap: () => _open(const LeaderboardScreen())),
-                const SizedBox(width: 19),
+                const SizedBox(width: DesignSpacing.navGap),
                 NavTile(
                   icon: Icons.storefront_rounded,
                   label: t.navShop,
@@ -287,7 +277,7 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
                     if (mounted) await _open(const ShopScreen());
                   },
                 ),
-                const SizedBox(width: 19),
+                const SizedBox(width: DesignSpacing.navGap),
                 NavTile(icon: Icons.reply_rounded, label: t.navBack, onTap: () => Navigator.of(context).pop()),
               ],
             ),
@@ -513,15 +503,15 @@ Future<void> showPoolPracticeDialog(
   final games = game != null ? [game] : AppGame.values;
   return     showDuelDialog<void>(
     context,
-    barrierColor: const Color(0xB3000000),
+    barrierColor: DesignAuth.overlayScrim,
     builder: (dialog) => Consumer(
       builder: (context, ref, _) {
         final t = ref.watch(stringsProvider);
         return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: 520,
-        padding: const EdgeInsets.all(22),
+        width: DesignAuth.dialogPracticeWidth,
+        padding: const EdgeInsets.all(DesignSpacing.x5),
         decoration: duelPanel(rim: DuelColors.rimLight),
         child: Column(
           mainAxisSize: MainAxisSize.min,

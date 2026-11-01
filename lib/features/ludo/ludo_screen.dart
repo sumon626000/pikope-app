@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
+import '../../core/design/design.dart';
 import '../../core/duel_ui.dart';
 import '../../core/turn_life_dots.dart';
 import '../../core/widgets.dart';
@@ -125,78 +126,59 @@ class _LudoScreenState extends ConsumerState<LudoScreen> with SingleTickerProvid
       child: Scaffold(
         backgroundColor: const Color(0xFF060814),
         body: _LudoBackground(
-          child: SafeArea(
-            child: Center(
-              child: FittedBox(
-                fit: BoxFit.contain,
-                child: SizedBox(
-                  width: 1950,
-                  height: 900,
-                  child: state == null
-                      ? const Center(child: CircularProgressIndicator(color: DuelColors.silver))
-                      : Stack(
-                          children: [
-                            // Gold menu tab hanging from the top edge.
-                            Positioned(left: 64, top: 0, child: _MenuTab(onTap: () => setState(() => _paused = true))),
-                            // Pot indicator (only for staked online games); own balance shows on the seat card.
-                            if (widget.config.bet.staked)
-                              Positioned(
-                                left: 20,
-                                top: 58,
-                                child: MatchPrizeTile(prize: widget.config.bet.prize),
-                              ),
-                            // The board, centred.
-                            Positioned(
-                              left: (1950 - 820) / 2,
-                              top: (900 - 820) / 2,
-                              width: 820,
-                              height: 820,
-                              child: RepaintBoundary(child: _Board(controller: _c, theme: ludoThemeOf(settings.ludoBoard), onTapToken: _c.moveToken)),
-                            ),
+          child: DesignCanvas(
+            child: state == null
+                ? const Center(child: CircularProgressIndicator(color: DuelColors.silver))
+                : Stack(
+                    children: [
+                      Positioned(left: DesignGameplay.menuTabLeft, top: 0, child: _MenuTab(onTap: () => setState(() => _paused = true))),
+                      if (widget.config.bet.staked)
+                        Positioned(
+                          left: DesignGameplay.prizeTileLeft,
+                          top: DesignGameplay.prizeTileTop,
+                          child: MatchPrizeTile(prize: widget.config.bet.prize),
+                        ),
+                      Positioned(
+                        left: DesignGameplay.ludoBoardLeft,
+                        top: DesignGameplay.ludoBoardTop,
+                        width: DesignGameplay.ludoBoardSize,
+                        height: DesignGameplay.ludoBoardSize,
+                        child: RepaintBoundary(child: _Board(controller: _c, theme: ludoThemeOf(settings.ludoBoard), onTapToken: _c.moveToken)),
+                      ),
                             // Player cards beside the board corners (dice sits in the active card).
                             ..._seatPanels(),
                             // Chat bubble above the bottom-left card.
                             Positioned(left: 232, top: 474, child: _ChatButton(onTap: _openChat)),
                             // What to do now, under the board.
-                            Positioned(
-                              left: (1950 - 820) / 2,
-                              width: 820,
-                              top: 862,
-                              height: 36,
-                              child: Center(
-                                child: Text(
-                                  _hint(),
-                                  style: AppText.label(22, color: _c.canRoll || _c.movable.isNotEmpty ? const Color(0xFFFFE45C) : Colors.white70, weight: FontWeight.w900)
-                                      .copyWith(shadows: const [Shadow(color: Color(0xCC000000), blurRadius: 4, offset: Offset(0, 2))]),
-                                ),
-                              ),
-                            ),
+                      Positioned(
+                        left: DesignGameplay.ludoBoardLeft,
+                        width: DesignGameplay.ludoBoardSize,
+                        top: DesignGameplay.ludoBoardTop + DesignGameplay.ludoBoardSize + 42,
+                        height: 36,
+                        child: Center(
+                          child: Text(
+                            _hint(),
+                            style: AppText.label(22, color: _c.canRoll || _c.movable.isNotEmpty ? DesignGameplay.hintActive : DesignGameplay.hintIdle, weight: FontWeight.w900)
+                                .copyWith(shadows: const [Shadow(color: Color(0xCC000000), blurRadius: 4, offset: Offset(0, 2))]),
+                          ),
+                        ),
+                      ),
                             // Event messages over the board centre.
-                            Positioned(
-                              left: (1950 - 820) / 2,
-                              width: 820,
-                              top: 410,
-                              child: IgnorePointer(
-                                child: Center(
-                                  child: AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 180),
-                                    child: _c.toast == null
-                                        ? const SizedBox.shrink()
-                                        : Container(
-                                            key: ValueKey(_c.toast),
-                                            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xE6101A3A),
-                                              borderRadius: BorderRadius.circular(30),
-                                              border: Border.all(color: const Color(0xFFF2C230), width: 3),
-                                              boxShadow: const [BoxShadow(color: Color(0x88000000), blurRadius: 12)],
-                                            ),
-                                            child: Text(_c.toast!, style: AppText.label(30, color: Colors.white, weight: FontWeight.w900)),
-                                          ),
-                                  ),
-                                ),
-                              ),
+                      Positioned(
+                        left: DesignGameplay.ludoBoardLeft,
+                        width: DesignGameplay.ludoBoardSize,
+                        top: DesignGameplay.ludoBoardTop + DesignGameplay.ludoBoardSize / 2 - 60,
+                        child: IgnorePointer(
+                          child: Center(
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 180),
+                              child: _c.toast == null
+                                  ? const SizedBox.shrink()
+                                  : GameplayToastBanner(key: ValueKey(_c.toast), lines: [_c.toast!]),
                             ),
+                          ),
+                        ),
+                      ),
                             if (widget.driver != null) ...[
                               OpponentDisconnectBanner(
                                 presence: _c.opponentPresence,
@@ -217,11 +199,8 @@ class _LudoScreenState extends ConsumerState<LudoScreen> with SingleTickerProvid
                                 onRules: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const HowToPlayScreen())),
                                 onQuit: _quit,
                               ),
-                          ],
-                        ),
-                ),
-              ),
-            ),
+                    ],
+                  ),
           ),
         ),
       ),
