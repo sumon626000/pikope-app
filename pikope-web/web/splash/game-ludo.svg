@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" role="img" aria-label="Ludo">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3A2606"/>
+      <stop offset="100%" stop-color="#1A1206"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="200" rx="18" fill="url(#bg)"/>
+  <rect x="8" y="8" width="304" height="184" rx="14" fill="none" stroke="#E8721C" stroke-opacity="0.45" stroke-width="2"/>
+  <rect x="70" y="28" width="180" height="132" rx="10" fill="#EFF2F8"/>
+  <rect x="70" y="28" width="90" height="66" rx="8" fill="#E0333B"/>
+  <rect x="160" y="28" width="90" height="66" rx="8" fill="#2FA84F"/>
+  <rect x="70" y="94" width="90" height="66" rx="8" fill="#E8B91C"/>
+  <rect x="160" y="94" width="90" height="66" rx="8" fill="#2F6BDC"/>
+  <rect x="100" y="58" width="60" height="40" rx="6" fill="#fff" opacity="0.92"/>
+  <rect x="160" y="58" width="60" height="40" rx="6" fill="#fff" opacity="0.92"/>
+  <rect x="100" y="94" width="60" height="40" rx="6" fill="#fff" opacity="0.92"/>
+  <rect x="160" y="94" width="60" height="40" rx="6" fill="#fff" opacity="0.92"/>
+  <polygon points="160,82 172,94 148,94" fill="#E0333B"/>
+  <polygon points="160,118 172,106 148,106" fill="#2F6BDC"/>
+  <polygon points="142,100 154,88 154,112" fill="#2FA84F"/>
+  <polygon points="178,100 166,88 166,112" fill="#E8B91C"/>
+  <circle cx="115" cy="78" r="10" fill="#E0333B" stroke="#fff" stroke-width="2"/>
+  <circle cx="205" cy="78" r="10" fill="#2FA84F" stroke="#fff" stroke-width="2"/>
+  <circle cx="115" cy="122" r="10" fill="#E8B91C" stroke="#fff" stroke-width="2"/>
+  <circle cx="205" cy="122" r="10" fill="#2F6BDC" stroke="#fff" stroke-width="2"/>
+  <text x="160" y="188" text-anchor="middle" font-family="system-ui,sans-serif" font-size="15" font-weight="800" fill="#FFE0C2" letter-spacing="2">LUDO</text>
+</svg>

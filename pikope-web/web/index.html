@@ -19,7 +19,11 @@
   <title>PikoPe Web</title>
   <link rel="manifest" href="manifest.json">
   <style>
-    html, body { margin: 0; height: 100%; background: #070A18; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: radial-gradient(ellipse 120% 80% at 50% 0%, #121a3a 0%, #070A18 55%, #04060f 100%);
+    }
     #load {
       box-sizing: border-box;
       min-height: 100%;
@@ -27,27 +31,88 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 24px;
-      font-family: system-ui, sans-serif;
+      padding: 20px 16px 28px;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
       color: #e9ecf5;
       text-align: center;
     }
-    #load p { opacity: 0.85; font-size: 14px; max-width: 320px; }
+    .logo {
+      width: min(220px, 52vw);
+      height: auto;
+      margin-bottom: 8px;
+      filter: drop-shadow(0 8px 24px rgba(245, 200, 66, 0.25));
+    }
+    .games {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      justify-content: center;
+      max-width: 980px;
+      margin: 20px 0 22px;
+    }
+    .game-card {
+      flex: 1 1 240px;
+      max-width: 300px;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(245, 200, 66, 0.12);
+      transform: translateY(0);
+      animation: floatIn 0.7s ease backwards;
+    }
+    .game-card:nth-child(1) { animation-delay: 0.05s; }
+    .game-card:nth-child(2) { animation-delay: 0.15s; }
+    .game-card:nth-child(3) { animation-delay: 0.25s; }
+    .game-card img {
+      display: block;
+      width: 100%;
+      height: auto;
+      vertical-align: middle;
+    }
+    @keyframes floatIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .status {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      opacity: 0.9;
+    }
     .spin {
-      width: 40px; height: 40px; margin-bottom: 16px;
-      border: 3px solid rgba(245, 200, 66, 0.25);
+      width: 36px;
+      height: 36px;
+      border: 3px solid rgba(245, 200, 66, 0.22);
       border-top-color: #f5c842;
       border-radius: 50%;
-      animation: spin 0.9s linear infinite;
+      animation: spin 0.85s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    #load p {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.45;
+      max-width: 360px;
+      color: #b8bfd4;
+    }
+    @media (max-width: 520px) {
+      .games { gap: 10px; }
+      .game-card { flex: 1 1 100%; max-width: 320px; }
+    }
   </style>
 </head>
 <body>
   <div id="load" aria-live="polite">
-    <div class="spin" aria-hidden="true"></div>
-    <strong>PikoPe</strong>
-    <p>Loading game… first visit may take a moment.</p>
+    <img class="logo" src="splash/pikope_logo.png" width="220" height="220" alt="PikoPe">
+    <div class="games" aria-hidden="true">
+      <div class="game-card"><img src="splash/game-pool.svg" alt="Pool"></div>
+      <div class="game-card"><img src="splash/game-ludo.svg" alt="Ludo"></div>
+      <div class="game-card"><img src="splash/game-carrom.svg" alt="Carrom"></div>
+    </div>
+    <div class="status">
+      <div class="spin" aria-hidden="true"></div>
+      <p>Loading game… first visit may take a moment.</p>
+    </div>
   </div>
   <script src="flutter_bootstrap.js" async></script>
   <script>

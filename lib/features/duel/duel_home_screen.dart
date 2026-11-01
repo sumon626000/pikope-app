@@ -326,7 +326,7 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
               color: const Color(0xFFE8721C),
               title: t.ludoTitle,
               sub: t.ludoSub,
-              art: const _LudoArt(),
+              art: const LudoArt(),
               onPlay: () => _open(const LudoLobbyScreen()),
             ),
           ),
@@ -338,7 +338,7 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
               color: const Color(0xFFD9A34A),
               title: t.carromTitle,
               sub: t.carromSub,
-              art: const _CarromArt(),
+              art: const CarromArt(),
               onPlay: () => _open(const CarromLobbyScreen()),
             ),
           ),
@@ -821,8 +821,8 @@ class _PokerArtPainter extends CustomPainter {
 }
 
 /// A mini carrom board for the game card.
-class _CarromArt extends StatelessWidget {
-  const _CarromArt();
+class CarromArt extends StatelessWidget {
+  const CarromArt({super.key});
 
   @override
   Widget build(BuildContext context) => const CustomPaint(painter: _CarromArtPainter());
@@ -869,8 +869,8 @@ class _CarromArtPainter extends CustomPainter {
 }
 
 /// A mini Ludo board for the game card.
-class _LudoArt extends StatelessWidget {
-  const _LudoArt();
+class LudoArt extends StatelessWidget {
+  const LudoArt({super.key});
 
   @override
   Widget build(BuildContext context) => const CustomPaint(painter: _LudoArtPainter());

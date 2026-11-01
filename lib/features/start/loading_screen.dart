@@ -9,6 +9,7 @@ import '../../core/app_theme.dart';
 import '../../core/brand.dart';
 import '../../core/duel_ui.dart';
 import '../../core/env.dart';
+import '../duel/duel_home_screen.dart';
 import '../online/online_screens.dart';
 import '../online/session.dart';
 import 'start_route.dart';
@@ -24,7 +25,7 @@ class LoadingScreen extends ConsumerStatefulWidget {
 
 class _LoadingScreenState extends ConsumerState<LoadingScreen>
     with SingleTickerProviderStateMixin {
-  static const _minimum = Duration(milliseconds: 350);
+  static const _minimum = Duration(milliseconds: 650);
   late final AnimationController _bar = AnimationController(
     vsync: this,
     duration: _minimum,
@@ -97,8 +98,19 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const DuelLogo(height: 200),
-          const SizedBox(height: 20),
+          const DuelLogo(height: 168),
+          const SizedBox(height: 28),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              _LoadingGameCard(rim: Color(0xFF2FA45C), label: 'POOL', art: BilliardArt()),
+              SizedBox(width: 22),
+              _LoadingGameCard(rim: Color(0xFFE8721C), label: 'LUDO', art: LudoArt()),
+              SizedBox(width: 22),
+              _LoadingGameCard(rim: Color(0xFFD9A34A), label: 'CARROM', art: CarromArt()),
+            ],
+          ),
+          const SizedBox(height: 28),
           Text(
             s.loadingBilliard,
             style: AppText.label(
@@ -107,7 +119,7 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
               weight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 32),
           SizedBox(
             width: 480,
             child: AnimatedBuilder(
@@ -124,6 +136,52 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _LoadingGameCard extends StatelessWidget {
+  const _LoadingGameCard({required this.rim, required this.label, required this.art});
+
+  final Color rim;
+  final String label;
+  final Widget art;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 280,
+      height: 168,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: rim.withValues(alpha: 0.55), width: 2),
+        boxShadow: [
+          BoxShadow(color: rim.withValues(alpha: 0.2), blurRadius: 18, offset: const Offset(0, 8)),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            art,
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                color: Colors.black.withValues(alpha: 0.35),
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: AppText.label(14, color: Colors.white, weight: FontWeight.w900),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
