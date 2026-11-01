@@ -608,8 +608,8 @@ class AppStrings {
   String get signIn => _t('SIGN IN', 'সাইন ইন');
   String get loginRequiredTitle => _t('SIGN IN REQUIRED', 'লগইন দরকার');
   String get loginRequiredBody => _t(
-        'Browse as guest — sign in with your mobile to play for coins, shop, transfer, and save progress.',
-        'অতিথি হিসেবে দেখুন — কয়েন খেলা, শপ, ট্রান্সফার ও প্রগ্রেস রাখতে মোবাইল লগইন করুন।',
+        'Look around freely — sign in or sign up with your Bangladesh mobile when you want to play online, use the shop, or save progress.',
+        'আগে ঘুরে দেখুন — অনলাইন খেলা, শপ বা প্রগ্রেস রাখতে চাইলে +৮৮০ মোবাইল দিয়ে সাইন ইন বা সাইন আপ করুন।',
       );
   String get forgotPasswordBtn => _t('FORGOT PASSWORD', 'পাসওয়ার্ড ভুলে গেছেন');
   String get signOut => _t('SIGN OUT', 'সাইন আউট');

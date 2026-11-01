@@ -82,10 +82,8 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
   }
 
   Future<void> _play(BetLevel level) async {
-    if (level.buyIn > 0) {
-      if (!await requireRegisteredAccount(context, ref)) return;
-      if (!mounted) return;
-    }
+    if (!await requireRegisteredAccount(context, ref)) return;
+    if (!mounted) return;
     final coins = ref.read(settingsProvider).coins;
     if (coins < level.buyIn) {
       promptNotEnoughBalance(context, need: level.buyIn, have: coins);
@@ -104,7 +102,6 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
   }
 
   Future<void> _sendChallenge(ChallengeTarget target, BetLevel level) async {
-    if (!await requireRegisteredAccount(context, ref)) return;
     if (!mounted) return;
     try {
       final ch = await ref.read(sessionProvider.notifier).sendChallenge(target.userId, widget.mode.apiName, level.level);

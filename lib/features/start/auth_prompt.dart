@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/duel_ui.dart';
+import '../duel/lobby_data.dart';
 import '../online/session.dart';
 import '../../l10n/strings.dart';
 import 'login_screen.dart';
@@ -51,10 +52,10 @@ Future<bool> requireRegisteredAccount(BuildContext context, WidgetRef ref) async
                 ),
                 const SizedBox(width: 12),
                 DuelButton(
-                  label: t.signIn,
-                  width: 160,
+                  label: t.signUpOrLogin,
+                  width: 220,
                   height: 42,
-                  fontSize: 15,
+                  fontSize: 14,
                   color: DuelColors.green,
                   onPressed: () => Navigator.of(ctx).pop(true),
                 ),
@@ -69,5 +70,9 @@ Future<bool> requireRegisteredAccount(BuildContext context, WidgetRef ref) async
   final ok = await Navigator.of(context).push<bool>(
     MaterialPageRoute<bool>(builder: (_) => const LoginScreen(popOnSuccess: true)),
   );
-  return ok == true && hasRegisteredAccount(ref);
+  if (ok == true && hasRegisteredAccount(ref)) {
+    ref.read(lobbyProvider.notifier).refresh();
+    return true;
+  }
+  return false;
 }

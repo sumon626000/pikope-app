@@ -18,6 +18,7 @@ import '../../l10n/strings.dart';
 import 'challenge_inbox_pulse.dart';
 import 'lobby_data.dart';
 import 'not_enough_balance.dart';
+import '../start/auth_prompt.dart';
 
 /// Waits for opponents at the chosen bet level, then opens the match.
 class MatchmakingScreen extends ConsumerStatefulWidget {
@@ -64,8 +65,11 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Sing
   }
 
   Future<void> _join() async {
+    if (!hasRegisteredAccount(ref)) {
+      if (mounted) Navigator.of(context).pop();
+      return;
+    }
     try {
-      await ref.read(sessionProvider.notifier).ensureSignedIn();
       final room = await _api.post('/rooms/quick', {'game': widget.mode.apiName, 'level': widget.level.level});
       if (!mounted || _left) {
         // Backed out while the request was on its way: give the seat up.

@@ -47,7 +47,7 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
         const AssetImage(PicoCoin.asset),
       ];
       final audio = ref.read(audioProvider);
-      unawaited(_restoreSession());
+      unawaited(_restoreSavedSession());
       final work = Future.wait<void>([
         for (final image in images)
           precacheImage(image, context).catchError((_) {}),
@@ -55,7 +55,7 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
       unawaited(audio.warmUp().then((_) => audio.playMenuMusic()).catchError((_) {}));
       await Future.wait<void>([work, Future<void>.delayed(_minimum)]);
     } catch (_) {
-      // Still open home — guest/session restores in background.
+      // Still open home — a saved login restores in background.
     }
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
@@ -74,11 +74,13 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
     }
   }
 
-  Future<void> _restoreSession() async {
+  Future<void> _restoreSavedSession() async {
     if (!Env.hasBackend) return;
     try {
-      await ref.read(sessionProvider.notifier).ensureSignedIn().timeout(const Duration(seconds: 8));
-      ref.read(settingsProvider.notifier).update((s) => s.copyWith(onboarded: true));
+      final ok = await ref.read(sessionProvider.notifier).tryRestoreExistingSession().timeout(const Duration(seconds: 8));
+      if (ok) {
+        ref.read(settingsProvider.notifier).update((s) => s.copyWith(onboarded: true));
+      }
     } catch (_) {}
   }
 

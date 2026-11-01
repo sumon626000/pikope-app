@@ -353,6 +353,59 @@ class LobbyData {
     return out;
   }
 
+  /// Stake ladder for browsing before sign-in (matches server economy defaults).
+  static LobbyData browsePreview() {
+    const stakes = [25, 50, 100, 300, 500, 1000, 5000, 10000];
+    const names = ['ROOKIE', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', 'ROYAL', 'LEGEND'];
+    const rakePercent = 10;
+    const winPayoutPercent = 180;
+
+    int fee(int stake) => (stake * rakePercent + 99) ~/ 100;
+
+    List<BetLevel> ladder({required bool poker}) {
+      return [
+        for (var i = 0; i < stakes.length; i++)
+          BetLevel(
+            level: i + 1,
+            name: names[i],
+            stake: stakes[i],
+            fee: fee(stakes[i]),
+            buyIn: stakes[i] + fee(stakes[i]),
+            players: poker ? 4 : 2,
+            prize: poker ? null : stakes[i] * 2 * winPayoutPercent ~/ 200,
+            minPrize: poker ? stakes[i] * 3 : null,
+            maxPrize: poker ? stakes[i] * 10000 : null,
+          ),
+      ];
+    }
+
+    return LobbyData(
+      levels: {'billiard': ladder(poker: false), 'poker': ladder(poker: true)},
+      online: 0,
+      jackpot: const [3, 4, 8, 12, 100, 1000, 2500, 10000],
+      daily: const DailyBonus(available: false, day: 0, rewards: [], secondsToNext: 86400),
+      cues: const [],
+      boardPrices: const {},
+      coinShop: const CoinShopInfo(globalDiscountPercent: 0, packs: []),
+      redeem: const RedeemConfig(enabled: false, minCoins: 0, maxCoins: 0, maxPendingPerUser: 0, coinPerBdt: 1, providers: []),
+      coinDeposit: const CoinDepositConfig(
+        enabled: false,
+        manualEnabled: false,
+        autoEnabled: false,
+        minBdt: 0,
+        maxBdt: 0,
+        coinPerBdt: 1,
+        maxPendingPerUser: 0,
+        paymentType: 'personal',
+        agents: [],
+      ),
+      coinTransfer: const CoinTransferConfig(enabled: false, feePercent: 0, minCoins: 0, maxCoins: 0),
+      coinTutorials: const CoinTutorialVideos(deposit: '', redeem: '', transfer: ''),
+      push: const PushConfig(enabled: false, channelId: 'pikope_default', channelName: 'PikoPe'),
+      fetchedAt: DateTime.now(),
+    );
+  }
+
   factory LobbyData.fromJson(Map<String, dynamic> j) => LobbyData(
         levels: {
           for (final key in const ['billiard', 'poker'])
@@ -388,7 +441,11 @@ class LobbyNotifier extends AsyncNotifier<LobbyData> {
     if (!Env.hasBackend) {
       throw ApiException(0, 'offline', 'This build has no game server.');
     }
-    await _session.ensureSignedIn();
+    await _session.tryRestoreExistingSession();
+    final user = ref.read(sessionProvider);
+    if (!user.signedIn || user.isGuest) {
+      return LobbyData.browsePreview();
+    }
     final j = await _api.get('/lobby');
     _session.adopt(j['user'] as Map<String, dynamic>);
     final lobby = LobbyData.fromJson(j);

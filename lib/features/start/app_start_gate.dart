@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/duel_ui.dart';
 import 'app_update.dart';
 import 'loading_screen.dart';
-/// Fast loading splash, then home (guest session). Sign-in is shown when needed.
+/// Fast loading splash, then home. Sign-in / sign-up when play or wallet needs an account.
 /// Mandatory APK update runs before the lobby.
 class AppStartGate extends ConsumerStatefulWidget {
   const AppStartGate({super.key});

@@ -282,20 +282,33 @@ class SessionNotifier extends Notifier<SessionState> {
     return _wsUrl;
   }
 
+  /// Uses a saved token only — never creates a guest account.
+  Future<bool> tryRestoreExistingSession() async {
+    if (!Env.hasBackend) return false;
+    if (state.signedIn) return true;
+    final settings = ref.read(settingsProvider);
+    if (settings.authToken.isEmpty) return false;
+    try {
+      _adopt((await _api.get('/me'))['user'] as Map<String, dynamic>);
+      return true;
+    } on ApiException catch (e) {
+      if (e.status == 401) {
+        _api.token = null;
+        ref.read(settingsProvider.notifier).update((s) => s.copyWith(authToken: ''));
+      } else {
+        rethrow;
+      }
+      return false;
+    }
+  }
+
   Future<void> ensureSignedIn({String referralCode = ''}) async {
     if (!Env.hasBackend) {
       throw ApiException(0, 'offline', 'This build has no game server.');
     }
     if (state.signedIn) return;
+    if (await tryRestoreExistingSession()) return;
     final settings = ref.read(settingsProvider);
-    if (settings.authToken.isNotEmpty) {
-      try {
-        _adopt((await _api.get('/me'))['user'] as Map<String, dynamic>);
-        return;
-      } on ApiException catch (e) {
-        if (e.status != 401) rethrow; // expired session: fall through to a new guest
-      }
-    }
     final avatar = settings.avatar.startsWith('asset:') ? settings.avatar : 'asset:avatar_1';
     final r = await _api.post('/auth/guest', {
       'displayName': settings.name,
