@@ -483,10 +483,20 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
                   icon: Icons.sports_kabaddi_rounded,
                   label: t.navChallenge,
                   badge: challengePending,
-                  onTap: () => _open(const ChallengeScreen()),
+                  onTap: () async {
+                    if (!await requireRegisteredAccount(context, ref)) return;
+                    if (mounted) await _open(const ChallengeScreen());
+                  },
                 ),
                 const SizedBox(width: 19),
-                NavTile(icon: Icons.query_stats_rounded, label: t.navData, onTap: () => _open(const HistoryScreen())),
+                NavTile(
+                  icon: Icons.query_stats_rounded,
+                  label: t.navData,
+                  onTap: () async {
+                    if (!await requireRegisteredAccount(context, ref)) return;
+                    if (mounted) await _open(const HistoryScreen());
+                  },
+                ),
               ],
             ),
           ),

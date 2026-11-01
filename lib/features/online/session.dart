@@ -79,8 +79,8 @@ class SessionState {
   int get redeemableCoins => _asInt(user?['redeemableCoins']);
 }
 
-/// Account on the backend. Playing online needs no sign-up: a guest account
-/// is created on first use and can be given a mobile login and password later.
+/// Account on the backend. Browse without signing in; mobile login is required
+/// for online play, wallet, and saved progress.
 class SessionNotifier extends Notifier<SessionState> {
   ApiClient get _api => ref.read(apiProvider)!;
 
@@ -261,7 +261,7 @@ class SessionNotifier extends Notifier<SessionState> {
   /// lost ...), or null.
   Future<Map<String, dynamic>?> activeMatch() async {
     if (ref.read(settingsProvider).authToken.isEmpty) return null;
-    await ensureSignedIn();
+    if (!await tryRestoreExistingSession()) return null;
     return (await _api.get('/me/active'))['match'] as Map<String, dynamic>?;
   }
 
@@ -282,19 +282,32 @@ class SessionNotifier extends Notifier<SessionState> {
     return _wsUrl;
   }
 
-  /// Uses a saved token only — never creates a guest account.
+  void _clearLocalAuth() {
+    _api.token = null;
+    ref.read(settingsProvider.notifier).update((s) => s.copyWith(authToken: ''));
+    state = const SessionState();
+  }
+
+  /// Uses a saved token only — registered accounts, not legacy guest tokens.
   Future<bool> tryRestoreExistingSession() async {
     if (!Env.hasBackend) return false;
-    if (state.signedIn) return true;
+    if (state.signedIn && !state.isGuest) return true;
+    if (state.signedIn && state.isGuest) {
+      _clearLocalAuth();
+      return false;
+    }
     final settings = ref.read(settingsProvider);
     if (settings.authToken.isEmpty) return false;
     try {
       _adopt((await _api.get('/me'))['user'] as Map<String, dynamic>);
+      if (state.isGuest) {
+        _clearLocalAuth();
+        return false;
+      }
       return true;
     } on ApiException catch (e) {
       if (e.status == 401) {
-        _api.token = null;
-        ref.read(settingsProvider.notifier).update((s) => s.copyWith(authToken: ''));
+        _clearLocalAuth();
       } else {
         rethrow;
       }
@@ -306,19 +319,10 @@ class SessionNotifier extends Notifier<SessionState> {
     if (!Env.hasBackend) {
       throw ApiException(0, 'offline', 'This build has no game server.');
     }
-    if (state.signedIn) return;
+    if (state.signedIn && !state.isGuest) return;
+    if (state.signedIn && state.isGuest) _clearLocalAuth();
     if (await tryRestoreExistingSession()) return;
-    final settings = ref.read(settingsProvider);
-    final avatar = settings.avatar.startsWith('asset:') ? settings.avatar : 'asset:avatar_1';
-    final r = await _api.post('/auth/guest', {
-      'displayName': settings.name,
-      'avatar': avatar,
-    });
-    final user = r['user'] as Map<String, dynamic>;
-    _api.token = r['token'] as String;
-    // A fresh guest keeps the table chosen on this device.
-    final synced = await _api.patch('/me', {'tableSkin': settings.tableSkin});
-    _adopt(synced['user'] as Map<String, dynamic>? ?? user, token: r['token'] as String);
+    throw ApiException(401, 'login_required', 'Sign in or sign up to continue.');
   }
 
   Future<void> refresh() async {
@@ -435,7 +439,7 @@ class SessionNotifier extends Notifier<SessionState> {
   /// {incoming:[...], outgoing:[...]}
   Future<Map<String, dynamic>> challengeInbox() async {
     if (ref.read(settingsProvider).authToken.isEmpty) return const {'incoming': [], 'outgoing': []};
-    await ensureSignedIn();
+    if (!await tryRestoreExistingSession()) return const {'incoming': [], 'outgoing': []};
     return _api.get('/challenge/inbox');
   }
 

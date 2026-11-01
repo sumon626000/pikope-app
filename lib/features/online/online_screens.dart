@@ -24,7 +24,7 @@ import '../carrom/carrom_screen.dart';
 import '../ludo/ludo_controller.dart';
 import '../ludo/ludo_screen.dart';
 import '../start/forgot_password_screen.dart';
-import '../start/login_screen.dart';
+import '../start/loading_screen.dart';
 import 'game_link.dart';
 import 'realtime_socket.dart';
 import 'session.dart';
@@ -70,7 +70,7 @@ Future<bool> resumeActiveOnlineMatch(WidgetRef ref) async {
   if (nav == null || !Env.hasBackend) return false;
   if (ref.read(settingsProvider).authToken.isEmpty) return false;
   try {
-    await ref.read(sessionProvider.notifier).ensureSignedIn();
+    if (!await ref.read(sessionProvider.notifier).tryRestoreExistingSession()) return false;
   } catch (_) {
     return false;
   }
@@ -228,7 +228,9 @@ class _OnlineLobbyScreenState extends ConsumerState<OnlineLobbyScreen> {
     super.dispose();
   }
 
-  Future<void> _signIn() => _run(() => ref.read(sessionProvider.notifier).ensureSignedIn());
+  Future<void> _signIn() => _run(() => ref.read(sessionProvider.notifier).tryRestoreExistingSession().then((ok) {
+        if (!ok) throw ApiException(401, 'login_required', 'Sign in or sign up to continue.');
+      }));
 
   Future<void> _run(Future<void> Function() action) async {
     setState(() {
@@ -741,7 +743,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                                 await notifier.logout();
                                 // Back to the sign-in screen, nothing behind it.
                                 navigator.pushAndRemoveUntil(
-                                    MaterialPageRoute<void>(builder: (_) => const LoginScreen()), (_) => false);
+                                    MaterialPageRoute<void>(builder: (_) => const LoadingScreen()), (_) => false);
                               },
                       ),
                     ],

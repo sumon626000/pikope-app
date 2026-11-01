@@ -33,7 +33,10 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
 
   Future<void> _load() async {
     try {
-      await ref.read(sessionProvider.notifier).ensureSignedIn();
+      if (!await ref.read(sessionProvider.notifier).tryRestoreExistingSession()) {
+        if (mounted) setState(() => _live = const []);
+        return;
+      }
       final myId = ref.read(sessionProvider).userId;
       final r = await ref.read(apiProvider)!.get('/leaderboard');
       final rows = [

@@ -48,7 +48,8 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
         const AssetImage(PicoCoin.asset),
       ];
       final audio = ref.read(audioProvider);
-      unawaited(_restoreSavedSession());
+      // Registered accounts only — no guest restore on splash.
+      unawaited(_restoreRegisteredSession());
       final work = Future.wait<void>([
         for (final image in images)
           precacheImage(image, context).catchError((_) {}),
@@ -75,7 +76,7 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
     }
   }
 
-  Future<void> _restoreSavedSession() async {
+  Future<void> _restoreRegisteredSession() async {
     if (!Env.hasBackend) return;
     try {
       final ok = await ref.read(sessionProvider.notifier).tryRestoreExistingSession().timeout(const Duration(seconds: 8));

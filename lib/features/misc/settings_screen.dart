@@ -49,7 +49,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _loadReferral() async {
     try {
-      await ref.read(sessionProvider.notifier).ensureSignedIn();
+      if (!await ref.read(sessionProvider.notifier).tryRestoreExistingSession()) return;
       final info = await ref.read(apiProvider)!.get('/referral');
       if (mounted) setState(() => _referral = info);
     } catch (_) {
@@ -64,7 +64,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _inviteError = null;
     });
     try {
-      await ref.read(sessionProvider.notifier).ensureSignedIn();
+      if (!await ref.read(sessionProvider.notifier).tryRestoreExistingSession()) return;
       await ref.read(apiProvider)!.post('/referral/apply', {'code': _invite.text.trim()});
       final info = await ref.read(apiProvider)!.get('/referral');
       if (mounted) setState(() => _referral = info);
@@ -285,7 +285,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (!Env.hasBackend) return;
     final s = ref.read(settingsProvider);
     try {
-      await ref.read(sessionProvider.notifier).ensureSignedIn();
+      if (!await ref.read(sessionProvider.notifier).tryRestoreExistingSession()) return;
       final r = await ref.read(apiProvider)!.patch('/me', {
         'challengesEnabled': s.challengesEnabled,
         'challengePoolEnabled': s.challengePoolEnabled,

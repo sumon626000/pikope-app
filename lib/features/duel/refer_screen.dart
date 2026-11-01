@@ -43,7 +43,10 @@ class _ReferScreenState extends ConsumerState<ReferScreen> {
       return;
     }
     try {
-      await ref.read(sessionProvider.notifier).ensureSignedIn();
+      if (!await ref.read(sessionProvider.notifier).tryRestoreExistingSession()) {
+        if (mounted) setState(() => _error = ref.read(stringsProvider).loginRequiredBody);
+        return;
+      }
       final info = await ref.read(apiProvider)!.get('/referral');
       if (mounted) setState(() => _info = info);
     } on ApiException catch (e) {

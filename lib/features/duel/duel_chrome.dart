@@ -117,8 +117,14 @@ class DuelTopBar extends ConsumerWidget {
           ),
           if (showShortcuts) ...[
             const SizedBox(width: 44),
-            _TopIcon(Icons.mail_rounded, () => pushScreen(context, const NoticesScreen())),
-            _TopIcon(Icons.notifications_rounded, () => pushScreen(context, const NotificationsScreen()), badge: unread),
+            _TopIcon(Icons.mail_rounded, () async {
+              if (!await requireRegisteredAccount(context, ref)) return;
+              if (context.mounted) pushScreen(context, const NoticesScreen());
+            }),
+            _TopIcon(Icons.notifications_rounded, () async {
+              if (!await requireRegisteredAccount(context, ref)) return;
+              if (context.mounted) pushScreen(context, const NotificationsScreen());
+            }, badge: unread),
             _TopIcon(Icons.settings_rounded, () => pushScreen(context, const SettingsScreen())),
           ],
           const SizedBox(width: 42),
