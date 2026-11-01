@@ -14,61 +14,110 @@ bool hasRegisteredAccount(WidgetRef ref) {
   return session.signedIn && !session.isGuest;
 }
 
-/// Dismissible sign-in overlay on top of the current screen (home stays visible).
+bool _loginPopupOpen = false;
+
+/// Waits for a saved token to hydrate session (fast Shop/+ tap right after splash).
+Future<bool> _restoreRegisteredIfSaved(WidgetRef ref) async {
+  if (hasRegisteredAccount(ref)) return true;
+  if (ref.read(settingsProvider).authToken.isEmpty) return false;
+  final notifier = ref.read(sessionProvider.notifier);
+  for (var attempt = 0; attempt < 4; attempt++) {
+    try {
+      if (await notifier.tryRestoreExistingSession() &&
+          hasRegisteredAccount(ref)) {
+        return true;
+      }
+    } catch (_) {}
+    if (attempt < 3) {
+      await Future<void>.delayed(Duration(milliseconds: 250 * (attempt + 1)));
+    }
+  }
+  return hasRegisteredAccount(ref);
+}
+
+/// Dismissible sign-in overlay on the current screen (not [showDuelDialog] canvas — that read as a full auth page).
 Future<bool> showLoginAuthPopup(BuildContext context, WidgetRef ref) async {
-  final ok = await showDuelDialog<bool>(
-    context,
-    barrierColor: DesignAuth.overlayScrim,
-    barrierDismissible: true,
-    builder: (dialogContext) {
-      return Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: DesignAuth.loginPopupMaxWidth,
-            maxHeight: MediaQuery.sizeOf(dialogContext).height * 0.88,
+  if (_loginPopupOpen) return false;
+  _loginPopupOpen = true;
+  try {
+    final ok = await showGeneralDialog<bool>(
+      context: context,
+      useRootNavigator: true,
+      barrierDismissible: true,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      barrierColor: DesignAuth.overlayScrim,
+      transitionDuration: const Duration(milliseconds: 220),
+      transitionBuilder: (context, animation, _, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return FadeTransition(
+          opacity: curved,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.96, end: 1).animate(curved),
+            child: child,
           ),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Material(
-                color: Colors.transparent,
-                child: SingleChildScrollView(
-                  child: LoginAuthPanel(
-                    compact: true,
-                    onAuthenticated: () =>
-                        Navigator.of(dialogContext).pop(true),
-                  ),
+        );
+      },
+      pageBuilder: (dialogContext, _, _) {
+        final maxH = MediaQuery.sizeOf(dialogContext).height * 0.88;
+        return SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: DesignAuth.loginPopupMaxWidth,
+                  maxHeight: maxH,
                 ),
-              ),
-              Positioned(
-                top: 4,
-                right: 4,
                 child: Material(
-                  color: Colors.black54,
-                  shape: const CircleBorder(),
-                  clipBehavior: Clip.antiAlias,
-                  child: IconButton(
-                    tooltip: MaterialLocalizations.of(
-                      dialogContext,
-                    ).closeButtonTooltip,
-                    icon: const Icon(
-                      Icons.close_rounded,
-                      color: DuelColors.silver,
-                      size: 26,
-                    ),
-                    onPressed: () => Navigator.of(dialogContext).pop(false),
+                  color: Colors.transparent,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      SingleChildScrollView(
+                        child: LoginAuthPanel(
+                          compact: true,
+                          onAuthenticated: () =>
+                              Navigator.of(dialogContext).pop(true),
+                        ),
+                      ),
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: Material(
+                          color: Colors.black54,
+                          shape: const CircleBorder(),
+                          clipBehavior: Clip.antiAlias,
+                          child: IconButton(
+                            tooltip: MaterialLocalizations.of(
+                              dialogContext,
+                            ).closeButtonTooltip,
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: DuelColors.silver,
+                              size: 26,
+                            ),
+                            onPressed: () =>
+                                Navigator.of(dialogContext).pop(false),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
-      );
-    },
-  );
-  return ok == true;
+        );
+      },
+    );
+    return ok == true;
+  } finally {
+    _loginPopupOpen = false;
+  }
 }
 
 /// Ask for sign-up / login when a feature needs a saved account. Returns true if registered.
@@ -76,16 +125,7 @@ Future<bool> requireRegisteredAccount(
   BuildContext context,
   WidgetRef ref,
 ) async {
-  if (hasRegisteredAccount(ref)) return true;
-  if (ref.read(settingsProvider).authToken.isNotEmpty) {
-    try {
-      if (await ref
-          .read(sessionProvider.notifier)
-          .tryRestoreExistingSession()) {
-        if (hasRegisteredAccount(ref)) return true;
-      }
-    } catch (_) {}
-  }
+  if (await _restoreRegisteredIfSaved(ref)) return true;
   if (!context.mounted) return false;
   final ok = await showLoginAuthPopup(context, ref);
   if (ok && hasRegisteredAccount(ref)) {
