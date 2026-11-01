@@ -60,7 +60,7 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
     }
     if (!mounted) return;
     final settings = ref.read(settingsProvider);
-    final toHome = settings.onboarded || settings.authToken.isNotEmpty;
+    final toHome = Env.isDemo || Env.hasBackend || settings.onboarded || settings.authToken.isNotEmpty;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder<void>(
         pageBuilder: (_, _, _) => toHome ? homeScreenFor() : const LoginScreen(),
@@ -78,12 +78,10 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
   }
 
   Future<void> _restoreSession() async {
-    if (!Env.hasBackend || ref.read(settingsProvider).authToken.isEmpty) return;
+    if (!Env.hasBackend) return;
     try {
-      await ref
-          .read(sessionProvider.notifier)
-          .ensureSignedIn()
-          .timeout(const Duration(seconds: 3));
+      await ref.read(sessionProvider.notifier).ensureSignedIn().timeout(const Duration(seconds: 8));
+      ref.read(settingsProvider.notifier).update((s) => s.copyWith(onboarded: true));
     } catch (_) {}
   }
 

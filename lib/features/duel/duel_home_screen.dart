@@ -33,6 +33,7 @@ import 'pool_hub_screen.dart';
 import '../../l10n/strings.dart';
 import 'items_screen.dart';
 import 'shop_screen.dart';
+import '../start/auth_prompt.dart';
 
 /// Home lobby: pick Pool, Ludo or Carrom (every game gets the same billing),
 /// with the wallet, daily bonus, rank and the shortcuts around it.
@@ -448,7 +449,10 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
                       NavTile(
                         icon: Icons.card_giftcard_rounded,
                         label: t.refer,
-                        onTap: () => _open(const ReferScreen()),
+                        onTap: () async {
+                          if (!await requireRegisteredAccount(context, ref)) return;
+                          if (mounted) await _open(const ReferScreen());
+                        },
                       ),
                     ],
                   ),
@@ -460,7 +464,14 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
               children: [
                 NavTile(icon: Icons.home_rounded, label: t.navHome, active: true, onTap: _reload),
                 const SizedBox(width: 19),
-                NavTile(icon: Icons.storefront_rounded, label: t.navShop, onTap: () => _open(const ShopScreen())),
+                NavTile(
+                  icon: Icons.storefront_rounded,
+                  label: t.navShop,
+                  onTap: () async {
+                    if (!await requireRegisteredAccount(context, ref)) return;
+                    if (mounted) await _open(const ShopScreen());
+                  },
+                ),
                 const SizedBox(width: 19),
                 NavTile(icon: Icons.leaderboard_rounded, label: t.navRankings, onTap: () => _open(const LeaderboardScreen())),
                 const SizedBox(width: 19),

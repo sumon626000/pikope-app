@@ -14,6 +14,7 @@ import 'notifications_screen.dart';
 import 'notices_screen.dart';
 import 'shop_screen.dart';
 import '../../l10n/strings.dart';
+import '../start/auth_prompt.dart';
 
 void pushScreen(BuildContext context, Widget screen) =>
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
@@ -109,7 +110,10 @@ class DuelTopBar extends ConsumerWidget {
           CurrencyPill(
             icon: const PikoCoinIcon(size: 76),
             amount: settings.coins,
-            onAdd: () => pushScreen(context, const ShopScreen()),
+            onAdd: () async {
+              if (!await requireRegisteredAccount(context, ref)) return;
+              if (context.mounted) pushScreen(context, const ShopScreen());
+            },
           ),
           if (showShortcuts) ...[
             const SizedBox(width: 44),

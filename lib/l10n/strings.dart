@@ -606,6 +606,11 @@ class AppStrings {
   String get setNewPassword => _t('SET NEW PASSWORD', 'নতুন পাসওয়ার্ড');
   String get createLogin => _t('CREATE LOGIN', 'লগইন তৈরি');
   String get signIn => _t('SIGN IN', 'সাইন ইন');
+  String get loginRequiredTitle => _t('SIGN IN REQUIRED', 'লগইন দরকার');
+  String get loginRequiredBody => _t(
+        'Add your mobile number and password to use the shop, transfers, and keep your coins safe.',
+        'শপ, ট্রান্সফার ও কয়েন রাখতে মোবাইল নম্বর ও পাসওয়ার্ড দিন।',
+      );
   String get forgotPasswordBtn => _t('FORGOT PASSWORD', 'পাসওয়ার্ড ভুলে গেছেন');
   String get signOut => _t('SIGN OUT', 'সাইন আউট');
   String get status => _t('STATUS', 'স্ট্যাটাস');

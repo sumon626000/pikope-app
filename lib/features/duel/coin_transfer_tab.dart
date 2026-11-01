@@ -10,6 +10,7 @@ import '../../core/root_nav.dart';
 import '../../core/widgets.dart';
 import '../../data/api_client.dart';
 import '../../l10n/strings.dart';
+import '../start/auth_prompt.dart';
 import '../online/session.dart';
 import 'coin_tutorial_video.dart';
 import 'lobby_data.dart';
@@ -112,8 +113,8 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
     final t = ref.read(stringsProvider);
     final session = ref.read(sessionProvider);
     if (session.isGuest) {
-      setState(() => _error = t.transferGuestOnly);
-      return;
+      if (!await requireRegisteredAccount(context, ref)) return;
+      if (!mounted) return;
     }
     if (!widget.config.enabled) {
       setState(() => _error = t.transferOff);
@@ -209,12 +210,8 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
     super.build(context);
     final t = ref.watch(stringsProvider);
     final cfg = widget.config;
-    final session = ref.watch(sessionProvider);
     if (!cfg.enabled) {
       return Center(child: Text(t.transferOff, style: AppText.label(22, color: DuelColors.dim, weight: FontWeight.w800)));
-    }
-    if (session.isGuest) {
-      return Center(child: Text(t.transferGuestOnly, style: AppText.label(20, color: DuelColors.dim)));
     }
     final amount = _amountInt ?? 0;
     final fee = amount > 0 ? _feeFor(amount) : 0;

@@ -16,9 +16,12 @@ import '../misc/legal_screen.dart';
 import '../online/session.dart';
 import '../../l10n/strings.dart';
 
-/// Phone sign-up and log in. Opens as soon as the app starts.
+/// Phone sign-up and log in (full screen or popup via [requireRegisteredAccount]).
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.popOnSuccess = false});
+
+  /// When true (login popup flow), pop with `true` instead of replacing with home.
+  final bool popOnSuccess;
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -48,9 +51,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     FocusManager.instance.primaryFocus?.unfocus();
     final navigator = Navigator.of(context);
     ref.read(settingsProvider.notifier).update((s) => s.copyWith(onboarded: true));
-    // Wait until the keyboard connection has detached, then open the lobby.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!navigator.mounted) return;
+      if (widget.popOnSuccess) {
+        navigator.pop(true);
+        return;
+      }
       navigator.pushReplacement(
         MaterialPageRoute<void>(builder: (_) => homeScreenFor()),
       );

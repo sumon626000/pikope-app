@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/app_state.dart';
 import '../../core/duel_ui.dart';
-import '../../core/env.dart';
 import 'app_update.dart';
 import 'loading_screen.dart';
-import 'login_screen.dart';
-
-/// Saved account opens the lobby. A new install still starts on sign-up.
-/// Mandatory APK update runs before login or the lobby.
+/// Fast loading splash, then home (guest session). Sign-in is shown when needed.
+/// Mandatory APK update runs before the lobby.
 class AppStartGate extends ConsumerStatefulWidget {
   const AppStartGate({super.key});
 
@@ -18,7 +14,6 @@ class AppStartGate extends ConsumerStatefulWidget {
 }
 
 class _AppStartGateState extends ConsumerState<AppStartGate> {
-  bool? _signedIn;
   AppUpdateOffer? _updateOffer;
   bool _updateChecked = false;
 
@@ -49,10 +44,6 @@ class _AppStartGateState extends ConsumerState<AppStartGate> {
       return MandatoryUpdateScreen(offer: _updateOffer!);
     }
 
-    _signedIn ??= Env.hasBackend && ref.read(settingsProvider).authToken.isNotEmpty;
-    if (_signedIn!) {
-      return const LoadingScreen();
-    }
-    return const LoginScreen();
+    return const LoadingScreen();
   }
 }

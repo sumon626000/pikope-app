@@ -14,7 +14,7 @@ import '../../core/env.dart';
 import '../../data/api_client.dart';
 import '../online/session.dart';
 import '../duel/duel_chrome.dart';
-import '../start/login_screen.dart';
+import '../start/loading_screen.dart';
 import 'legal_screen.dart';
 import 'page_frame.dart';
 import '../../l10n/strings.dart';
@@ -135,7 +135,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (ok != true || !mounted) return;
     final navigator = Navigator.of(context);
     await ref.read(sessionProvider.notifier).logout();
-    navigator.pushAndRemoveUntil(MaterialPageRoute<void>(builder: (_) => const LoginScreen()), (_) => false);
+    navigator.pushAndRemoveUntil(MaterialPageRoute<void>(builder: (_) => const LoadingScreen()), (_) => false);
   }
 
   Future<void> _loadSupport() async {

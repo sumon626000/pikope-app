@@ -66,5 +66,9 @@ TROUBLESHOOT
 • API 500 after backend deploy → server .env / migrate unchanged; শুধু PHP file update
 • CORS → server .env CORS_ORIGIN=https://pikope.com
 
+Full guide (main + admin + APK): docs/CURSOR_DEPLOY_ALL_BN.txt
+
 Files: .github/workflows/deploy-web-hostinger.yml
        .github/workflows/deploy-backend-hostinger.yml
+       .github/workflows/deploy-apk-hostinger.yml
+       .github/workflows/deploy-hostinger-all.yml
