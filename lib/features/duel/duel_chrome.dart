@@ -22,7 +22,11 @@ void pushScreen(BuildContext context, Widget screen) =>
 
 /// Logo, player, wallet and shortcuts across the top of a lobby screen.
 class DuelTopBar extends ConsumerWidget {
-  const DuelTopBar({super.key, this.showProfile = true, this.showShortcuts = true});
+  const DuelTopBar({
+    super.key,
+    this.showProfile = true,
+    this.showShortcuts = true,
+  });
 
   final bool showProfile;
   final bool showShortcuts;
@@ -55,10 +59,31 @@ class DuelTopBar extends ConsumerWidget {
                     padding: const EdgeInsets.all(3),
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFE08A), Color(0xFF5C8BFF), Color(0xFFFF3B4E)]),
-                      boxShadow: [BoxShadow(color: Color(0x663B6CFF), blurRadius: 18, spreadRadius: 1), BoxShadow(color: Color(0x99000000), blurRadius: 8, offset: Offset(0, 4))],
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color(0xFFFFE08A),
+                          Color(0xFF5C8BFF),
+                          Color(0xFFFF3B4E),
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0x663B6CFF),
+                          blurRadius: 18,
+                          spreadRadius: 1,
+                        ),
+                        BoxShadow(
+                          color: Color(0x99000000),
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    child: ClipOval(child: AvatarImage(settings.avatar, size: 76)),
+                    child: ClipOval(
+                      child: AvatarImage(settings.avatar, size: 76),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   SizedBox(
@@ -67,14 +92,26 @@ class DuelTopBar extends ConsumerWidget {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(settings.name.toUpperCase(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppText.label(20, color: DuelColors.silver, weight: FontWeight.w800)),
+                        Text(
+                          settings.name.toUpperCase(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.label(
+                            20,
+                            color: DuelColors.silver,
+                            weight: FontWeight.w800,
+                          ),
+                        ),
                         const SizedBox(height: 6),
                         Row(
                           children: [
-                            Text(t.lvDot(session.level), style: AppText.label(13, color: DuelColors.silver)),
+                            Text(
+                              t.lvDot(session.level),
+                              style: AppText.label(
+                                13,
+                                color: DuelColors.silver,
+                              ),
+                            ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Container(
@@ -82,23 +119,44 @@ class DuelTopBar extends ConsumerWidget {
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF151A36),
                                   borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(color: const Color(0xFF2B3566)),
+                                  border: Border.all(
+                                    color: const Color(0xFF2B3566),
+                                  ),
                                 ),
                                 child: FractionallySizedBox(
                                   alignment: Alignment.centerLeft,
-                                  widthFactor: (session.levelProgress / 100).clamp(0.02, 1.0),
+                                  widthFactor: (session.levelProgress / 100)
+                                      .clamp(0.02, 1.0),
                                   child: DecoratedBox(
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(5),
-                                      gradient: const LinearGradient(colors: [Color(0xFF9BF26E), Color(0xFF2FBF2A)]),
-                                      boxShadow: [BoxShadow(color: DuelColors.green.withValues(alpha: 0.7), blurRadius: 8)],
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFF9BF26E),
+                                          Color(0xFF2FBF2A),
+                                        ],
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: DuelColors.green.withValues(
+                                            alpha: 0.7,
+                                          ),
+                                          blurRadius: 8,
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
                               ),
                             ),
                             const SizedBox(width: 10),
-                            Text('${session.levelProgress}%', style: AppText.label(12, color: DuelColors.silver)),
+                            Text(
+                              '${session.levelProgress}%',
+                              style: AppText.label(
+                                12,
+                                color: DuelColors.silver,
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -110,7 +168,7 @@ class DuelTopBar extends ConsumerWidget {
           const Spacer(),
           CurrencyPill(
             icon: const PikoCoinIcon(size: 76),
-            amount: settings.coins,
+            amount: lobbyDisplayCoins(ref),
             onAdd: () async {
               if (!await requireRegisteredAccount(context, ref)) return;
               if (context.mounted) pushScreen(context, const ShopScreen());
@@ -124,9 +182,13 @@ class DuelTopBar extends ConsumerWidget {
             }),
             _TopIcon(Icons.notifications_rounded, () async {
               if (!await requireRegisteredAccount(context, ref)) return;
-              if (context.mounted) pushScreen(context, const NotificationsScreen());
+              if (context.mounted)
+                pushScreen(context, const NotificationsScreen());
             }, badge: unread),
-            _TopIcon(Icons.settings_rounded, () => pushScreen(context, const SettingsScreen())),
+            _TopIcon(
+              Icons.settings_rounded,
+              () => pushScreen(context, const SettingsScreen()),
+            ),
           ],
           const SizedBox(width: 42),
         ],
@@ -156,7 +218,11 @@ class _TopIcon extends StatelessWidget {
         style: AppText.label(11, color: Colors.white, weight: FontWeight.w900),
       ),
     );
-    badgeWidget = PulseBadge(minScale: 0.92, maxScale: 1.06, child: badgeWidget);
+    badgeWidget = PulseBadge(
+      minScale: 0.92,
+      maxScale: 1.06,
+      child: badgeWidget,
+    );
 
     return PressScale(
       onTap: onTap,
@@ -167,12 +233,7 @@ class _TopIcon extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             Icon(icon, color: DuelColors.silver, size: 50),
-            if (badge > 0)
-              Positioned(
-                right: -4,
-                top: -2,
-                child: badgeWidget,
-              ),
+            if (badge > 0) Positioned(right: -4, top: -2, child: badgeWidget),
           ],
         ),
       ),
@@ -209,14 +270,34 @@ class DuelPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
-    final bodyTop = DesignSecondaryPage.bodyTop(expanded: expanded, override: contentTop);
-    final backTop = DesignSecondaryPage.backTop(expanded: expanded, sideBack: sideBack, contentTop: contentTop);
-    final pad = DesignSecondaryPage.contentPadding(expanded: expanded, sideBack: sideBack);
+    final bodyTop = DesignSecondaryPage.bodyTop(
+      expanded: expanded,
+      override: contentTop,
+    );
+    final backTop = DesignSecondaryPage.backTop(
+      expanded: expanded,
+      sideBack: sideBack,
+      contentTop: contentTop,
+    );
+    final pad = DesignSecondaryPage.contentPadding(
+      expanded: expanded,
+      sideBack: sideBack,
+    );
     return DuelCanvas(
       child: Stack(
         children: [
-          const Positioned(left: 0, right: 0, top: 6, child: DuelTopBar(showProfile: false, showShortcuts: false)),
-          Positioned(left: 0, right: 0, top: DesignSecondaryPage.titleTop, child: Center(child: DuelTitle(title, size: 44, sub: sub))),
+          const Positioned(
+            left: 0,
+            right: 0,
+            top: 6,
+            child: DuelTopBar(showProfile: false, showShortcuts: false),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            top: DesignSecondaryPage.titleTop,
+            child: Center(child: DuelTitle(title, size: 44, sub: sub)),
+          ),
           Positioned(
             left: pad.left,
             right: pad.right,
@@ -228,13 +309,21 @@ class DuelPage extends ConsumerWidget {
             Positioned(
               left: DesignSecondaryPage.backSideLeft,
               top: backTop,
-              child: NavTile(icon: Icons.reply_rounded, label: t.navBack, onTap: () => Navigator.of(context).pop()),
+              child: NavTile(
+                icon: Icons.reply_rounded,
+                label: t.navBack,
+                onTap: () => Navigator.of(context).pop(),
+              ),
             )
           else
             Positioned(
               left: DesignSecondaryPage.backLeft,
               bottom: DesignLayout.bottomBarInset,
-              child: NavTile(icon: Icons.reply_rounded, label: t.navBack, onTap: () => Navigator.of(context).pop()),
+              child: NavTile(
+                icon: Icons.reply_rounded,
+                label: t.navBack,
+                onTap: () => Navigator.of(context).pop(),
+              ),
             ),
         ],
       ),

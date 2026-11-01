@@ -14,6 +14,15 @@ bool hasRegisteredAccount(WidgetRef ref) {
   return session.signedIn && !session.isGuest;
 }
 
+/// Header wallet: real balance when registered; local demo (2000) when browsing without login.
+int lobbyDisplayCoins(WidgetRef ref) {
+  final session = ref.watch(sessionProvider);
+  if (session.signedIn && !session.isGuest) return session.walletCoins;
+  final local = ref.watch(settingsProvider).coins;
+  if (local <= 0) return const AppSettings().coins;
+  return local;
+}
+
 bool _loginPopupOpen = false;
 
 /// Waits for a saved token to hydrate session (fast Shop/+ tap right after splash).

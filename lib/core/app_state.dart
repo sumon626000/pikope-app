@@ -101,94 +101,119 @@ class AppSettings {
     bool? challengePoolEnabled,
     bool? challengeLudoEnabled,
     bool? challengeCarromEnabled,
-  }) =>
-      AppSettings(
-        name: name ?? this.name,
-        avatar: avatar ?? this.avatar,
-        coins: coins ?? this.coins,
-        wins: wins ?? this.wins,
-        games: games ?? this.games,
-        soundOn: soundOn ?? this.soundOn,
-        shotSeconds: shotSeconds ?? this.shotSeconds,
-        tableSkin: tableSkin ?? this.tableSkin,
-        botLevel: botLevel ?? this.botLevel,
-        authToken: authToken ?? this.authToken,
-        onboarded: onboarded ?? this.onboarded,
-        carromStriker: carromStriker ?? this.carromStriker,
-        carromPieces: carromPieces ?? this.carromPieces,
-        carromBoard: carromBoard ?? this.carromBoard,
-        ludoBoard: ludoBoard ?? this.ludoBoard,
-        ownedPoolTables: ownedPoolTables ?? this.ownedPoolTables,
-        ownedCarromBoards: ownedCarromBoards ?? this.ownedCarromBoards,
-        ownedLudoBoards: ownedLudoBoards ?? this.ownedLudoBoards,
-        languageCode: languageCode ?? this.languageCode,
-        challengesEnabled: challengesEnabled ?? this.challengesEnabled,
-        challengePoolEnabled: challengePoolEnabled ?? this.challengePoolEnabled,
-        challengeLudoEnabled: challengeLudoEnabled ?? this.challengeLudoEnabled,
-        challengeCarromEnabled: challengeCarromEnabled ?? this.challengeCarromEnabled,
-      );
+  }) => AppSettings(
+    name: name ?? this.name,
+    avatar: avatar ?? this.avatar,
+    coins: coins ?? this.coins,
+    wins: wins ?? this.wins,
+    games: games ?? this.games,
+    soundOn: soundOn ?? this.soundOn,
+    shotSeconds: shotSeconds ?? this.shotSeconds,
+    tableSkin: tableSkin ?? this.tableSkin,
+    botLevel: botLevel ?? this.botLevel,
+    authToken: authToken ?? this.authToken,
+    onboarded: onboarded ?? this.onboarded,
+    carromStriker: carromStriker ?? this.carromStriker,
+    carromPieces: carromPieces ?? this.carromPieces,
+    carromBoard: carromBoard ?? this.carromBoard,
+    ludoBoard: ludoBoard ?? this.ludoBoard,
+    ownedPoolTables: ownedPoolTables ?? this.ownedPoolTables,
+    ownedCarromBoards: ownedCarromBoards ?? this.ownedCarromBoards,
+    ownedLudoBoards: ownedLudoBoards ?? this.ownedLudoBoards,
+    languageCode: languageCode ?? this.languageCode,
+    challengesEnabled: challengesEnabled ?? this.challengesEnabled,
+    challengePoolEnabled: challengePoolEnabled ?? this.challengePoolEnabled,
+    challengeLudoEnabled: challengeLudoEnabled ?? this.challengeLudoEnabled,
+    challengeCarromEnabled:
+        challengeCarromEnabled ?? this.challengeCarromEnabled,
+  );
 
   factory AppSettings.fromJson(Map<String, dynamic> j) {
     const d = AppSettings();
+    final token = j['authToken'] as String? ?? d.authToken;
+    var coins = j['coins'] as int? ?? d.coins;
+    if (token.isEmpty && coins <= 0) coins = d.coins;
     return AppSettings(
       name: j['name'] as String? ?? d.name,
       avatar: j['avatar'] as String? ?? d.avatar,
-      coins: j['coins'] as int? ?? d.coins,
+      coins: coins,
       wins: j['wins'] as int? ?? d.wins,
       games: j['games'] as int? ?? d.games,
       soundOn: j['soundOn'] as bool? ?? d.soundOn,
       shotSeconds: j['shotSeconds'] as int? ?? d.shotSeconds,
       tableSkin: j['tableSkin'] as String? ?? d.tableSkin,
       botLevel: j['botLevel'] as int? ?? d.botLevel,
-      authToken: j['authToken'] as String? ?? d.authToken,
+      authToken: token,
       onboarded: j['onboarded'] as bool? ?? d.onboarded,
       carromStriker: j['carromStriker'] as String? ?? d.carromStriker,
       carromPieces: j['carromPieces'] as String? ?? d.carromPieces,
       carromBoard: j['carromBoard'] as String? ?? d.carromBoard,
       ludoBoard: j['ludoBoard'] as String? ?? d.ludoBoard,
-      ownedPoolTables: _owned(j['ownedPoolTables'], const ['pro_teal', 'pro_green', 'pro_blue'], j['tableSkin'] as String? ?? d.tableSkin),
-      ownedCarromBoards: _owned(j['ownedCarromBoards'], const ['classic', 'walnut'], j['carromBoard'] as String? ?? d.carromBoard),
-      ownedLudoBoards: _owned(j['ownedLudoBoards'], const ['classic'], j['ludoBoard'] as String? ?? d.ludoBoard),
-      languageCode: _normalizeLang(j['languageCode'] as String? ?? d.languageCode),
+      ownedPoolTables: _owned(j['ownedPoolTables'], const [
+        'pro_teal',
+        'pro_green',
+        'pro_blue',
+      ], j['tableSkin'] as String? ?? d.tableSkin),
+      ownedCarromBoards: _owned(j['ownedCarromBoards'], const [
+        'classic',
+        'walnut',
+      ], j['carromBoard'] as String? ?? d.carromBoard),
+      ownedLudoBoards: _owned(j['ownedLudoBoards'], const [
+        'classic',
+      ], j['ludoBoard'] as String? ?? d.ludoBoard),
+      languageCode: _normalizeLang(
+        j['languageCode'] as String? ?? d.languageCode,
+      ),
       challengesEnabled: j['challengesEnabled'] as bool? ?? d.challengesEnabled,
-      challengePoolEnabled: j['challengePoolEnabled'] as bool? ?? j['challengesEnabled'] as bool? ?? d.challengePoolEnabled,
-      challengeLudoEnabled: j['challengeLudoEnabled'] as bool? ?? j['challengesEnabled'] as bool? ?? d.challengeLudoEnabled,
-      challengeCarromEnabled: j['challengeCarromEnabled'] as bool? ?? j['challengesEnabled'] as bool? ?? d.challengeCarromEnabled,
+      challengePoolEnabled:
+          j['challengePoolEnabled'] as bool? ??
+          j['challengesEnabled'] as bool? ??
+          d.challengePoolEnabled,
+      challengeLudoEnabled:
+          j['challengeLudoEnabled'] as bool? ??
+          j['challengesEnabled'] as bool? ??
+          d.challengeLudoEnabled,
+      challengeCarromEnabled:
+          j['challengeCarromEnabled'] as bool? ??
+          j['challengesEnabled'] as bool? ??
+          d.challengeCarromEnabled,
     );
   }
 
   static String _normalizeLang(String code) => code == 'bn' ? 'bn' : 'en';
 
   static List<String> _owned(Object? raw, List<String> free, String selected) {
-    final extra = raw is List ? [for (final e in raw) e.toString()] : const <String>[];
+    final extra = raw is List
+        ? [for (final e in raw) e.toString()]
+        : const <String>[];
     return {...free, selected, ...extra}.toList();
   }
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'avatar': avatar,
-        'coins': coins,
-        'wins': wins,
-        'games': games,
-        'soundOn': soundOn,
-        'shotSeconds': shotSeconds,
-        'tableSkin': tableSkin,
-        'botLevel': botLevel,
-        'authToken': authToken,
-        'onboarded': onboarded,
-        'carromStriker': carromStriker,
-        'carromPieces': carromPieces,
-        'carromBoard': carromBoard,
-        'ludoBoard': ludoBoard,
-        'ownedPoolTables': ownedPoolTables,
-        'ownedCarromBoards': ownedCarromBoards,
-        'ownedLudoBoards': ownedLudoBoards,
-        'languageCode': languageCode,
-        'challengesEnabled': challengesEnabled,
-        'challengePoolEnabled': challengePoolEnabled,
-        'challengeLudoEnabled': challengeLudoEnabled,
-        'challengeCarromEnabled': challengeCarromEnabled,
-      };
+    'name': name,
+    'avatar': avatar,
+    'coins': coins,
+    'wins': wins,
+    'games': games,
+    'soundOn': soundOn,
+    'shotSeconds': shotSeconds,
+    'tableSkin': tableSkin,
+    'botLevel': botLevel,
+    'authToken': authToken,
+    'onboarded': onboarded,
+    'carromStriker': carromStriker,
+    'carromPieces': carromPieces,
+    'carromBoard': carromBoard,
+    'ludoBoard': ludoBoard,
+    'ownedPoolTables': ownedPoolTables,
+    'ownedCarromBoards': ownedCarromBoards,
+    'ownedLudoBoards': ownedLudoBoards,
+    'languageCode': languageCode,
+    'challengesEnabled': challengesEnabled,
+    'challengePoolEnabled': challengePoolEnabled,
+    'challengeLudoEnabled': challengeLudoEnabled,
+    'challengeCarromEnabled': challengeCarromEnabled,
+  };
 }
 
 final storageProvider = Provider<AppStorage>((ref) => MemoryStorage());
@@ -200,7 +225,9 @@ final audioProvider = Provider<AudioService>((ref) {
   return audio;
 });
 
-final cloudinaryProvider = Provider<CloudinaryService>((ref) => CloudinaryService());
+final cloudinaryProvider = Provider<CloudinaryService>(
+  (ref) => CloudinaryService(),
+);
 
 class SettingsNotifier extends Notifier<AppSettings> {
   @override
@@ -218,11 +245,10 @@ class SettingsNotifier extends Notifier<AppSettings> {
 
   /// Local practice only — wins/games for fun stats, no Pico coin.
   void recordPractice({required bool won}) {
-    update((s) => s.copyWith(
-          games: s.games + 1,
-          wins: s.wins + (won ? 1 : 0),
-        ));
+    update((s) => s.copyWith(games: s.games + 1, wins: s.wins + (won ? 1 : 0)));
   }
 }
 
-final settingsProvider = NotifierProvider<SettingsNotifier, AppSettings>(SettingsNotifier.new);
+final settingsProvider = NotifierProvider<SettingsNotifier, AppSettings>(
+  SettingsNotifier.new,
+);

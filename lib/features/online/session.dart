@@ -13,7 +13,8 @@ import '../../data/app_game.dart';
 int _asInt(Object? value, [int fallback = 0]) {
   if (value is int) return value;
   if (value is num) return value.round();
-  if (value is String) return int.tryParse(value) ?? double.tryParse(value)?.round() ?? fallback;
+  if (value is String)
+    return int.tryParse(value) ?? double.tryParse(value)?.round() ?? fallback;
   return fallback;
 }
 
@@ -55,8 +56,10 @@ class SessionState {
     if (rank is Map) return _asInt(rank['tier']);
     return 0;
   }
+
   String get cue => user?['cue'] as String? ?? 'classic';
-  List<String> get cues => (user?['cues'] as List?)?.cast<String>() ?? const ['classic'];
+  List<String> get cues =>
+      (user?['cues'] as List?)?.cast<String>() ?? const ['classic'];
 
   /// The player has chosen a nickname (the create-profile step is done).
   bool get nameSet => user?['nameSet'] as bool? ?? false;
@@ -72,6 +75,7 @@ class SessionState {
     final at = nameChangeAllowedAt;
     return at == null || !DateTime.now().toUtc().isBefore(at.toUtc());
   }
+
   bool get isGuest => user?['isGuest'] as bool? ?? true;
   String? get phone => user?['phone'] as String?;
   int? get userId => user?['id'] as int?;
@@ -95,34 +99,48 @@ class SessionNotifier extends Notifier<SessionState> {
   /// The server decides coins and wins; name, avatar and table follow it too.
   void _adopt(Map<String, dynamic> user, {String? token}) {
     if (token != null) _api.token = token;
-    ref.read(settingsProvider.notifier).update((s) => s.copyWith(
-          authToken: token ?? s.authToken,
-          name: user['displayName']?.toString().trim().isNotEmpty == true
-              ? user['displayName'].toString()
-              : s.name,
-          avatar: user['avatar']?.toString().isNotEmpty == true
-              ? user['avatar'].toString()
-              : s.avatar,
-          tableSkin: user['ownedPoolTables'] is List && user['tableSkin']?.toString().isNotEmpty == true
-              ? user['tableSkin'].toString()
-              : s.tableSkin,
-          carromBoard: user['carromBoard']?.toString().isNotEmpty == true
-              ? user['carromBoard'].toString()
-              : s.carromBoard,
-          ludoBoard: user['ludoBoard']?.toString().isNotEmpty == true
-              ? user['ludoBoard'].toString()
-              : s.ludoBoard,
-          ownedPoolTables: _idList(user['ownedPoolTables']) ?? s.ownedPoolTables,
-          ownedCarromBoards: _idList(user['ownedCarromBoards']) ?? s.ownedCarromBoards,
-          ownedLudoBoards: _idList(user['ownedLudoBoards']) ?? s.ownedLudoBoards,
-          challengesEnabled: user['challengesEnabled'] as bool? ?? s.challengesEnabled,
-          challengePoolEnabled: user['challengePoolEnabled'] as bool? ?? s.challengePoolEnabled,
-          challengeLudoEnabled: user['challengeLudoEnabled'] as bool? ?? s.challengeLudoEnabled,
-          challengeCarromEnabled: user['challengeCarromEnabled'] as bool? ?? s.challengeCarromEnabled,
-          coins: _asInt(user['coins'], s.coins),
-          wins: _asInt(user['wins'], s.wins),
-          games: _asInt(user['games'], s.games),
-        ));
+    ref
+        .read(settingsProvider.notifier)
+        .update(
+          (s) => s.copyWith(
+            authToken: token ?? s.authToken,
+            name: user['displayName']?.toString().trim().isNotEmpty == true
+                ? user['displayName'].toString()
+                : s.name,
+            avatar: user['avatar']?.toString().isNotEmpty == true
+                ? user['avatar'].toString()
+                : s.avatar,
+            tableSkin:
+                user['ownedPoolTables'] is List &&
+                    user['tableSkin']?.toString().isNotEmpty == true
+                ? user['tableSkin'].toString()
+                : s.tableSkin,
+            carromBoard: user['carromBoard']?.toString().isNotEmpty == true
+                ? user['carromBoard'].toString()
+                : s.carromBoard,
+            ludoBoard: user['ludoBoard']?.toString().isNotEmpty == true
+                ? user['ludoBoard'].toString()
+                : s.ludoBoard,
+            ownedPoolTables:
+                _idList(user['ownedPoolTables']) ?? s.ownedPoolTables,
+            ownedCarromBoards:
+                _idList(user['ownedCarromBoards']) ?? s.ownedCarromBoards,
+            ownedLudoBoards:
+                _idList(user['ownedLudoBoards']) ?? s.ownedLudoBoards,
+            challengesEnabled:
+                user['challengesEnabled'] as bool? ?? s.challengesEnabled,
+            challengePoolEnabled:
+                user['challengePoolEnabled'] as bool? ?? s.challengePoolEnabled,
+            challengeLudoEnabled:
+                user['challengeLudoEnabled'] as bool? ?? s.challengeLudoEnabled,
+            challengeCarromEnabled:
+                user['challengeCarromEnabled'] as bool? ??
+                s.challengeCarromEnabled,
+            coins: _asInt(user['coins'], s.coins),
+            wins: _asInt(user['wins'], s.wins),
+            games: _asInt(user['games'], s.games),
+          ),
+        );
     state = SessionState(user: user);
   }
 
@@ -146,16 +164,22 @@ class SessionNotifier extends Notifier<SessionState> {
   /// The player's latest matches, newest first.
   Future<List<Map<String, dynamic>>> history() async {
     await ensureSignedIn();
-    return ((await _api.get('/me/history'))['matches'] as List).cast<Map<String, dynamic>>();
+    return ((await _api.get('/me/history'))['matches'] as List)
+        .cast<Map<String, dynamic>>();
   }
 
   /// Matches, wallet movements, shop and redeem — newest first.
   Future<List<Map<String, dynamic>>> activity({int limit = 60}) async {
     await ensureSignedIn();
-    return ((await _api.get('/me/activity?limit=$limit'))['items'] as List).cast<Map<String, dynamic>>();
+    return ((await _api.get('/me/activity?limit=$limit'))['items'] as List)
+        .cast<Map<String, dynamic>>();
   }
 
-  Future<Map<String, dynamic>> startZiniPayDeposit(int bdt, {String? packId, int qty = 1}) async {
+  Future<Map<String, dynamic>> startZiniPayDeposit(
+    int bdt, {
+    String? packId,
+    int qty = 1,
+  }) async {
     await ensureSignedIn();
     final body = <String, dynamic>{'bdt': bdt, 'qty': qty};
     if (packId != null && packId.isNotEmpty) body['packId'] = packId;
@@ -164,7 +188,9 @@ class SessionNotifier extends Notifier<SessionState> {
 
   Future<Map<String, dynamic>> finishZiniPayDeposit(int depositId) async {
     await ensureSignedIn();
-    final r = await _api.post('/deposit/zinipay/finish', {'depositId': depositId});
+    final r = await _api.post('/deposit/zinipay/finish', {
+      'depositId': depositId,
+    });
     _adopt(r['user'] as Map<String, dynamic>);
     return r;
   }
@@ -203,7 +229,8 @@ class SessionNotifier extends Notifier<SessionState> {
 
   Future<List<Map<String, dynamic>>> redeemRequests({int limit = 20}) async {
     await ensureSignedIn();
-    return ((await _api.get('/me/redeems'))['requests'] as List).cast<Map<String, dynamic>>();
+    return ((await _api.get('/me/redeems'))['requests'] as List)
+        .cast<Map<String, dynamic>>();
   }
 
   Future<Map<String, dynamic>> cancelRedeem(int id) async {
@@ -218,17 +245,24 @@ class SessionNotifier extends Notifier<SessionState> {
     final code = gameId.replaceAll(RegExp(r'\D'), '');
     if (code.length != 6) return null;
     try {
-      return (await _api.get('/transfer/lookup?gameId=$code'))['profile'] as Map<String, dynamic>;
+      return (await _api.get('/transfer/lookup?gameId=$code'))['profile']
+          as Map<String, dynamic>;
     } on ApiException catch (e) {
       if (e.code == 'not_found' || e.status == 404) return null;
       rethrow;
     }
   }
 
-  Future<Map<String, dynamic>> sendCoinTransfer({required String gameId, required int amount}) async {
+  Future<Map<String, dynamic>> sendCoinTransfer({
+    required String gameId,
+    required int amount,
+  }) async {
     await ensureSignedIn();
     final code = gameId.replaceAll(RegExp(r'\D'), '');
-    final r = await _api.post('/transfer/send', {'gameId': code, 'amount': amount});
+    final r = await _api.post('/transfer/send', {
+      'gameId': code,
+      'amount': amount,
+    });
     final user = r['user'];
     if (user is Map<String, dynamic>) {
       _adopt(user);
@@ -244,7 +278,8 @@ class SessionNotifier extends Notifier<SessionState> {
   /// Operator announcements to show in the inbox (and home banner).
   Future<List<Map<String, dynamic>>> notices() async {
     await ensureSignedIn();
-    return ((await _api.get('/notices'))['notices'] as List).cast<Map<String, dynamic>>();
+    return ((await _api.get('/notices'))['notices'] as List)
+        .cast<Map<String, dynamic>>();
   }
 
   Future<Map<String, dynamic>> notifications() async {
@@ -274,7 +309,9 @@ class SessionNotifier extends Notifier<SessionState> {
     if (Env.wsUrl.isNotEmpty) return normalizeWebSocketForWeb(Env.wsUrl);
     if (_wsAsked) return _wsUrl;
     try {
-      _wsUrl = normalizeWebSocketForWeb((await _api.get('/config'))['ws'] as String?);
+      _wsUrl = normalizeWebSocketForWeb(
+        (await _api.get('/config'))['ws'] as String?,
+      );
       _wsAsked = true;
     } on ApiException {
       // Ask again next time.
@@ -282,9 +319,15 @@ class SessionNotifier extends Notifier<SessionState> {
     return _wsUrl;
   }
 
-  void _clearLocalAuth() {
+  void _clearLocalAuth({bool healBrowseWallet = false}) {
     _api.token = null;
-    ref.read(settingsProvider.notifier).update((s) => s.copyWith(authToken: ''));
+    ref.read(settingsProvider.notifier).update((s) {
+      var next = s.copyWith(authToken: '');
+      if (healBrowseWallet && s.coins <= 0) {
+        next = next.copyWith(coins: const AppSettings().coins);
+      }
+      return next;
+    });
     state = const SessionState();
   }
 
@@ -293,17 +336,18 @@ class SessionNotifier extends Notifier<SessionState> {
     if (!Env.hasBackend) return false;
     if (state.signedIn && !state.isGuest) return true;
     if (state.signedIn && state.isGuest) {
-      _clearLocalAuth();
+      _clearLocalAuth(healBrowseWallet: true);
       return false;
     }
     final settings = ref.read(settingsProvider);
     if (settings.authToken.isEmpty) return false;
     try {
-      _adopt((await _api.get('/me'))['user'] as Map<String, dynamic>);
-      if (state.isGuest) {
-        _clearLocalAuth();
+      final user = (await _api.get('/me'))['user'] as Map<String, dynamic>;
+      if (user['isGuest'] == true) {
+        _clearLocalAuth(healBrowseWallet: true);
         return false;
       }
+      _adopt(user);
       return true;
     } on ApiException catch (e) {
       if (e.status == 401) {
@@ -322,7 +366,11 @@ class SessionNotifier extends Notifier<SessionState> {
     if (state.signedIn && !state.isGuest) return;
     if (state.signedIn && state.isGuest) _clearLocalAuth();
     if (await tryRestoreExistingSession()) return;
-    throw ApiException(401, 'login_required', 'Sign in or sign up to continue.');
+    throw ApiException(
+      401,
+      'login_required',
+      'Sign in or sign up to continue.',
+    );
   }
 
   Future<void> refresh() async {
@@ -331,7 +379,12 @@ class SessionNotifier extends Notifier<SessionState> {
   }
 
   /// New mobile account, or add a login to the current guest profile.
-  Future<void> register(String phoneLocal, String password, {String referralCode = '', String? displayName}) async {
+  Future<void> register(
+    String phoneLocal,
+    String password, {
+    String referralCode = '',
+    String? displayName,
+  }) async {
     if (!Env.hasBackend) {
       throw ApiException(0, 'offline', 'Sign-up needs the game server.');
     }
@@ -359,7 +412,10 @@ class SessionNotifier extends Notifier<SessionState> {
     final previous = _api.token;
     _api.token = null;
     try {
-      final r = await _api.post('/auth/login', {'phone': BdPhone.apiPayload(phoneLocal), 'password': password});
+      final r = await _api.post('/auth/login', {
+        'phone': BdPhone.apiPayload(phoneLocal),
+        'password': password,
+      });
       _adopt(r['user'] as Map<String, dynamic>, token: r['token'] as String);
     } catch (_) {
       _api.token = previous;
@@ -372,7 +428,11 @@ class SessionNotifier extends Notifier<SessionState> {
       _api.post('/auth/forgot', {'phone': BdPhone.apiPayload(phoneLocal)});
 
   /// Sets a new password with the SMS code and signs in.
-  Future<void> resetPassword(String phoneLocal, String code, String password) async {
+  Future<void> resetPassword(
+    String phoneLocal,
+    String code,
+    String password,
+  ) async {
     final previous = _api.token;
     _api.token = null;
     try {
@@ -398,7 +458,9 @@ class SessionNotifier extends Notifier<SessionState> {
       }
       api.token = null;
     }
-    ref.read(settingsProvider.notifier).update((s) => s.copyWith(authToken: '', onboarded: false));
+    ref
+        .read(settingsProvider.notifier)
+        .update((s) => s.copyWith(authToken: '', onboarded: false));
     state = const SessionState();
   }
 
@@ -409,7 +471,8 @@ class SessionNotifier extends Notifier<SessionState> {
     try {
       final r = await _api.patch('/me', {
         // A name the server would refuse must not hold back the rest.
-        if (s.avatar.startsWith('asset:') || s.avatar.startsWith('url:')) 'avatar': s.avatar,
+        if (s.avatar.startsWith('asset:') || s.avatar.startsWith('url:'))
+          'avatar': s.avatar,
         'tableSkin': s.tableSkin,
       });
       state = SessionState(user: r['user'] as Map<String, dynamic>);
@@ -428,36 +491,56 @@ class SessionNotifier extends Notifier<SessionState> {
 
   Future<List<Map<String, dynamic>>> onlinePlayers() async {
     await ensureSignedIn();
-    return ((await _api.get('/challenge/online'))['players'] as List).cast<Map<String, dynamic>>();
+    return ((await _api.get('/challenge/online'))['players'] as List)
+        .cast<Map<String, dynamic>>();
   }
 
-  Future<Map<String, dynamic>> sendChallenge(int toUserId, String game, int? level) async {
+  Future<Map<String, dynamic>> sendChallenge(
+    int toUserId,
+    String game,
+    int? level,
+  ) async {
     await ensureSignedIn();
-    return _api.post('/challenge/send', {'toUserId': toUserId, 'game': game, 'level': ?level});
+    return _api.post('/challenge/send', {
+      'toUserId': toUserId,
+      'game': game,
+      'level': ?level,
+    });
   }
 
   /// {incoming:[...], outgoing:[...]}
   Future<Map<String, dynamic>> challengeInbox() async {
-    if (ref.read(settingsProvider).authToken.isEmpty) return const {'incoming': [], 'outgoing': []};
-    if (!await tryRestoreExistingSession()) return const {'incoming': [], 'outgoing': []};
+    if (ref.read(settingsProvider).authToken.isEmpty)
+      return const {'incoming': [], 'outgoing': []};
+    if (!await tryRestoreExistingSession())
+      return const {'incoming': [], 'outgoing': []};
     return _api.get('/challenge/inbox');
   }
 
-  Future<Map<String, dynamic>> acceptChallenge(int id) async => (await _api.post('/challenge/$id/accept'))['room'] as Map<String, dynamic>;
+  Future<Map<String, dynamic>> acceptChallenge(int id) async =>
+      (await _api.post('/challenge/$id/accept'))['room']
+          as Map<String, dynamic>;
   Future<void> declineChallenge(int id) => _api.post('/challenge/$id/decline');
   Future<void> cancelChallenge(int id) => _api.post('/challenge/$id/cancel');
 
   /// Practice vs bots: experience only, no Pico coin.
   Future<void> reportBotMatch(AppGame game, {required bool won}) async {
-    final r = await _api.post('/matches/bot', {'game': game.apiName, 'won': won});
+    final r = await _api.post('/matches/bot', {
+      'game': game.apiName,
+      'won': won,
+    });
     _adopt(r['user'] as Map<String, dynamic>);
   }
 }
 
-final sessionProvider = NotifierProvider<SessionNotifier, SessionState>(SessionNotifier.new);
+final sessionProvider = NotifierProvider<SessionNotifier, SessionState>(
+  SessionNotifier.new,
+);
 
 /// Looked up whenever the home screen is shown; errors (offline) count as none.
-final activeMatchProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((ref) async {
+final activeMatchProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((
+  ref,
+) async {
   if (!Env.hasBackend) return null;
   try {
     return await ref.read(sessionProvider.notifier).activeMatch();
