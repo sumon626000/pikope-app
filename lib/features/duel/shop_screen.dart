@@ -15,6 +15,7 @@ import 'coin_transfer_tab.dart';
 import 'coin_tutorial_video.dart';
 import 'shop_tab_insets.dart';
 import 'zini_pay_checkout.dart';
+import '../start/auth_prompt.dart';
 
 /// Shop-only accents (UI); logic unchanged.
 abstract final class _ShopUi {
@@ -242,6 +243,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
       await _buyFreePack(pack);
       return;
     }
+
+    if (!await requireRegisteredAccount(context, ref)) return;
+    if (!mounted) return;
 
     if (cfg.autoEnabled) {
       await openZiniPayDeposit(context, ref, config: cfg, bdt: pack.coins, packId: pack.id);
@@ -780,6 +784,8 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
 
   Future<void> _submit() async {
     final t = ref.read(stringsProvider);
+    if (!await requireRegisteredAccount(context, ref)) return;
+    if (!mounted) return;
     final cfg = widget.config;
     final redeemable = ref.read(sessionProvider).redeemableCoins;
     if (!cfg.enabled) {

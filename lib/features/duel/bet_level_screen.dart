@@ -20,6 +20,7 @@ import '../../l10n/strings.dart';
 import '../online/session.dart';
 import '../../data/api_client.dart';
 import 'not_enough_balance.dart';
+import '../start/auth_prompt.dart';
 
 /// Pick what to play for: a row of tables, cheapest to richest, that scrolls
 /// sideways with the chosen one large in the middle.
@@ -80,7 +81,11 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
     if (mounted) ref.read(lobbyProvider.notifier).refresh();
   }
 
-  void _play(BetLevel level) {
+  Future<void> _play(BetLevel level) async {
+    if (level.buyIn > 0) {
+      if (!await requireRegisteredAccount(context, ref)) return;
+      if (!mounted) return;
+    }
     final coins = ref.read(settingsProvider).coins;
     if (coins < level.buyIn) {
       promptNotEnoughBalance(context, need: level.buyIn, have: coins);
@@ -88,17 +93,19 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
     }
     final target = widget.challengeTarget;
     if (target != null) {
-      _sendChallenge(target, level);
+      await _sendChallenge(target, level);
       return;
     }
     if (widget.friendsRoom) {
-      _open(OnlineLobbyScreen.stakedPrivate(gameKey: widget.mode.apiName, level: level));
+      await _open(OnlineLobbyScreen.stakedPrivate(gameKey: widget.mode.apiName, level: level));
       return;
     }
-    _open(MatchmakingScreen(mode: widget.mode, level: level));
+    await _open(MatchmakingScreen(mode: widget.mode, level: level));
   }
 
   Future<void> _sendChallenge(ChallengeTarget target, BetLevel level) async {
+    if (!await requireRegisteredAccount(context, ref)) return;
+    if (!mounted) return;
     try {
       final ch = await ref.read(sessionProvider.notifier).sendChallenge(target.userId, widget.mode.apiName, level.level);
       requestChallengeInboxPoll();
@@ -275,7 +282,14 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
                 const SizedBox(width: 19),
                 NavTile(icon: Icons.leaderboard_rounded, label: t.navRankings, onTap: () => _open(const LeaderboardScreen())),
                 const SizedBox(width: 19),
-                NavTile(icon: Icons.storefront_rounded, label: t.navShop, onTap: () => _open(const ShopScreen())),
+                NavTile(
+                  icon: Icons.storefront_rounded,
+                  label: t.navShop,
+                  onTap: () async {
+                    if (!await requireRegisteredAccount(context, ref)) return;
+                    if (mounted) await _open(const ShopScreen());
+                  },
+                ),
                 const SizedBox(width: 19),
                 NavTile(icon: Icons.reply_rounded, label: t.navBack, onTap: () => Navigator.of(context).pop()),
               ],

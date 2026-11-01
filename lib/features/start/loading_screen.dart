@@ -11,7 +11,6 @@ import '../../core/duel_ui.dart';
 import '../../core/env.dart';
 import '../online/online_screens.dart';
 import '../online/session.dart';
-import 'login_screen.dart';
 import 'start_route.dart';
 import '../../l10n/strings.dart';
 
@@ -48,29 +47,27 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
         const AssetImage(PicoCoin.asset),
       ];
       final audio = ref.read(audioProvider);
+      unawaited(_restoreSession());
       final work = Future.wait<void>([
         for (final image in images)
           precacheImage(image, context).catchError((_) {}),
-        _restoreSession(),
       ]);
       unawaited(audio.warmUp().then((_) => audio.playMenuMusic()).catchError((_) {}));
       await Future.wait<void>([work, Future<void>.delayed(_minimum)]);
     } catch (_) {
-      // Never leave a blank screen — fall back to sign-in.
+      // Still open home — guest/session restores in background.
     }
     if (!mounted) return;
-    final settings = ref.read(settingsProvider);
-    final toHome = Env.isDemo || Env.hasBackend || settings.onboarded || settings.authToken.isNotEmpty;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder<void>(
-        pageBuilder: (_, _, _) => toHome ? homeScreenFor() : const LoginScreen(),
+        pageBuilder: (_, _, _) => homeScreenFor(),
         transitionsBuilder: (_, animation, _, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 250),
       ),
     );
     // Browser F5: same account token in storage → auto rejoin seated match.
-    if (kIsWeb && toHome) {
+    if (kIsWeb) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(resumeActiveOnlineMatch(ref));
       });
