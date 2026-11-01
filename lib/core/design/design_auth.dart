@@ -17,6 +17,16 @@ abstract final class DesignAuth {
   static const loginPanelPadding = EdgeInsets.fromLTRB(48, 40, 48, 36);
   static const loginPanelRadius = 32.0;
 
+  /// [SettingsScreen] on [DuelPage] — centered column, panel grid, footer actions.
+  static const settingsContentMaxWidth = 1340.0;
+  static const settingsPanelMinHeight = 108.0;
+  static const settingsPanelGap = 12.0;
+  static const settingsSectionGap = 14.0;
+  static const settingsActionHeight = 50.0;
+  static const settingsActionFontSize = 14.0;
+  static const settingsActionColumnsWide = 3;
+  static const settingsActionColumnsPhone = 2;
+
   static const overlayScrim = Color(0xB3000000);
   static const dialogChooserWidth = 460.0;
   static const dialogPracticeWidth = 520.0;
@@ -27,7 +37,11 @@ abstract final class DesignAuth {
   static const fieldFillLobby = Color(0xFF0E1430);
   static const fieldFillLogin = Color(0xFF16161B);
 
-  static InputDecoration fieldDecoration(String label, {IconData? icon, bool dense = false}) {
+  static InputDecoration fieldDecoration(
+    String label, {
+    IconData? icon,
+    bool dense = false,
+  }) {
     final radius = BorderRadius.circular(DesignRadii.md);
     final border = OutlineInputBorder(
       borderRadius: radius,
@@ -40,14 +54,21 @@ abstract final class DesignAuth {
         fontSize: dense ? 14 : 26,
         color: DesignColors.appTextDim,
       ),
-      prefixIcon: icon == null ? null : Icon(icon, color: DesignColors.appTextDim, size: dense ? 22 : 36),
+      prefixIcon: icon == null
+          ? null
+          : Icon(icon, color: DesignColors.appTextDim, size: dense ? 22 : 36),
       filled: true,
       fillColor: dense ? fieldFillLobby : fieldFillLogin,
       counterText: '',
-      contentPadding: EdgeInsets.symmetric(horizontal: dense ? 12 : 22, vertical: dense ? 12 : 26),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: dense ? 12 : 22,
+        vertical: dense ? 12 : 26,
+      ),
       border: border,
       enabledBorder: border,
-      focusedBorder: border.copyWith(borderSide: const BorderSide(color: DesignColors.appActive, width: 2)),
+      focusedBorder: border.copyWith(
+        borderSide: const BorderSide(color: DesignColors.appActive, width: 2),
+      ),
     );
   }
 }
@@ -84,7 +105,11 @@ class DesignPromptDialog extends StatelessWidget {
           children: [
             icon,
             const SizedBox(height: DesignSpacing.x2),
-            Text(title, textAlign: TextAlign.center, style: AppText.label(18, weight: FontWeight.w900)),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: AppText.label(18, weight: FontWeight.w900),
+            ),
             const SizedBox(height: DesignSpacing.x2),
             Text(
               body,
@@ -96,7 +121,9 @@ class DesignPromptDialog extends StatelessWidget {
                 color: DesignColors.silver,
               ),
             ),
-            SizedBox(height: actions.length == 1 ? DesignSpacing.x4 : DesignSpacing.x5),
+            SizedBox(
+              height: actions.length == 1 ? DesignSpacing.x4 : DesignSpacing.x5,
+            ),
             if (actions.length == 1)
               actions.first
             else

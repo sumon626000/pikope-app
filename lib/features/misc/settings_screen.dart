@@ -50,7 +50,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _loadReferral() async {
     try {
-      if (!await ref.read(sessionProvider.notifier).tryRestoreExistingSession()) return;
+      if (!await ref.read(sessionProvider.notifier).tryRestoreExistingSession())
+        return;
       final info = await ref.read(apiProvider)!.get('/referral');
       if (mounted) setState(() => _referral = info);
     } catch (_) {
@@ -65,8 +66,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _inviteError = null;
     });
     try {
-      if (!await ref.read(sessionProvider.notifier).tryRestoreExistingSession()) return;
-      await ref.read(apiProvider)!.post('/referral/apply', {'code': _invite.text.trim()});
+      if (!await ref.read(sessionProvider.notifier).tryRestoreExistingSession())
+        return;
+      await ref.read(apiProvider)!.post('/referral/apply', {
+        'code': _invite.text.trim(),
+      });
       final info = await ref.read(apiProvider)!.get('/referral');
       if (mounted) setState(() => _referral = info);
     } on ApiException catch (e) {
@@ -93,15 +97,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         title: t.logoutConfirmTitle,
         body: t.logoutConfirmBody,
         actions: [
-          DesignCompactButton(label: t.cancel, onPressed: () => Navigator.of(ctx).pop(false)),
-          DesignCompactButton(label: t.logout, color: DuelColors.red, onPressed: () => Navigator.of(ctx).pop(true)),
+          DesignCompactButton(
+            label: t.cancel,
+            onPressed: () => Navigator.of(ctx).pop(false),
+          ),
+          DesignCompactButton(
+            label: t.logout,
+            color: DuelColors.red,
+            onPressed: () => Navigator.of(ctx).pop(true),
+          ),
         ],
       ),
     );
     if (ok != true || !mounted) return;
     final navigator = Navigator.of(context);
     await ref.read(sessionProvider.notifier).logout();
-    navigator.pushAndRemoveUntil(MaterialPageRoute<void>(builder: (_) => const LoadingScreen()), (_) => false);
+    navigator.pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const LoadingScreen()),
+      (_) => false,
+    );
   }
 
   Future<void> _loadSupport() async {
@@ -120,13 +134,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _openSupport(String url) async {
     final t = ref.read(stringsProvider);
     final uri = Uri.tryParse(url);
-    if (uri == null || !(uri.isScheme('https') || uri.isScheme('http')) || uri.host.isEmpty) {
-      showDuelMessage(context, title: t.sectionSupport, body: t.supportLinkMissing, icon: Icons.link_off_rounded);
+    if (uri == null ||
+        !(uri.isScheme('https') || uri.isScheme('http')) ||
+        uri.host.isEmpty) {
+      showDuelMessage(
+        context,
+        title: t.sectionSupport,
+        body: t.supportLinkMissing,
+        icon: Icons.link_off_rounded,
+      );
       return;
     }
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!opened && mounted) {
-      showDuelMessage(context, title: t.sectionSupport, body: url, icon: Icons.open_in_new_rounded);
+      showDuelMessage(
+        context,
+        title: t.sectionSupport,
+        body: url,
+        icon: Icons.open_in_new_rounded,
+      );
     }
   }
 
@@ -134,23 +160,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final t = ref.read(stringsProvider);
     final name = _name.text.trim();
     if (!RegExp(r'^[A-Za-z0-9_]{3,16}$').hasMatch(name)) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.nicknameRulesError)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(t.nicknameRulesError)));
       return;
     }
     if (!Env.hasBackend) {
       ref.read(settingsProvider.notifier).update((s) => s.copyWith(name: name));
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.nameSaved)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(t.nameSaved)));
       return;
     }
     setState(() => _savingName = true);
     try {
       await ref.read(sessionProvider.notifier).saveDisplayName(name);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.nameSaved)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(t.nameSaved)));
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.maybeApi(e.message))));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(t.maybeApi(e.message))));
       }
     } finally {
       if (mounted) setState(() => _savingName = false);
@@ -163,18 +197,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ref.read(sessionProvider.notifier).pushProfile();
   }
 
-  Widget _settingsPanel(String label, Widget control, {double minHeight = 96}) {
+  Widget _settingsPanel(String label, Widget control, {double? minHeight}) {
     return Container(
       width: double.infinity,
-      constraints: BoxConstraints(minHeight: minHeight),
-      padding: const EdgeInsets.fromLTRB(DesignSpacing.x4, DesignSpacing.x3, DesignSpacing.x4, DesignSpacing.x3),
+      constraints: BoxConstraints(
+        minHeight: minHeight ?? DesignAuth.settingsPanelMinHeight,
+      ),
+      padding: const EdgeInsets.fromLTRB(
+        DesignSpacing.x4,
+        DesignSpacing.x3,
+        DesignSpacing.x4,
+        DesignSpacing.x3,
+      ),
       decoration: duelPanel(radius: DesignRadii.md, rim: DuelColors.rim),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(label, style: AppText.label(13, color: DuelColors.dim, weight: FontWeight.w800)),
-          const SizedBox(height: 10),
+          Text(
+            label,
+            style: AppText.label(
+              14,
+              color: DuelColors.dim,
+              weight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: DesignSpacing.x2),
           control,
         ],
       ),
@@ -193,47 +241,76 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             decoration: BoxDecoration(
               color: DuelColors.gold,
               borderRadius: BorderRadius.circular(2),
-              boxShadow: [BoxShadow(color: DuelColors.gold.withValues(alpha: 0.45), blurRadius: 8)],
+              boxShadow: [
+                BoxShadow(
+                  color: DuelColors.gold.withValues(alpha: 0.45),
+                  blurRadius: 8,
+                ),
+              ],
             ),
           ),
-          Text(title, style: AppText.label(15, color: DuelColors.gold, weight: FontWeight.w900)),
+          Text(
+            title,
+            style: AppText.label(
+              15,
+              color: DuelColors.gold,
+              weight: FontWeight.w900,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _challengeChip(String label, bool value, ValueChanged<bool> onChanged) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: value ? AppColors.active.withValues(alpha: 0.12) : AppColors.backgroundAlt.withValues(alpha: 0.45),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: value ? AppColors.active : AppColors.frame, width: value ? 1.5 : 1),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppText.label(11, weight: FontWeight.w800, color: value ? AppColors.gold : AppColors.text),
-              ),
-            ),
-            Transform.scale(
-              scale: 0.78,
-              child: Switch.adaptive(
-                value: value,
-                activeTrackColor: AppColors.gold.withValues(alpha: 0.45),
-                activeThumbColor: AppColors.gold,
-                onChanged: onChanged,
-              ),
-            ),
-          ],
+  Widget _challengeChip(
+    String label,
+    bool value,
+    ValueChanged<bool> onChanged, {
+    bool stacked = false,
+  }) {
+    final chip = Container(
+      width: stacked ? double.infinity : null,
+      padding: const EdgeInsets.symmetric(
+        horizontal: DesignSpacing.x2,
+        vertical: DesignSpacing.x2,
+      ),
+      decoration: BoxDecoration(
+        color: value
+            ? AppColors.active.withValues(alpha: 0.12)
+            : AppColors.backgroundAlt.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(DesignRadii.sm),
+        border: Border.all(
+          color: value ? AppColors.active : AppColors.frame,
+          width: value ? 1.5 : 1,
         ),
       ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.label(
+                13,
+                weight: FontWeight.w800,
+                color: value ? AppColors.gold : AppColors.text,
+              ),
+            ),
+          ),
+          Transform.scale(
+            scale: 0.88,
+            child: Switch.adaptive(
+              value: value,
+              activeTrackColor: AppColors.gold.withValues(alpha: 0.45),
+              activeThumbColor: AppColors.gold,
+              onChanged: onChanged,
+            ),
+          ),
+        ],
+      ),
     );
+    return stacked ? chip : Expanded(child: chip);
   }
 
   Future<void> _setChallengeFamily(ChallengeFamily family, bool on) async {
@@ -251,14 +328,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (!Env.hasBackend) return;
     final s = ref.read(settingsProvider);
     try {
-      if (!await ref.read(sessionProvider.notifier).tryRestoreExistingSession()) return;
+      if (!await ref.read(sessionProvider.notifier).tryRestoreExistingSession())
+        return;
       final r = await ref.read(apiProvider)!.patch('/me', {
         'challengesEnabled': s.challengesEnabled,
         'challengePoolEnabled': s.challengePoolEnabled,
         'challengeLudoEnabled': s.challengeLudoEnabled,
         'challengeCarromEnabled': s.challengeCarromEnabled,
       });
-      ref.read(sessionProvider.notifier).adopt(r['user'] as Map<String, dynamic>);
+      ref
+          .read(sessionProvider.notifier)
+          .adopt(r['user'] as Map<String, dynamic>);
     } on ApiException {
       // Local preference still applies for popups on this device.
     }
@@ -270,19 +350,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final cloudinary = ref.read(cloudinaryProvider);
     try {
-      final file = await ImagePicker()
-          .pickImage(source: ImageSource.gallery, maxWidth: 512, maxHeight: 512, imageQuality: 85);
+      final file = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
       if (file == null) return;
       setState(() => _uploading = true);
       final bytes = await file.readAsBytes();
       if (Env.hasBackend) {
         await ref.read(sessionProvider.notifier).uploadAvatar(bytes, file.name);
       } else {
-        final asset = await cloudinary.uploadImage(bytes, filename: file.name, subfolder: 'avatars');
+        final asset = await cloudinary.uploadImage(
+          bytes,
+          filename: file.name,
+          subfolder: 'avatars',
+        );
         _update((s) => s.copyWith(avatar: 'cld:${asset.publicId}'));
       }
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(ref.read(stringsProvider).uploadFailed(e))));
+      messenger.showSnackBar(
+        SnackBar(content: Text(ref.read(stringsProvider).uploadFailed(e))),
+      );
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -297,10 +387,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(t.uploadPhoto, style: AppText.label(13, color: DuelColors.dim, weight: FontWeight.w800)),
+          Text(
+            t.uploadPhoto,
+            style: AppText.label(
+              13,
+              color: DuelColors.dim,
+              weight: FontWeight.w800,
+            ),
+          ),
           const SizedBox(height: 10),
           SizedBox(
-            height: 52,
+            height: 56,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: DemoData.avatars.length + 1,
@@ -310,9 +407,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   return GameButton(
                     label: _uploading ? '…' : t.uploadPhoto,
                     icon: Icons.cloud_upload_rounded,
-                    height: 44,
-                    width: 120,
-                    fontSize: 12,
+                    height: 48,
+                    width: 128,
+                    fontSize: 13,
                     color: DuelColors.blue,
                     onPressed: canUpload && !_uploading ? _uploadAvatar : null,
                   );
@@ -331,7 +428,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         color: selected ? DuelColors.green : DuelColors.rim,
                         width: selected ? 2.5 : 1.5,
                       ),
-                      boxShadow: selected ? [BoxShadow(color: DuelColors.green.withValues(alpha: 0.35), blurRadius: 10)] : null,
+                      boxShadow: selected
+                          ? [
+                              BoxShadow(
+                                color: DuelColors.green.withValues(alpha: 0.35),
+                                blurRadius: 10,
+                              ),
+                            ]
+                          : null,
                     ),
                     child: ClipOval(child: AvatarImage(a, size: 44)),
                   ),
@@ -341,10 +445,124 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           if (!canUpload) ...[
             const SizedBox(height: 6),
-            Text(t.uploadNeedsServer, style: AppText.label(11, color: DuelColors.dim)),
+            Text(
+              t.uploadNeedsServer,
+              style: AppText.label(11, color: DuelColors.dim),
+            ),
           ],
         ],
       ),
+    );
+  }
+
+  Widget _settingsActionButton({
+    required String label,
+    required VoidCallback onPressed,
+    IconData? icon,
+    Color? color,
+  }) {
+    return GameButton(
+      label: label,
+      icon: icon,
+      height: DesignAuth.settingsActionHeight,
+      width: double.infinity,
+      fontSize: DesignAuth.settingsActionFontSize,
+      color: color ?? DuelColors.blue,
+      onPressed: onPressed,
+    );
+  }
+
+  Widget _actionButtonGrid(
+    BuildContext context, {
+    required String facebook,
+    required String telegram,
+  }) {
+    final t = ref.watch(stringsProvider);
+    final phone = DesignBreakpoints.phoneLike(context);
+    final cols = phone
+        ? DesignAuth.settingsActionColumnsPhone
+        : DesignAuth.settingsActionColumnsWide;
+    const gap = DesignAuth.settingsPanelGap;
+    final items = <Widget>[
+      _settingsActionButton(
+        label: t.facebookSupport,
+        icon: Icons.facebook_rounded,
+        color: const Color(0xFF1877F2),
+        onPressed: () => _openSupport(facebook),
+      ),
+      _settingsActionButton(
+        label: t.telegramSupport,
+        icon: Icons.send_rounded,
+        color: const Color(0xFF229ED9),
+        onPressed: () => _openSupport(telegram),
+      ),
+      _settingsActionButton(
+        label: t.privacy,
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const LegalScreen(doc: LegalDoc.privacy),
+          ),
+        ),
+      ),
+      _settingsActionButton(
+        label: t.terms,
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const LegalScreen(doc: LegalDoc.terms),
+          ),
+        ),
+      ),
+      _settingsActionButton(
+        label: t.conditions,
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const LegalScreen(doc: LegalDoc.conditions),
+          ),
+        ),
+      ),
+      _settingsActionButton(
+        label: t.logout,
+        icon: Icons.logout_rounded,
+        color: DuelColors.red,
+        onPressed: _logout,
+      ),
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final cellW = (w - gap * (cols - 1)) / cols;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final btn in items) SizedBox(width: cellW, child: btn),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _prefPanelRow({
+    required bool stackVertical,
+    required List<Widget> panels,
+  }) {
+    if (stackVertical) {
+      return Column(
+        children: [
+          for (var i = 0; i < panels.length; i++) ...[
+            if (i > 0) const SizedBox(height: DesignAuth.settingsPanelGap),
+            panels[i],
+          ],
+        ],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: panels[0]),
+        const SizedBox(width: DesignAuth.settingsPanelGap),
+        Expanded(child: panels[1]),
+      ],
     );
   }
 
@@ -360,7 +578,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Row(
             children: [
               Expanded(
-                child: Text('${referral['code']}', style: AppText.label(28, weight: FontWeight.w900)),
+                child: Text(
+                  '${referral['code']}',
+                  style: AppText.label(28, weight: FontWeight.w900),
+                ),
               ),
               GameButton(
                 label: t.copy,
@@ -368,18 +589,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 width: 88,
                 fontSize: 13,
                 color: DuelColors.blue,
-                onPressed: () => Clipboard.setData(ClipboardData(text: referral['code'] as String)),
+                onPressed: () => Clipboard.setData(
+                  ClipboardData(text: referral['code'] as String),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 6),
-          Text(t.invitedCount(referral['invited'] as int), style: AppText.label(12, weight: FontWeight.w800)),
+          Text(
+            t.invitedCount(referral['invited'] as int),
+            style: AppText.label(12, weight: FontWeight.w800),
+          ),
           Text(
             '${t.referralEarn(referral['percent'] as int)} · ${t.referralTotals('${referral['earnedToday']}', '${referral['earnedMonth']}', '${referral['earned']}')}',
             style: AppText.label(11, color: DuelColors.dim),
           ),
           const SizedBox(height: 8),
-          Text(t.playerIdHint, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppText.label(12, color: DuelColors.silver)),
+          Text(
+            t.playerIdHint,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: AppText.label(12, color: DuelColors.silver),
+          ),
           if (referral['referredBy'] == null) ...[
             const SizedBox(height: 10),
             Row(
@@ -397,7 +628,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       counterText: '',
                       filled: true,
                       fillColor: DesignAuth.fieldFillLobby,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                     ),
                   ),
                 ),
@@ -414,7 +648,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             if (_inviteError != null)
               Padding(
                 padding: const EdgeInsets.only(top: 6),
-                child: Text(_inviteError!, style: AppText.label(11, color: DuelColors.red)),
+                child: Text(
+                  _inviteError!,
+                  style: AppText.label(11, color: DuelColors.red),
+                ),
               ),
           ],
         ],
@@ -432,202 +669,216 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final canUpload = Env.hasBackend || ref.watch(cloudinaryProvider).canUpload;
     final referral = _referral;
 
+    final phoneLayout = DesignBreakpoints.phoneLike(context);
+    final stackPrefs = phoneLayout;
+
     return DuelPage(
       title: t.settingsTitle,
       expanded: true,
       sideBack: true,
-      contentTop: 168,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final wide = constraints.maxWidth >= 720;
-          return SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.only(bottom: 12),
+      contentTop: DesignSecondaryPage.bodyTopExpanded,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: DesignSpacing.x3),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: DesignAuth.settingsContentMaxWidth,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (wide)
+                if (!phoneLayout && Env.hasBackend && referral != null)
                   IntrinsicHeight(
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Expanded(flex: 3, child: _profileColumn(s, session, t, canRename, next)),
-                        if (Env.hasBackend && referral != null) ...[
-                          const SizedBox(width: 12),
-                          Expanded(flex: 2, child: _referralCard(referral)),
-                        ],
+                        Expanded(
+                          flex: 11,
+                          child: _profileColumn(s, session, t, canRename, next),
+                        ),
+                        const SizedBox(width: DesignAuth.settingsPanelGap),
+                        Expanded(flex: 9, child: _referralCard(referral)),
                       ],
                     ),
                   )
                 else ...[
                   _profileColumn(s, session, t, canRename, next),
                   if (Env.hasBackend && referral != null) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: DesignAuth.settingsPanelGap),
                     _referralCard(referral),
                   ],
                 ],
-                const SizedBox(height: 12),
+                const SizedBox(height: DesignAuth.settingsSectionGap),
                 _avatarStrip(s, canUpload),
-                const SizedBox(height: 14),
+                const SizedBox(height: DesignAuth.settingsSectionGap),
                 _sectionTitle(t.settingsPrefsBlock),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _settingsPanel(
-                        t.language,
-                        ChoiceRow<String>(
-                          options: {'en': t.languageEnglish, 'bn': t.languageBangla},
-                          value: s.languageCode == 'bn' ? 'bn' : 'en',
-                          onChanged: (v) => ref.read(settingsProvider.notifier).update((st) => st.copyWith(languageCode: v)),
-                        ),
+                _prefPanelRow(
+                  stackVertical: stackPrefs,
+                  panels: [
+                    _settingsPanel(
+                      t.language,
+                      ChoiceRow<String>(
+                        dense: phoneLayout,
+                        options: {
+                          'en': t.languageEnglish,
+                          'bn': t.languageBangla,
+                        },
+                        value: s.languageCode == 'bn' ? 'bn' : 'en',
+                        onChanged: (v) => ref
+                            .read(settingsProvider.notifier)
+                            .update((st) => st.copyWith(languageCode: v)),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _settingsPanel(
-                        t.sound,
-                        ChoiceRow<bool>(
-                          options: {true: t.on, false: t.off},
-                          value: s.soundOn,
-                          onChanged: (v) => _update((st) => st.copyWith(soundOn: v)),
-                        ),
+                    _settingsPanel(
+                      t.sound,
+                      ChoiceRow<bool>(
+                        dense: phoneLayout,
+                        options: {true: t.on, false: t.off},
+                        value: s.soundOn,
+                        onChanged: (v) =>
+                            _update((st) => st.copyWith(soundOn: v)),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _settingsPanel(
-                        t.sectionShotClock,
-                        ChoiceRow<int>(
-                          options: {20: t.secLabel(20), 30: t.secLabel(30), 45: t.secLabel(45), 60: t.secLabel(60)},
-                          value: s.shotSeconds,
-                          onChanged: (v) => _update((st) => st.copyWith(shotSeconds: v)),
-                        ),
-                        minHeight: 108,
+                const SizedBox(height: DesignAuth.settingsPanelGap),
+                _prefPanelRow(
+                  stackVertical: stackPrefs,
+                  panels: [
+                    _settingsPanel(
+                      t.sectionShotClock,
+                      minHeight: phoneLayout
+                          ? 116
+                          : DesignAuth.settingsPanelMinHeight,
+                      ChoiceRow<int>(
+                        dense: true,
+                        options: {
+                          20: t.secLabel(20),
+                          30: t.secLabel(30),
+                          45: t.secLabel(45),
+                          60: t.secLabel(60),
+                        },
+                        value: s.shotSeconds,
+                        onChanged: (v) =>
+                            _update((st) => st.copyWith(shotSeconds: v)),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _settingsPanel(
-                        t.sectionBot,
-                        ChoiceRow<int>(
-                          options: {0: t.botEasy, 1: t.botNormal, 2: t.botHard},
-                          value: s.botLevel,
-                          onChanged: (v) => _update((st) => st.copyWith(botLevel: v)),
-                        ),
+                    _settingsPanel(
+                      t.sectionBot,
+                      ChoiceRow<int>(
+                        dense: phoneLayout,
+                        options: {0: t.botEasy, 1: t.botNormal, 2: t.botHard},
+                        value: s.botLevel,
+                        onChanged: (v) =>
+                            _update((st) => st.copyWith(botLevel: v)),
                       ),
                     ),
                   ],
                 ),
                 if (Env.hasBackend) ...[
-                  const SizedBox(height: 14),
+                  const SizedBox(height: DesignAuth.settingsSectionGap),
                   _sectionTitle(t.sectionChallenges),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: duelPanel(radius: 16),
-                    child: Row(
-                      children: [
-                        _challengeChip(t.challengeReceivePool, s.challengePoolEnabled, (v) => _setChallengeFamily(ChallengeFamily.pool, v)),
-                        const SizedBox(width: 8),
-                        _challengeChip(t.challengeReceiveLudo, s.challengeLudoEnabled, (v) => _setChallengeFamily(ChallengeFamily.ludo, v)),
-                        const SizedBox(width: 8),
-                        _challengeChip(t.challengeReceiveCarrom, s.challengeCarromEnabled, (v) => _setChallengeFamily(ChallengeFamily.carrom, v)),
-                      ],
-                    ),
+                    padding: const EdgeInsets.all(DesignSpacing.x3),
+                    decoration: duelPanel(radius: DesignRadii.md),
+                    child: phoneLayout
+                        ? Column(
+                            children: [
+                              _challengeChip(
+                                t.challengeReceivePool,
+                                s.challengePoolEnabled,
+                                (v) => _setChallengeFamily(
+                                  ChallengeFamily.pool,
+                                  v,
+                                ),
+                                stacked: true,
+                              ),
+                              const SizedBox(
+                                height: DesignAuth.settingsPanelGap,
+                              ),
+                              _challengeChip(
+                                t.challengeReceiveLudo,
+                                s.challengeLudoEnabled,
+                                (v) => _setChallengeFamily(
+                                  ChallengeFamily.ludo,
+                                  v,
+                                ),
+                                stacked: true,
+                              ),
+                              const SizedBox(
+                                height: DesignAuth.settingsPanelGap,
+                              ),
+                              _challengeChip(
+                                t.challengeReceiveCarrom,
+                                s.challengeCarromEnabled,
+                                (v) => _setChallengeFamily(
+                                  ChallengeFamily.carrom,
+                                  v,
+                                ),
+                                stacked: true,
+                              ),
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              _challengeChip(
+                                t.challengeReceivePool,
+                                s.challengePoolEnabled,
+                                (v) => _setChallengeFamily(
+                                  ChallengeFamily.pool,
+                                  v,
+                                ),
+                              ),
+                              const SizedBox(
+                                width: DesignAuth.settingsPanelGap,
+                              ),
+                              _challengeChip(
+                                t.challengeReceiveLudo,
+                                s.challengeLudoEnabled,
+                                (v) => _setChallengeFamily(
+                                  ChallengeFamily.ludo,
+                                  v,
+                                ),
+                              ),
+                              const SizedBox(
+                                width: DesignAuth.settingsPanelGap,
+                              ),
+                              _challengeChip(
+                                t.challengeReceiveCarrom,
+                                s.challengeCarromEnabled,
+                                (v) => _setChallengeFamily(
+                                  ChallengeFamily.carrom,
+                                  v,
+                                ),
+                              ),
+                            ],
+                          ),
                   ),
                 ],
-                const SizedBox(height: 14),
+                const SizedBox(height: DesignAuth.settingsSectionGap),
                 _sectionTitle('${t.sectionSupport} · ${t.sectionLegal}'),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    SizedBox(
-                      width: wide ? (constraints.maxWidth - 24) / 3 : constraints.maxWidth,
-                      child: GameButton(
-                        label: t.facebookSupport,
-                        icon: Icons.facebook_rounded,
-                        height: 44,
-                        width: double.infinity,
-                        fontSize: 13,
-                        color: const Color(0xFF1877F2),
-                        onPressed: () => _openSupport(_facebook),
-                      ),
-                    ),
-                    SizedBox(
-                      width: wide ? (constraints.maxWidth - 24) / 3 : constraints.maxWidth,
-                      child: GameButton(
-                        label: t.telegramSupport,
-                        icon: Icons.send_rounded,
-                        height: 44,
-                        width: double.infinity,
-                        fontSize: 13,
-                        color: const Color(0xFF229ED9),
-                        onPressed: () => _openSupport(_telegram),
-                      ),
-                    ),
-                    SizedBox(
-                      width: wide ? (constraints.maxWidth - 16) / 4 : (constraints.maxWidth - 8) / 2,
-                      child: GameButton(
-                        label: t.privacy,
-                        height: 44,
-                        width: double.infinity,
-                        fontSize: 12,
-                        color: DuelColors.blue,
-                        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LegalScreen(doc: LegalDoc.privacy))),
-                      ),
-                    ),
-                    SizedBox(
-                      width: wide ? (constraints.maxWidth - 16) / 4 : (constraints.maxWidth - 8) / 2,
-                      child: GameButton(
-                        label: t.terms,
-                        height: 44,
-                        width: double.infinity,
-                        fontSize: 12,
-                        color: DuelColors.blue,
-                        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LegalScreen(doc: LegalDoc.terms))),
-                      ),
-                    ),
-                    SizedBox(
-                      width: wide ? (constraints.maxWidth - 16) / 4 : constraints.maxWidth,
-                      child: GameButton(
-                        label: t.conditions,
-                        height: 44,
-                        width: double.infinity,
-                        fontSize: 12,
-                        color: DuelColors.blue,
-                        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LegalScreen(doc: LegalDoc.conditions))),
-                      ),
-                    ),
-                    SizedBox(
-                      width: wide ? (constraints.maxWidth - 16) / 4 : constraints.maxWidth,
-                      child: GameButton(
-                        label: t.logout,
-                        icon: Icons.logout_rounded,
-                        height: 44,
-                        width: double.infinity,
-                        fontSize: 13,
-                        color: DuelColors.red,
-                        onPressed: _logout,
-                      ),
-                    ),
-                  ],
+                _actionButtonGrid(
+                  context,
+                  facebook: _facebook,
+                  telegram: _telegram,
                 ),
               ],
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
 
-  Widget _profileColumn(AppSettings s, SessionState session, AppStrings t, bool canRename, DateTime? next) {
+  Widget _profileColumn(
+    AppSettings s,
+    SessionState session,
+    AppStrings t,
+    bool canRename,
+    DateTime? next,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -648,7 +899,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xFFFFE08A), Color(0xFF5C8BFF), Color(0xFFFF3B4E)],
+                    colors: [
+                      Color(0xFFFFE08A),
+                      Color(0xFF5C8BFF),
+                      Color(0xFFFF3B4E),
+                    ],
                   ),
                 ),
                 child: ClipOval(child: AvatarImage(s.avatar, size: 70)),
@@ -658,15 +913,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(session.phone ?? t.noPhoneYet, style: AppText.label(17, weight: FontWeight.w900)),
+                    Text(
+                      session.phone ?? t.noPhoneYet,
+                      style: AppText.label(17, weight: FontWeight.w900),
+                    ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Text(t.winsGames(s.wins, s.games), style: AppText.label(12, color: DuelColors.dim)),
+                        Text(
+                          t.winsGames(s.wins, s.games),
+                          style: AppText.label(12, color: DuelColors.dim),
+                        ),
                         const SizedBox(width: 14),
                         const PikoCoinIcon(size: 18),
                         const SizedBox(width: 6),
-                        Text(formatPicoCoins(s.coins), style: AppText.label(14, color: DuelColors.gold, weight: FontWeight.w800)),
+                        Text(
+                          formatPicoCoins(s.coins),
+                          style: AppText.label(
+                            14,
+                            color: DuelColors.gold,
+                            weight: FontWeight.w800,
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -683,14 +951,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   controller: _name,
                   enabled: canRename && !_savingName,
                   maxLength: 16,
-                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp('[A-Za-z0-9_]'))],
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp('[A-Za-z0-9_]')),
+                  ],
                   style: AppText.label(16),
-                  decoration: InputDecoration(
-                    labelText: t.nicknameLabel,
-                    counterText: '',
-                    filled: true,
-                    fillColor: const Color(0xFF0E1430),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  decoration: DesignAuth.fieldDecoration(
+                    t.nicknameLabel,
+                    dense: true,
                   ),
                 ),
               ),
