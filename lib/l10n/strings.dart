@@ -760,8 +760,8 @@ class AppStrings {
         'ভালো ভিউতে খেলতে ফোন ঘোরান বা উইন্ডো চওড়া করুন',
       );
   String get webPortraitPlayHint => _t(
-        'Portrait works — rotate to landscape for the best view.',
-        'Portrait-এ খেলা যায় — landscape-এ ভালো দেখাবে।',
+        'Rotate your phone to landscape to play. PikoPe is built for sideways view.',
+        'খেলতে ফোন landscape-এ ঘোরান। PikoPe sideways ভিউয়ের জন্য বানানো।',
       );
   String get webFullscreenTap => _t(
         'Tap for full screen (hide browser bar)',

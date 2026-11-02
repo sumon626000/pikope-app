@@ -6,7 +6,7 @@
     "background_color": "#070A18",
     "theme_color": "#070A18",
     "description": "Pool, Ludo and Carrom — same admin and account as the Android app.",
-    "orientation": "any",
+    "orientation": "landscape",
     "prefer_related_applications": false,
     "icons": [
         {

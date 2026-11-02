@@ -44,9 +44,11 @@ Future<void> bootstrapPikope({required bool mobileShell}) async {
   } catch (_) {
     // Notifications optional — must not block launch.
   }
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
   if (mobileShell) {
-    await SystemChrome.setPreferredOrientations(
-        [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
   if (const bool.fromEnvironment('PERF_LOG')) _logFrameTimings();
