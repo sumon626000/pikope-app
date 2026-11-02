@@ -76,26 +76,8 @@ class _WebLandscapeGateState extends ConsumerState<WebLandscapeGate> with Widget
   Widget build(BuildContext context) {
     if (!kIsWeb) return widget.child;
 
-    final phone = _phoneLikeViewport(context);
     final landscape = _landscapeViewport(context);
     final t = ref.watch(stringsProvider);
-    final inFullscreen = webIsDomFullscreen();
-
-    Widget content = widget.child;
-
-    if (phone) {
-      content = Listener(
-        behavior: HitTestBehavior.translucent,
-        onPointerDown: (_) {
-          if (landscape && !inFullscreen && !_fullscreenHintDismissed) {
-            _onUserGestureForFullscreen();
-          }
-        },
-        child: content,
-      );
-    }
-
-    if (!phone) return content;
 
     if (!landscape) {
       return ColoredBox(
@@ -127,6 +109,25 @@ class _WebLandscapeGateState extends ConsumerState<WebLandscapeGate> with Widget
         ),
       );
     }
+
+    final phone = _phoneLikeViewport(context);
+    final inFullscreen = webIsDomFullscreen();
+
+    Widget content = widget.child;
+
+    if (phone) {
+      content = Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: (_) {
+          if (!inFullscreen && !_fullscreenHintDismissed) {
+            _onUserGestureForFullscreen();
+          }
+        },
+        child: content,
+      );
+    }
+
+    if (!phone) return content;
 
     return Stack(
       fit: StackFit.expand,

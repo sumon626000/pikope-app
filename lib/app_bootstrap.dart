@@ -12,6 +12,7 @@ import 'core/perf.dart';
 import 'core/push_service.dart';
 import 'core/root_nav.dart';
 import 'core/web_apk_promo.dart';
+import 'core/web_fullscreen.dart';
 import 'core/web_play.dart';
 import 'data/app_storage.dart';
 import 'features/duel/challenge_inbox_host.dart';
@@ -62,6 +63,11 @@ Future<void> bootstrapPikope({required bool mobileShell}) async {
     overrides: [storageProvider.overrideWithValue(storage)],
     child: const BilliardPokerApp(),
   ));
+  if (kIsWeb) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      webTryLockLandscape();
+    });
+  }
 }
 
 class BilliardPokerApp extends ConsumerWidget {

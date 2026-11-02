@@ -225,13 +225,17 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
                           ),
                         ),
                       ),
-                      if (widget.driver != null)
+                      if (widget.driver != null) ...[
                         OpponentDisconnectBanner(
                           presence: _c.opponentPresence,
                           serverOffsetMs: _c.serverOffsetMs,
                           opponentName: widget.config.seats[1 - widget.driver!.seat].name,
                         ),
-                        ConnectionStatusLayer(offline: widget.driver!.offline, onLeave: () => Navigator.of(context).pop()),
+                        ConnectionStatusLayer(
+                          offline: widget.driver!.offline,
+                          onLeave: () => Navigator.of(context).pop(),
+                        ),
+                      ],
                       if (_c.over) _result(),
                       if (_paused)
                         PauseOverlay(
