@@ -292,6 +292,11 @@ class AppStrings {
   String get statMatches => _t('MATCHES', 'ম্যাচ');
   String get statWins => _t('WINS', 'জয়');
   String get statWinRate => _t('WIN RATE', 'জয়ের হার');
+  String get statLosses => _t('LOSSES', 'হার');
+  String get sectionMatchStats => _t('MATCH STATS', 'ম্যাচ পরিসংখ্যান');
+  String get statTodayPlayed => _t('TODAY PLAYED', 'আজ খেলা');
+  String get statTodayWins => _t('TODAY WINS', 'আজ জয়');
+  String get statTodayLosses => _t('TODAY LOSSES', 'আজ হার');
   String get openCoinWallet => _t('OPEN COIN WALLET  >', 'কয়েন ওয়ালেট  >');
 
   // —— Shop (extra) ——

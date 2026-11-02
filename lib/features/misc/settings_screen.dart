@@ -18,6 +18,7 @@ import '../duel/duel_chrome.dart';
 import '../start/loading_screen.dart';
 import 'legal_screen.dart';
 import 'page_frame.dart';
+import 'profile_match_stats.dart';
 import '../../l10n/strings.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -37,6 +38,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String? _inviteError;
   String _facebook = '';
   String _telegram = '';
+  Map<String, dynamic>? _matchStats;
+  bool _statsLoading = false;
 
   @override
   void initState() {
@@ -45,7 +48,54 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (Env.hasBackend) {
       _loadReferral();
       _loadSupport();
+      _loadMatchStats();
     }
+  }
+
+  Future<void> _loadMatchStats() async {
+    setState(() => _statsLoading = true);
+    try {
+      final session = ref.read(sessionProvider.notifier);
+      if (await session.tryRestoreExistingSession()) {
+        final raw = await session.playerMatchStats();
+        if (mounted) setState(() => _matchStats = raw);
+      }
+    } catch (_) {
+      // Fall back to local wins/games on profile card.
+    } finally {
+      if (mounted) setState(() => _statsLoading = false);
+    }
+  }
+
+  ({int games, int wins, int losses, int winRate, int todayPlayed, int todayWins, int todayLosses})
+      _resolvedStats(AppSettings s) {
+    final m = _matchStats;
+    if (m != null) {
+      final games = (m['totalGames'] as num?)?.toInt() ?? s.games;
+      final wins = (m['totalWins'] as num?)?.toInt() ?? s.wins;
+      final losses = (m['totalLosses'] as num?)?.toInt() ?? (games - wins).clamp(0, games);
+      return (
+        games: games,
+        wins: wins,
+        losses: losses,
+        winRate: (m['winRate'] as num?)?.toInt() ?? (games == 0 ? 0 : (100 * wins / games).round()),
+        todayPlayed: (m['todayPlayed'] as num?)?.toInt() ?? 0,
+        todayWins: (m['todayWins'] as num?)?.toInt() ?? 0,
+        todayLosses: (m['todayLosses'] as num?)?.toInt() ?? 0,
+      );
+    }
+    final games = s.games;
+    final wins = s.wins;
+    final losses = (games - wins).clamp(0, games);
+    return (
+      games: games,
+      wins: wins,
+      losses: losses,
+      winRate: games == 0 ? 0 : (100 * wins / games).round(),
+      todayPlayed: 0,
+      todayWins: 0,
+      todayLosses: 0,
+    );
   }
 
   Future<void> _loadReferral() async {
@@ -941,6 +991,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 14),
+          Builder(
+            builder: (context) {
+              final st = _resolvedStats(s);
+              return ProfileMatchStatsPanel(
+                totalGames: st.games,
+                totalWins: st.wins,
+                totalLosses: st.losses,
+                winRate: st.winRate,
+                todayPlayed: st.todayPlayed,
+                todayWins: st.todayWins,
+                todayLosses: st.todayLosses,
+                loading: Env.hasBackend && _statsLoading && _matchStats == null,
+              );
+            },
           ),
           const SizedBox(height: 14),
           Row(

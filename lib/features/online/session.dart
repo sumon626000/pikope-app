@@ -168,6 +168,12 @@ class SessionNotifier extends Notifier<SessionState> {
         .cast<Map<String, dynamic>>();
   }
 
+  /// Lifetime + today match counts for profile / settings.
+  Future<Map<String, dynamic>> playerMatchStats() async {
+    await ensureSignedIn();
+    return Map<String, dynamic>.from(await _api.get('/me/stats') as Map);
+  }
+
   /// Matches, wallet movements, shop and redeem — newest first.
   Future<List<Map<String, dynamic>>> activity({int limit = 60}) async {
     await ensureSignedIn();

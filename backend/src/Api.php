@@ -89,6 +89,7 @@ final class Api
             $method === 'POST' && $path === '/me/cue' => self::cue(false),
             $method === 'POST' && $path === '/boards/select' => self::selectBoard(),
             $method === 'GET' && $path === '/me/history' => self::history(),
+            $method === 'GET' && $path === '/me/stats' => self::matchStats(),
             $method === 'GET' && $path === '/me/activity' => self::activity(),
             $method === 'GET' && $path === '/me/redeems' => self::redeems(),
             $method === 'POST' && $path === '/redeem/request' => self::throttled('redeem', 10, 3600, self::redeemRequest(...)),
@@ -485,6 +486,34 @@ final class Api
             'game' => $r['game'], 'mode' => $r['mode'], 'won' => (bool) $r['won'], 'coins' => (int) $r['coins_delta'],
             'stake' => (int) $r['stake'], 'prize' => (int) $r['prize'], 'at' => (int) $r['at'] * 1000,
         ], $rows)];
+    }
+
+    /** Lifetime and today match counts for profile / settings. */
+    private static function matchStats(): array
+    {
+        $uid = (int) Auth::user()['id'];
+        $u = Db::one('SELECT wins, games FROM users WHERE id = ?', [$uid]);
+        $wins = (int) ($u['wins'] ?? 0);
+        $games = (int) ($u['games'] ?? 0);
+        $losses = max(0, $games - $wins);
+        $today = Db::one(
+            'SELECT COUNT(*) AS played, COALESCE(SUM(won), 0) AS wins
+             FROM match_results
+             WHERE user_id = ? AND created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY',
+            [$uid]
+        );
+        $todayPlayed = (int) ($today['played'] ?? 0);
+        $todayWins = (int) ($today['wins'] ?? 0);
+        $todayLosses = max(0, $todayPlayed - $todayWins);
+        return [
+            'totalGames' => $games,
+            'totalWins' => $wins,
+            'totalLosses' => $losses,
+            'winRate' => $games > 0 ? (int) round(100 * $wins / $games) : 0,
+            'todayPlayed' => $todayPlayed,
+            'todayWins' => $todayWins,
+            'todayLosses' => $todayLosses,
+        ];
     }
 
     /** Matches, coin movements, shop buys and redeem requests — newest first. */
