@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -111,23 +113,34 @@ Future<bool> _showLoginRequiredPrompt(BuildContext context, WidgetRef ref) async
   return go == true;
 }
 
-/// Compact sign-in overlay (scaled [showDuelDialog], not full-screen form).
+/// Compact sign-in overlay in real viewport pixels (scrolls on short landscape).
 Future<bool> showLoginAuthPopup(BuildContext context, WidgetRef ref) async {
   if (_loginPopupOpen) return false;
   _loginPopupOpen = true;
   try {
-    final ok = await showDuelDialog<bool>(
-      context,
+    final ok = await showDialog<bool>(
+      context: context,
+      useRootNavigator: true,
       barrierColor: DesignAuth.overlayScrim,
       barrierDismissible: true,
       builder: (dialogContext) {
+        final mq = MediaQuery.of(dialogContext);
+        final inset = mq.padding;
+        final maxW = mq.size.width - inset.horizontal - 20;
+        final maxH = mq.size.height - inset.vertical - 12;
         return Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          insetPadding: EdgeInsets.fromLTRB(
+            10 + inset.left,
+            6 + inset.top,
+            10 + inset.right,
+            6 + inset.bottom,
+          ),
+          alignment: Alignment.center,
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              maxWidth: DesignAuth.loginPopupMaxWidth,
-              maxHeight: MediaQuery.sizeOf(dialogContext).height * 0.75,
+              maxWidth: math.min(DesignAuth.loginPopupMaxWidth, maxW),
+              maxHeight: maxH,
             ),
             child: Stack(
               clipBehavior: Clip.none,
@@ -135,6 +148,7 @@ Future<bool> showLoginAuthPopup(BuildContext context, WidgetRef ref) async {
                 Material(
                   color: Colors.transparent,
                   child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(top: 4, right: 32),
                     child: LoginAuthPanel(
                       compact: true,
                       onAuthenticated: () =>
@@ -143,8 +157,8 @@ Future<bool> showLoginAuthPopup(BuildContext context, WidgetRef ref) async {
                   ),
                 ),
                 Positioned(
-                  top: 4,
-                  right: 4,
+                  top: 0,
+                  right: 0,
                   child: Material(
                     color: Colors.black54,
                     shape: const CircleBorder(),

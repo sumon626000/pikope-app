@@ -132,9 +132,7 @@ class _LoginAuthPanelState extends ConsumerState<LoginAuthPanel> {
     final titleSize = compact ? 22.0 : 46.0;
     final subSize = compact ? 14.0 : 20.0;
     final inputSize = compact ? 18.0 : 32.0;
-    final btnH = compact
-        ? DesignAuth.settingsActionHeight
-        : DesignLayout.formButtonHeight + 28;
+    final btnH = compact ? 44.0 : DesignLayout.formButtonHeight + 28;
     final btnFont = compact ? 16.0 : 28.0;
     final errFont = compact ? 15.0 : 22.0;
     final padding = compact
@@ -169,7 +167,7 @@ class _LoginAuthPanelState extends ConsumerState<LoginAuthPanel> {
               color: AppColors.textDim,
             ),
           ),
-          SizedBox(height: compact ? DesignSpacing.x4 : DesignSpacing.x6),
+          SizedBox(height: compact ? DesignSpacing.x3 : DesignSpacing.x6),
           BdPhoneField(
             controller: _phone,
             style: TextStyle(
@@ -208,7 +206,7 @@ class _LoginAuthPanelState extends ConsumerState<LoginAuthPanel> {
               ),
             ),
           ],
-          SizedBox(height: compact ? DesignSpacing.x4 : DesignSpacing.x6),
+          SizedBox(height: compact ? DesignSpacing.x3 : DesignSpacing.x6),
           Row(
             children: [
               Expanded(
@@ -267,7 +265,7 @@ class _LoginAuthPanelState extends ConsumerState<LoginAuthPanel> {
                 ),
               ),
             ),
-          SizedBox(height: compact ? DesignSpacing.x3 : DesignSpacing.x4),
+          SizedBox(height: compact ? DesignSpacing.x2 : DesignSpacing.x4),
           Wrap(
             spacing: 8,
             runSpacing: 4,

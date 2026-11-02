@@ -22,7 +22,7 @@ abstract final class DesignAuth {
 
   /// Home-overlay sign-in form (step 2 after prompt; not full [LoginScreen] route).
   static const loginPopupMaxWidth = 460.0;
-  static const loginPopupPadding = EdgeInsets.fromLTRB(24, 20, 24, 20);
+  static const loginPopupPadding = EdgeInsets.fromLTRB(18, 14, 18, 14);
   static const loginPopupRadius = 24.0;
 
   /// [SettingsScreen] on [DuelPage] — centered column, panel grid, footer actions.
