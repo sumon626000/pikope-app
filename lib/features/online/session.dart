@@ -259,20 +259,62 @@ class SessionNotifier extends Notifier<SessionState> {
   }) async {
     await ensureSignedIn();
     final code = gameId.replaceAll(RegExp(r'\D'), '');
-    final r = await _api.post('/transfer/send', {
-      'gameId': code,
-      'amount': amount,
-    });
-    final user = r['user'];
+    Map<String, dynamic> r;
+    try {
+      r = await _api.post('/transfer/send', {
+        'gameId': code,
+        'amount': amount,
+      });
+    } on ApiException catch (e) {
+      if (e.status >= 500 || e.code == 'server_error') {
+        final recovered = await _recoverRecentCoinTransfer(code, amount);
+        if (recovered != null) {
+          return recovered;
+        }
+      }
+      rethrow;
+    }
+    _applyTransferResponseUser(r['user']);
+    return _transferMap(r['transfer']);
+  }
+
+  void _applyTransferResponseUser(Object? user) {
     if (user is Map<String, dynamic>) {
       _adopt(user);
     } else if (user is Map) {
       _adopt(Map<String, dynamic>.from(user));
     }
-    final transfer = r['transfer'];
+  }
+
+  Map<String, dynamic> _transferMap(Object? transfer) {
     if (transfer is Map<String, dynamic>) return transfer;
     if (transfer is Map) return Map<String, dynamic>.from(transfer);
     return const {};
+  }
+
+  /// When the server moved coins but the HTTP reply failed, confirm via history.
+  Future<Map<String, dynamic>?> _recoverRecentCoinTransfer(
+    String toGameId,
+    int amount,
+  ) async {
+    try {
+      await refresh();
+      final hist = await _api.get('/transfer/history?limit=8');
+      final list = (hist['transfers'] as List?) ?? const [];
+      final cutoff = DateTime.now().millisecondsSinceEpoch - 120000;
+      for (final raw in list) {
+        if (raw is! Map) continue;
+        final t = Map<String, dynamic>.from(raw);
+        if (t['direction'] != 'sent') continue;
+        if (_asInt(t['amount'], -1) != amount) continue;
+        if (t['toGameId']?.toString() != toGameId) continue;
+        if (_asInt(t['createdAt'], 0) < cutoff) continue;
+        return t;
+      }
+    } catch (_) {
+      // Ignore — caller shows the original error.
+    }
+    return null;
   }
 
   /// Operator announcements to show in the inbox (and home banner).

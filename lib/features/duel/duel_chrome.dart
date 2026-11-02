@@ -169,10 +169,7 @@ class DuelTopBar extends ConsumerWidget {
           CurrencyPill(
             icon: const PikoCoinIcon(size: 76),
             amount: lobbyDisplayCoins(ref),
-            onAdd: () async {
-              if (!await requireRegisteredAccount(context, ref)) return;
-              if (context.mounted) pushScreen(context, const ShopScreen());
-            },
+            onAdd: () => pushScreen(context, const ShopScreen()),
           ),
           if (showShortcuts) ...[
             const SizedBox(width: 44),
@@ -182,8 +179,9 @@ class DuelTopBar extends ConsumerWidget {
             }),
             _TopIcon(Icons.notifications_rounded, () async {
               if (!await requireRegisteredAccount(context, ref)) return;
-              if (context.mounted)
+              if (context.mounted) {
                 pushScreen(context, const NotificationsScreen());
+              }
             }, badge: unread),
             _TopIcon(
               Icons.settings_rounded,

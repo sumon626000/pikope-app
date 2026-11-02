@@ -148,12 +148,7 @@ final class CoinTransfer
             return ['row' => $row, 'fromId' => $fromId, 'toId' => $toId, 'toName' => $toName, 'transferId' => $id];
         });
 
-        $fromRow = Db::one('SELECT * FROM users WHERE id = ?', [$fromId]);
-        if ($fromRow === null) {
-            throw new ApiError(500, 'server_error', 'Account not found after transfer.');
-        }
-        $from = Auth::publicUser($fromRow);
-        $senderName = (string) ($from['displayName'] ?? 'Player');
+        $senderName = (string) ($payload['row']['from_name'] ?? 'Player');
         try {
             Push::notifyUser(
                 $payload['toId'],
@@ -175,10 +170,46 @@ final class CoinTransfer
             error_log('[transfer] push failed: ' . $e->getMessage());
         }
 
+        try {
+            $transfer = self::publicRow($payload['row'], $fromId);
+        } catch (\Throwable $e) {
+            error_log('[transfer] publicRow failed: ' . $e->getMessage());
+            $transfer = [
+                'id' => (int) $payload['transferId'],
+                'amount' => $amount,
+                'fee' => $fee,
+                'received' => $amount,
+                'toName' => $payload['toName'],
+                'toGameId' => self::normalizeGameId($toGameId),
+                'direction' => 'sent',
+            ];
+        }
+
         return [
-            'transfer' => self::publicRow($payload['row'], $fromId),
-            'user' => $from,
+            'transfer' => $transfer,
+            'user' => self::senderSnapshot($fromId),
         ];
+    }
+
+    /** Wallet refresh for the sender; must not fail after coins have moved. */
+    private static function senderSnapshot(int $fromId): array
+    {
+        try {
+            $fromRow = Db::one('SELECT * FROM users WHERE id = ?', [$fromId]);
+            if ($fromRow === null) {
+                throw new \RuntimeException('Account missing after transfer');
+            }
+            return Auth::publicUser($fromRow);
+        } catch (\Throwable $e) {
+            error_log('[transfer] sender snapshot failed: ' . $e->getMessage());
+            $row = Db::one('SELECT id, display_name, coins, redeemable_coins FROM users WHERE id = ?', [$fromId]) ?? [];
+            return [
+                'id' => $fromId,
+                'displayName' => (string) ($row['display_name'] ?? 'Player'),
+                'coins' => (int) ($row['coins'] ?? 0),
+                'redeemableCoins' => (int) ($row['redeemable_coins'] ?? 0),
+            ];
+        }
     }
 
     /** @return list<array<string,mixed>> */

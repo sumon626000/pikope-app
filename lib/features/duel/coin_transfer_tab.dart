@@ -185,18 +185,23 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
         _amount.clear();
         setState(() {
           _profile = null;
+          _error = null;
           _success = t.transferSentBody(recipient, amount);
         });
-        ref.read(lobbyProvider.notifier).refresh();
       }
+      try {
+        await ref.read(lobbyProvider.notifier).refresh();
+      } catch (_) {}
       final dialogCtx = rootNavigatorKey.currentContext ?? (mounted ? context : null);
       if (dialogCtx != null && dialogCtx.mounted) {
-        await showDuelMessage(
-          dialogCtx,
-          title: t.transferSent,
-          body: t.transferSentBody(recipient, amount),
-          icon: Icons.check_circle_rounded,
-        );
+        try {
+          await showDuelMessage(
+            dialogCtx,
+            title: t.transferSent,
+            body: t.transferSentBody(recipient, amount),
+            icon: Icons.check_circle_rounded,
+          );
+        } catch (_) {}
       }
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = t.maybeApi(e.message));

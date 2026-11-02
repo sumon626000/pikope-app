@@ -307,10 +307,28 @@ final class Push
     private static function insertInbox(int $userId, string $kind, string $title, string $body, ?string $eventKey): void
     {
         self::ensureEventKeyColumn();
-        Db::run(
-            'INSERT INTO user_notifications (user_id, kind, title, body, event_key) VALUES (?, ?, ?, ?, ?)',
-            [$userId, $kind, $title, $body, $eventKey]
-        );
+        try {
+            Db::run(
+                'INSERT INTO user_notifications (user_id, kind, title, body, event_key) VALUES (?, ?, ?, ?, ?)',
+                [$userId, $kind, $title, $body, $eventKey]
+            );
+        } catch (\PDOException $e) {
+            // Duplicate event_key — notification already recorded; do not fail the API call.
+            if ($eventKey !== null && self::isDuplicateKey($e)) {
+                return;
+            }
+            throw $e;
+        }
+    }
+
+    private static function isDuplicateKey(\PDOException $e): bool
+    {
+        $code = (string) $e->getCode();
+        if ($code === '23000') {
+            return true;
+        }
+        $msg = $e->getMessage();
+        return str_contains($msg, 'Duplicate entry') || str_contains($msg, 'uq_notif_event');
     }
 
     private static function ensureEventKeyColumn(): void

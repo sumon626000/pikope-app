@@ -464,10 +464,7 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
             NavTile(
               icon: Icons.storefront_rounded,
               label: t.navShop,
-              onTap: () async {
-                if (!await requireRegisteredAccount(context, ref)) return;
-                if (mounted) await _open(const ShopScreen());
-              },
+              onTap: () => _open(const ShopScreen()),
             ),
             const SizedBox(width: DesignSpacing.navGap),
             NavTile(icon: Icons.leaderboard_rounded, label: t.navRankings, onTap: () => _open(const LeaderboardScreen())),

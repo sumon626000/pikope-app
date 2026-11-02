@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_state.dart';
+import '../../core/app_theme.dart';
 import '../../core/design/design.dart';
 import '../../core/duel_ui.dart';
+import '../../l10n/strings.dart';
 import '../duel/lobby_data.dart';
 import '../online/session.dart';
 import 'login_auth_panel.dart';
@@ -44,80 +46,123 @@ Future<bool> _restoreRegisteredIfSaved(WidgetRef ref) async {
   return hasRegisteredAccount(ref);
 }
 
-/// Dismissible sign-in overlay on the current screen (not [showDuelDialog] canvas — that read as a full auth page).
+/// Small lobby-style prompt (440px) — Cancel or continue to the compact sign-in form.
+Future<bool> _showLoginRequiredPrompt(BuildContext context, WidgetRef ref) async {
+  final t = ref.read(stringsProvider);
+  final go = await showDuelDialog<bool>(
+    context,
+    barrierColor: DesignAuth.overlayScrim,
+    barrierDismissible: true,
+    builder: (ctx) => Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: DesignAuth.loginPromptWidth,
+        padding: const EdgeInsets.all(22),
+        decoration: duelPanel(rim: DuelColors.gold),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.login_rounded, color: DuelColors.gold, size: 40),
+            const SizedBox(height: 10),
+            Text(
+              t.loginRequiredTitle,
+              textAlign: TextAlign.center,
+              style: AppText.label(18, weight: FontWeight.w900),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              t.loginRequiredBody,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'sans-serif',
+                fontSize: 14,
+                height: 1.4,
+                color: DuelColors.silver,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                DuelButton(
+                  label: t.cancel,
+                  width: 140,
+                  height: 42,
+                  fontSize: 15,
+                  color: DuelColors.blue,
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                ),
+                const SizedBox(width: 12),
+                DuelButton(
+                  label: t.signUpOrLogin,
+                  width: 220,
+                  height: 42,
+                  fontSize: 14,
+                  color: DuelColors.green,
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+  return go == true;
+}
+
+/// Compact sign-in overlay (scaled [showDuelDialog], not full-screen form).
 Future<bool> showLoginAuthPopup(BuildContext context, WidgetRef ref) async {
   if (_loginPopupOpen) return false;
   _loginPopupOpen = true;
   try {
-    final ok = await showGeneralDialog<bool>(
-      context: context,
-      useRootNavigator: true,
-      barrierDismissible: true,
-      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    final ok = await showDuelDialog<bool>(
+      context,
       barrierColor: DesignAuth.overlayScrim,
-      transitionDuration: const Duration(milliseconds: 220),
-      transitionBuilder: (context, animation, _, child) {
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutCubic,
-          reverseCurve: Curves.easeInCubic,
-        );
-        return FadeTransition(
-          opacity: curved,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.96, end: 1).animate(curved),
-            child: child,
-          ),
-        );
-      },
-      pageBuilder: (dialogContext, _, _) {
-        final maxH = MediaQuery.sizeOf(dialogContext).height * 0.88;
-        return SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: DesignAuth.loginPopupMaxWidth,
-                  maxHeight: maxH,
-                ),
-                child: Material(
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: DesignAuth.loginPopupMaxWidth,
+              maxHeight: MediaQuery.sizeOf(dialogContext).height * 0.75,
+            ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Material(
                   color: Colors.transparent,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      SingleChildScrollView(
-                        child: LoginAuthPanel(
-                          compact: true,
-                          onAuthenticated: () =>
-                              Navigator.of(dialogContext).pop(true),
-                        ),
-                      ),
-                      Positioned(
-                        top: 4,
-                        right: 4,
-                        child: Material(
-                          color: Colors.black54,
-                          shape: const CircleBorder(),
-                          clipBehavior: Clip.antiAlias,
-                          child: IconButton(
-                            tooltip: MaterialLocalizations.of(
-                              dialogContext,
-                            ).closeButtonTooltip,
-                            icon: const Icon(
-                              Icons.close_rounded,
-                              color: DuelColors.silver,
-                              size: 26,
-                            ),
-                            onPressed: () =>
-                                Navigator.of(dialogContext).pop(false),
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: SingleChildScrollView(
+                    child: LoginAuthPanel(
+                      compact: true,
+                      onAuthenticated: () =>
+                          Navigator.of(dialogContext).pop(true),
+                    ),
                   ),
                 ),
-              ),
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: Material(
+                    color: Colors.black54,
+                    shape: const CircleBorder(),
+                    clipBehavior: Clip.antiAlias,
+                    child: IconButton(
+                      tooltip: MaterialLocalizations.of(
+                        dialogContext,
+                      ).closeButtonTooltip,
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: DuelColors.silver,
+                        size: 24,
+                      ),
+                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -135,6 +180,8 @@ Future<bool> requireRegisteredAccount(
   WidgetRef ref,
 ) async {
   if (await _restoreRegisteredIfSaved(ref)) return true;
+  if (!context.mounted) return false;
+  if (!await _showLoginRequiredPrompt(context, ref)) return false;
   if (!context.mounted) return false;
   final ok = await showLoginAuthPopup(context, ref);
   if (ok && hasRegisteredAccount(ref)) {
