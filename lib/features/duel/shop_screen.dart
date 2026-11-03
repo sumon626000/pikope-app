@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
+import '../../core/design/design.dart';
 import '../../core/widgets.dart';
 import '../../core/audio_service.dart';
 import '../../core/duel_ui.dart';
@@ -13,6 +15,7 @@ import 'lobby_data.dart';
 import '../../l10n/strings.dart';
 import 'coin_transfer_tab.dart';
 import 'coin_tutorial_video.dart';
+import 'shop_phone_layout.dart';
 import 'shop_tab_insets.dart';
 import 'zini_pay_checkout.dart';
 import '../start/auth_prompt.dart';
@@ -32,6 +35,16 @@ abstract final class _ShopUi {
   static const ribbonEnd = Color(0xFFD40058);
   static const skyLine = Color(0xFF7DD3FC);
   static const tabGlow = Color(0xFF00D2FF);
+
+  /// BUY tab: six standard packs (100 … 5,000 BDT) — no 10,000 tier on the grid.
+  static List<CoinShopPack> packsForBuyTab(List<CoinShopPack> packs) {
+    final list = [
+      for (final p in packs)
+        if (p.coins > 0 && p.coins < 10000) p,
+    ]..sort((a, b) => a.coins.compareTo(b.coins));
+    if (list.length <= 6) return list;
+    return list.sublist(0, 6);
+  }
 
   static String? bestValuePackId(List<CoinShopPack> packs) {
     String? id;
@@ -68,8 +81,16 @@ abstract final class _ShopUi {
           clipBehavior: Clip.none,
           alignment: Alignment.center,
           children: [
-            Positioned(left: slot * 0.06, bottom: 0, child: PikoCoinIcon(size: icon * 0.78)),
-            Positioned(right: slot * 0.06, top: 0, child: PikoCoinIcon(size: icon * 0.92)),
+            Positioned(
+              left: slot * 0.06,
+              bottom: 0,
+              child: PikoCoinIcon(size: icon * 0.78),
+            ),
+            Positioned(
+              right: slot * 0.06,
+              top: 0,
+              child: PikoCoinIcon(size: icon * 0.92),
+            ),
           ],
         ),
       );
@@ -91,6 +112,7 @@ class _CoinPackGrid extends StatelessWidget {
     required this.bestId,
     required this.onBuy,
     this.maxCardHeight,
+    this.compact = false,
   });
 
   final List<CoinShopPack> packs;
@@ -98,8 +120,10 @@ class _CoinPackGrid extends StatelessWidget {
   final double layoutWidth;
   final String? bestId;
   final Future<void> Function(CoinShopPack) onBuy;
+
   /// When set (BUY tab), keeps two grid rows inside the visible tab viewport.
   final double? maxCardHeight;
+  final bool compact;
 
   static const gap = 10.0;
   static const _gap = gap;
@@ -113,29 +137,34 @@ class _CoinPackGrid extends StatelessWidget {
   static double _cellWidth(double layoutWidth, int cols) =>
       (layoutWidth - (cols - 1) * _gap) / cols;
 
-  static double cardHeightFor(double layoutWidth, int cols) {
+  static double cardHeightFor(
+    double layoutWidth,
+    int cols, {
+    bool compact = false,
+  }) {
     final cellW = _cellWidth(layoutWidth, cols);
+    if (compact) return (cellW * 0.46).clamp(72.0, 176.0);
     return (cellW * 0.64).clamp(158.0, 212.0);
   }
 
-  Widget _card(CoinShopPack pack, double cardH) {
-    return SizedBox(
-      height: cardH,
-      child: _CoinPackCard(
-        pack: pack,
-        isBestValue: bestId != null && pack.id == bestId,
-        onTap: () => onBuy(pack),
-      ),
+  Widget _card(CoinShopPack pack, double cardH, {bool stretch = false}) {
+    final card = _CoinPackCard(
+      pack: pack,
+      isBestValue: bestId != null && pack.id == bestId,
+      onTap: () => onBuy(pack),
     );
+    if (stretch) return card;
+    return SizedBox(height: cardH, child: card);
   }
 
-  Widget _rowCells(List<CoinShopPack> slice, double cardH) {
+  Widget _rowCells(List<CoinShopPack> slice, double cardH, {bool stretch = false}) {
+    final gapW = compact ? 6.0 : _gap;
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: stretch ? CrossAxisAlignment.stretch : CrossAxisAlignment.start,
       children: [
         for (var i = 0; i < slice.length; i++) ...[
-          if (i > 0) const SizedBox(width: _gap),
-          Expanded(child: _card(slice[i], cardH)),
+          if (i > 0) SizedBox(width: gapW),
+          Expanded(child: _card(slice[i], cardH, stretch: stretch)),
         ],
       ],
     );
@@ -144,9 +173,28 @@ class _CoinPackGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cols = columns;
-    var cardH = cardHeightFor(layoutWidth, cols);
+    var cardH = cardHeightFor(layoutWidth, cols, compact: compact);
     final cap = maxCardHeight;
-    if (cap != null && cap >= 140) cardH = cardH.clamp(140.0, cap);
+    if (cap != null) {
+      final minH = compact ? 68.0 : 140.0;
+      cardH = cardH.clamp(minH, cap);
+    }
+
+    final gapH = compact ? 6.0 : _gap;
+    if (compact && cols == 3 && packs.length == 6) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: _rowCells(packs.sublist(0, 3), cardH, stretch: true),
+          ),
+          SizedBox(height: gapH),
+          Expanded(
+            child: _rowCells(packs.sublist(3, 6), cardH, stretch: true),
+          ),
+        ],
+      );
+    }
 
     // Reference layout: four packs, then three (seven standard packs).
     if (cols >= 4 && packs.length >= 7) {
@@ -161,6 +209,25 @@ class _CoinPackGrid extends StatelessWidget {
     }
 
     if (cols >= 3) {
+      final rowSlices = <List<CoinShopPack>>[];
+      for (var i = 0; i < packs.length; i += cols) {
+        final end = (i + cols > packs.length) ? packs.length : i + cols;
+        rowSlices.add(packs.sublist(i, end));
+      }
+      final useFlex = compact && cap != null && rowSlices.length >= 2;
+      if (useFlex) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var r = 0; r < rowSlices.length; r++) ...[
+              if (r > 0) SizedBox(height: compact ? 6 : _gap),
+              Expanded(
+                child: _rowCells(rowSlices[r], cardH, stretch: true),
+              ),
+            ],
+          ],
+        );
+      }
       final rows = <Widget>[];
       for (var i = 0; i < packs.length; i += cols) {
         final end = (i + cols > packs.length) ? packs.length : i + cols;
@@ -170,7 +237,7 @@ class _CoinPackGrid extends StatelessWidget {
             Row(
               children: [
                 for (var j = 0; j < slice.length; j++) ...[
-                  if (j > 0) const SizedBox(width: _gap),
+                  if (j > 0) SizedBox(width: compact ? 6 : _gap),
                   Expanded(child: _card(slice[j], cardH)),
                 ],
               ],
@@ -179,7 +246,9 @@ class _CoinPackGrid extends StatelessWidget {
         } else {
           rows.add(_rowCells(slice, cardH));
         }
-        if (end < packs.length) rows.add(const SizedBox(height: _gap));
+        if (end < packs.length) {
+          rows.add(SizedBox(height: compact ? 6 : _gap));
+        }
       }
       return Column(mainAxisSize: MainAxisSize.min, children: rows);
     }
@@ -209,8 +278,13 @@ class ShopScreen extends ConsumerStatefulWidget {
   ConsumerState<ShopScreen> createState() => _ShopScreenState();
 }
 
-class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 4, vsync: this, initialIndex: widget.initialTab.clamp(0, 3));
+class _ShopScreenState extends ConsumerState<ShopScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabs = TabController(
+    length: 4,
+    vsync: this,
+    initialIndex: widget.initialTab.clamp(0, 3),
+  );
 
   @override
   void dispose() {
@@ -221,15 +295,24 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
   Future<void> _buyFreePack(CoinShopPack pack) async {
     final t = ref.read(stringsProvider);
     try {
-      final received = await ref.read(lobbyProvider.notifier).buyCoinPack(pack.id);
+      final received = await ref
+          .read(lobbyProvider.notifier)
+          .buyCoinPack(pack.id);
       if (!mounted) return;
-      showDuelMessage(context,
-          title: t.picoCoin,
-          body: t.youGetCoins(formatPicoCoins(received)),
-          icon: Icons.check_circle_rounded);
+      showDuelMessage(
+        context,
+        title: t.picoCoin,
+        body: t.youGetCoins(formatPicoCoins(received)),
+        icon: Icons.check_circle_rounded,
+      );
     } on ApiException catch (e) {
       if (mounted) {
-        showDuelMessage(context, title: t.picoCoin, body: t.maybeApi(e.message), icon: Icons.error_outline_rounded);
+        showDuelMessage(
+          context,
+          title: t.picoCoin,
+          body: t.maybeApi(e.message),
+          icon: Icons.error_outline_rounded,
+        );
       }
     }
   }
@@ -248,7 +331,13 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
     if (!mounted) return;
 
     if (cfg.autoEnabled) {
-      await openZiniPayDeposit(context, ref, config: cfg, bdt: pack.coins, packId: pack.id);
+      await openZiniPayDeposit(
+        context,
+        ref,
+        config: cfg,
+        bdt: pack.coins,
+        packId: pack.id,
+      );
       return;
     }
 
@@ -257,7 +346,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
         context: context,
         isScrollControlled: true,
         backgroundColor: const Color(0xFF141A2E),
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
         builder: (ctx) => Padding(
           padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
           child: _ManualDepositSheet(config: cfg, pack: pack),
@@ -268,8 +359,142 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
 
     final t = ref.read(stringsProvider);
     if (mounted) {
-      showDuelMessage(context, title: t.picoCoin, body: t.paymentUnavailable, icon: Icons.payment_rounded);
+      showDuelMessage(
+        context,
+        title: t.picoCoin,
+        body: t.paymentUnavailable,
+        icon: Icons.payment_rounded,
+      );
     }
+  }
+
+  Widget _shopTabBar(AppStrings t, {required bool phone}) {
+    final labelSize = phone ? 11.5 : 18.0;
+    final unselectedSize = phone ? 10.5 : 17.0;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: DuelColors.rim.withValues(alpha: 0.85)),
+        ),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            const Color(0xFF0E1433).withValues(alpha: phone ? 0.35 : 0.6),
+            Colors.transparent,
+          ],
+        ),
+      ),
+      child: TabBar(
+        controller: _tabs,
+        isScrollable: true,
+        tabAlignment: TabAlignment.start,
+        dividerColor: Colors.transparent,
+        indicatorSize: TabBarIndicatorSize.label,
+        indicator: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: _ShopUi.tabGlow, width: phone ? 2.5 : 3),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: _ShopUi.tabGlow.withValues(alpha: 0.4),
+              blurRadius: phone ? 10 : 14,
+              spreadRadius: -2,
+            ),
+          ],
+        ),
+        labelColor: Colors.white,
+        unselectedLabelColor: DuelColors.dim,
+        labelStyle: AppText.label(labelSize, weight: FontWeight.w900),
+        unselectedLabelStyle: AppText.label(
+          unselectedSize,
+          color: DuelColors.dim,
+          weight: FontWeight.w700,
+        ),
+        labelPadding: EdgeInsets.symmetric(
+          horizontal: phone ? 8 : 16,
+          vertical: phone ? 3 : 10,
+        ),
+        tabs: [
+          Tab(text: t.tabBuy),
+          Tab(text: t.tabTransfer),
+          Tab(text: t.tabRedeem),
+          Tab(text: t.tabHistory),
+        ],
+      ),
+    );
+  }
+
+  Widget _shopTabPanel(LobbyData data, {required bool phone}) {
+    final radius = phone ? 14.0 : 18.0;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: _ShopUi.cardBorderDim.withValues(alpha: 0.7)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF0A1024).withValues(alpha: 0.92),
+            const Color(0xFF141C40).withValues(alpha: 0.75),
+          ],
+        ),
+        boxShadow: phone
+            ? null
+            : [
+                BoxShadow(
+                  color: DuelColors.blue.withValues(alpha: 0.12),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(radius - 1),
+        child: TabBarView(
+          controller: _tabs,
+          children: [
+            _BuyTab(data: data, onBuy: _onPackTap),
+            CoinTransferTab(
+              config: data.coinTransfer,
+              tutorialUrl: data.coinTutorials.transfer,
+            ),
+            _RedeemTab(
+              config: data.redeem,
+              tutorialUrl: data.coinTutorials.redeem,
+            ),
+            const _ActivityTab(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _shopBody(
+    BuildContext context,
+    AsyncValue<LobbyData> lobby,
+    AppStrings t,
+    LobbyData? data, {
+    required bool phone,
+  }) {
+    if (data == null) {
+      return Center(
+        child: lobby.hasError
+            ? Text(
+                t.offlineServer,
+                style: AppText.label(phone ? 16 : 20, color: DuelColors.red),
+              )
+            : const CircularProgressIndicator(color: DuelColors.silver),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _shopTabBar(t, phone: phone),
+        SizedBox(height: phone ? 3 : 8),
+        Expanded(child: _shopTabPanel(data, phone: phone)),
+      ],
+    );
   }
 
   @override
@@ -278,6 +503,19 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
     final lobby = ref.watch(lobbyProvider);
     final data = lobby.valueOrNull;
     final global = data?.coinShop.globalDiscountPercent ?? 0;
+    final phone = DesignBreakpoints.phoneLike(context);
+    final coins = ref.watch(settingsProvider).coins;
+
+    final body = _shopBody(context, lobby, t, data, phone: phone);
+
+    if (phone) {
+      return _ShopPhoneShell(
+        title: t.picoCoin,
+        subtitle: t.shopSub(global),
+        balance: coins,
+        child: body,
+      );
+    }
 
     return DuelPage(
       title: t.picoCoin,
@@ -285,117 +523,46 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
       expanded: true,
       sideBack: true,
       contentTop: 198,
-      child: lobby.valueOrNull == null
-          ? Center(
-              child: lobby.hasError
-                  ? Text(t.offlineServer, style: AppText.label(20, color: DuelColors.red))
-                  : const CircularProgressIndicator(color: DuelColors.silver))
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(color: DuelColors.rim.withValues(alpha: 0.85)),
-                    ),
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        const Color(0xFF0E1433).withValues(alpha: 0.6),
-                        Colors.transparent,
-                      ],
-                    ),
-                  ),
-                  child: TabBar(
-                    controller: _tabs,
-                    isScrollable: true,
-                    tabAlignment: TabAlignment.start,
-                    dividerColor: Colors.transparent,
-                    indicatorSize: TabBarIndicatorSize.label,
-                    indicator: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(color: _ShopUi.tabGlow, width: 3),
-                      ),
-                      boxShadow: [
-                        BoxShadow(color: _ShopUi.tabGlow.withValues(alpha: 0.45), blurRadius: 14, spreadRadius: -2),
-                      ],
-                    ),
-                    labelColor: Colors.white,
-                    unselectedLabelColor: DuelColors.dim,
-                    labelStyle: AppText.label(18, weight: FontWeight.w900),
-                    unselectedLabelStyle: AppText.label(17, color: DuelColors.dim, weight: FontWeight.w700),
-                    labelPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    tabs: [
-                      Tab(text: t.tabBuy),
-                      Tab(text: t.tabTransfer),
-                      Tab(text: t.tabRedeem),
-                      Tab(text: t.tabHistory),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: _ShopUi.cardBorderDim.withValues(alpha: 0.7)),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          const Color(0xFF0A1024).withValues(alpha: 0.92),
-                          const Color(0xFF141C40).withValues(alpha: 0.75),
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: DuelColors.blue.withValues(alpha: 0.12),
-                          blurRadius: 24,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(17),
-                      child: TabBarView(
-                        controller: _tabs,
-                        children: [
-                          _BuyTab(data: data!, onBuy: _onPackTap),
-                          CoinTransferTab(config: data.coinTransfer, tutorialUrl: data.coinTutorials.transfer),
-                          _RedeemTab(config: data.redeem, tutorialUrl: data.coinTutorials.redeem),
-                          const _ActivityTab(),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+      child: body,
     );
   }
 }
 
 /// Scrollable tab body; outer TabBarView already provides the panel chrome.
 class _ShopTabScroll extends StatelessWidget {
-  const _ShopTabScroll({required this.child});
+  const _ShopTabScroll({
+    required this.child,
+    this.fitViewport = false,
+  });
 
   final Widget child;
+  final bool fitViewport;
 
   @override
   Widget build(BuildContext context) {
+    final phone = DesignBreakpoints.phoneLike(context);
     return LayoutBuilder(
       builder: (context, constraints) {
+        final content = SizedBox(width: double.infinity, child: child);
+        if (phone && fitViewport) {
+          return Padding(
+            padding: ShopTabInsets.scrollPhoneFit,
+            child: SizedBox(
+              height: constraints.maxHeight,
+              width: double.infinity,
+              child: content,
+            ),
+          );
+        }
         return SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: ShopTabInsets.scroll,
-          child: SizedBox(
-            width: double.infinity,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: child,
-            ),
-          ),
+          padding: ShopTabInsets.forViewport(context),
+          child: phone
+              ? content
+              : ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: content,
+                ),
         );
       },
     );
@@ -411,39 +578,96 @@ class _BuyTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
-    final packs = data.coinShop.packs;
+    final packs = _ShopUi.packsForBuyTab(data.coinShop.packs);
     final bestId = _ShopUi.bestValuePackId(packs);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cols = _CoinPackGrid.columnsForWidth(constraints.maxWidth);
+        final phone = ShopPhoneLayout.phone(context);
+        final cols = phone || packs.length == 6
+            ? 3
+            : _CoinPackGrid.columnsForWidth(constraints.maxWidth);
         final tutorials = data.coinTutorials;
-        const tutorialReserve = 82.0;
-        const scrollPad = 28.0;
-        final rowCount = cols >= 4 && packs.length >= 7 ? 2 : (packs.length + cols - 1) ~/ cols;
+        final hasTutorial = youtubeVideoId(tutorials.deposit) != null;
+        final tutorialReserve =
+            ShopPhoneLayout.tutorialBlockHeight(context, visible: hasTutorial);
+        final scrollPad = phone ? 20.0 : 28.0;
+        final gap = ShopPhoneLayout.gridGap(context);
+        final rowCount = packs.length == 6 && cols == 3
+            ? 2
+            : cols >= 4 && packs.length >= 7
+            ? 2
+            : (packs.length + cols - 1) ~/ cols;
         double? maxCardH;
-        if (rowCount >= 2 && constraints.maxHeight.isFinite) {
-          maxCardH = (constraints.maxHeight - tutorialReserve - scrollPad - (rowCount - 1) * _CoinPackGrid.gap) / rowCount;
+        if (rowCount >= 1 && constraints.maxHeight.isFinite) {
+          maxCardH = ShopPhoneLayout.cardHeightForRows(
+            viewportHeight: constraints.maxHeight,
+            rowCount: rowCount,
+            gap: gap,
+            reservedTop: tutorialReserve + scrollPad,
+            safety: phone ? 6 : 0,
+          );
+        }
+        final tutorial = CoinTutorialVideoFrame(
+          youtubeUrl: tutorials.deposit,
+          title: t.coinTutorialDepositTitle,
+          tapHint: t.coinTutorialTapPlay,
+          compact: phone,
+        );
+        if (packs.isEmpty) {
+          return _ShopTabScroll(
+            fitViewport: phone,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                tutorial,
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      t.noPacks,
+                      style: AppText.label(18, color: DuelColors.dim),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        if (phone) {
+          return _ShopTabScroll(
+            fitViewport: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                tutorial,
+                Expanded(
+                  child: _CoinPackGrid(
+                    packs: packs,
+                    columns: cols,
+                    layoutWidth: constraints.maxWidth,
+                    bestId: bestId,
+                    onBuy: onBuy,
+                    maxCardHeight: maxCardH,
+                    compact: true,
+                  ),
+                ),
+              ],
+            ),
+          );
         }
         return _ShopTabScroll(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              CoinTutorialVideoFrame(
-                youtubeUrl: tutorials.deposit,
-                title: t.coinTutorialDepositTitle,
-                tapHint: t.coinTutorialTapPlay,
+              tutorial,
+              _CoinPackGrid(
+                packs: packs,
+                columns: cols,
+                layoutWidth: constraints.maxWidth,
+                bestId: bestId,
+                onBuy: onBuy,
+                maxCardHeight: maxCardH,
+                compact: false,
               ),
-              if (packs.isEmpty)
-                Center(child: Text(t.noPacks, style: AppText.label(18, color: DuelColors.dim)))
-              else
-                _CoinPackGrid(
-                  packs: packs,
-                  columns: cols,
-                  layoutWidth: constraints.maxWidth,
-                  bestId: bestId,
-                  onBuy: onBuy,
-                  maxCardHeight: maxCardH,
-                ),
             ],
           ),
         );
@@ -460,7 +684,8 @@ class _ManualDepositSheet extends ConsumerStatefulWidget {
   final CoinShopPack pack;
 
   @override
-  ConsumerState<_ManualDepositSheet> createState() => _ManualDepositSheetState();
+  ConsumerState<_ManualDepositSheet> createState() =>
+      _ManualDepositSheetState();
 }
 
 class _ManualDepositSheetState extends ConsumerState<_ManualDepositSheet> {
@@ -493,7 +718,10 @@ class _ManualDepositSheetState extends ConsumerState<_ManualDepositSheet> {
     await Clipboard.setData(ClipboardData(text: number));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(t.copiedNumber(number), style: AppText.label(14)), duration: const Duration(seconds: 2)),
+        SnackBar(
+          content: Text(t.copiedNumber(number), style: AppText.label(14)),
+          duration: const Duration(seconds: 2),
+        ),
       );
     }
   }
@@ -519,7 +747,9 @@ class _ManualDepositSheetState extends ConsumerState<_ManualDepositSheet> {
       _error = null;
     });
     try {
-      await ref.read(sessionProvider.notifier).submitDeposit(
+      await ref
+          .read(sessionProvider.notifier)
+          .submitDeposit(
             bdt: bdt,
             provider: _provider,
             trxId: _trx.text.trim(),
@@ -528,10 +758,12 @@ class _ManualDepositSheetState extends ConsumerState<_ManualDepositSheet> {
       await ref.read(lobbyProvider.notifier).refresh();
       if (mounted) {
         Navigator.of(context).pop();
-        showDuelMessage(context,
-            title: t.requestSent,
-            body: t.depositPendingBody(formatPicoCoins(_coins)),
-            icon: Icons.check_circle_rounded);
+        showDuelMessage(
+          context,
+          title: t.requestSent,
+          body: t.depositPendingBody(formatPicoCoins(_coins)),
+          icon: Icons.check_circle_rounded,
+        );
       }
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = t.maybeApi(e.message));
@@ -547,20 +779,39 @@ class _ManualDepositSheetState extends ConsumerState<_ManualDepositSheet> {
     final input = AppText.label(22, color: Colors.white);
     return SafeArea(
       child: Padding(
-        padding: EdgeInsets.fromLTRB(20, 16, 20, 24 + MediaQuery.viewInsetsOf(context).bottom),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          16,
+          20,
+          24 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(t.addCoinTitle, style: AppText.label(28, color: DuelColors.gold, weight: FontWeight.w900)),
+              Text(
+                t.addCoinTitle,
+                style: AppText.label(
+                  28,
+                  color: DuelColors.gold,
+                  weight: FontWeight.w900,
+                ),
+              ),
               const SizedBox(height: 8),
               Text(
                 '${widget.pack.coins} BDT · ${t.youGetCoins(formatPicoCoins(_coins))}',
-                style: AppText.label(18, color: DuelColors.silver, weight: FontWeight.w800),
+                style: AppText.label(
+                  18,
+                  color: DuelColors.silver,
+                  weight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 12),
-              Text(t.addCoinSteps, style: AppText.label(16, color: DuelColors.dim)),
+              Text(
+                t.addCoinSteps,
+                style: AppText.label(16, color: DuelColors.dim),
+              ),
               const SizedBox(height: 16),
               for (final a in cfg.agents)
                 Padding(
@@ -571,8 +822,22 @@ class _ManualDepositSheetState extends ConsumerState<_ManualDepositSheet> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(a.label, style: AppText.label(16, color: DuelColors.silver, weight: FontWeight.w800)),
-                            Text(a.number, style: AppText.label(24, color: Colors.white, weight: FontWeight.w900)),
+                            Text(
+                              a.label,
+                              style: AppText.label(
+                                16,
+                                color: DuelColors.silver,
+                                weight: FontWeight.w800,
+                              ),
+                            ),
+                            Text(
+                              a.number,
+                              style: AppText.label(
+                                24,
+                                color: Colors.white,
+                                weight: FontWeight.w900,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -591,9 +856,14 @@ class _ManualDepositSheetState extends ConsumerState<_ManualDepositSheet> {
                 children: [
                   for (final a in cfg.agents)
                     ChoiceChip(
-                      label: Text(a.label, style: AppText.label(16, weight: FontWeight.w800)),
+                      label: Text(
+                        a.label,
+                        style: AppText.label(16, weight: FontWeight.w800),
+                      ),
                       selected: _provider == a.id,
-                      onSelected: _busy ? null : (_) => setState(() => _provider = a.id),
+                      onSelected: _busy
+                          ? null
+                          : (_) => setState(() => _provider = a.id),
                     ),
                 ],
               ),
@@ -642,32 +912,84 @@ class _ManualDepositSheetState extends ConsumerState<_ManualDepositSheet> {
 }
 
 class _RedeemBalanceCard extends StatelessWidget {
-  const _RedeemBalanceCard({required this.title, required this.amount, required this.accent});
+  const _RedeemBalanceCard({
+    required this.title,
+    required this.amount,
+    required this.accent,
+    this.compact = false,
+  });
 
   final String title;
   final String amount;
   final Color accent;
+  final bool compact;
+
+  Widget _amountLine({required double coinSize, required double fontSize}) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          PikoCoinIcon(size: coinSize),
+          SizedBox(width: compact ? 4 : 8),
+          Text(
+            amount,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppText.label(fontSize, color: accent, weight: FontWeight.w900),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 8 : 20,
+        vertical: compact ? 6 : 18,
+      ),
       decoration: BoxDecoration(
         color: const Color(0xFF0E1428),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(compact ? 10 : 16),
         border: Border.all(color: accent.withValues(alpha: 0.45)),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: AppText.label(16, color: DuelColors.dim, weight: FontWeight.w800),
+      child: compact
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.label(
+                    8.5,
+                    color: DuelColors.dim,
+                    weight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                _amountLine(coinSize: 15, fontSize: 16),
+              ],
+            )
+          : Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: AppText.label(
+                      16,
+                      color: DuelColors.dim,
+                      weight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                _amountLine(coinSize: 22, fontSize: 28),
+              ],
             ),
-          ),
-          Text(amount, style: AppText.label(30, color: accent, weight: FontWeight.w900)),
-        ],
-      ),
     );
   }
 }
@@ -689,15 +1011,27 @@ class _PendingRedeemRowState extends ConsumerState<_PendingRedeemRow> {
     final t = ref.read(stringsProvider);
     setState(() => _busy = true);
     try {
-      await ref.read(sessionProvider.notifier).cancelRedeem(widget.row['id'] as int);
+      await ref
+          .read(sessionProvider.notifier)
+          .cancelRedeem(widget.row['id'] as int);
       await ref.read(lobbyProvider.notifier).refresh();
       if (mounted) {
         widget.onCancelled();
-        showDuelMessage(context, title: t.redeemCancel, body: t.redeemCancelled, icon: Icons.undo_rounded);
+        showDuelMessage(
+          context,
+          title: t.redeemCancel,
+          body: t.redeemCancelled,
+          icon: Icons.undo_rounded,
+        );
       }
     } on ApiException catch (e) {
       if (mounted) {
-        showDuelMessage(context, title: t.redeemOff, body: t.maybeApi(e.message), icon: Icons.error_outline);
+        showDuelMessage(
+          context,
+          title: t.redeemOff,
+          body: t.maybeApi(e.message),
+          icon: Icons.error_outline,
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -726,7 +1060,14 @@ class _PendingRedeemRowState extends ConsumerState<_PendingRedeemRow> {
           ),
           TextButton(
             onPressed: _busy ? null : _cancel,
-            child: Text(_busy ? '…' : t.redeemCancel, style: AppText.label(18, color: DuelColors.red, weight: FontWeight.w900)),
+            child: Text(
+              _busy ? '…' : t.redeemCancel,
+              style: AppText.label(
+                18,
+                color: DuelColors.red,
+                weight: FontWeight.w900,
+              ),
+            ),
           ),
         ],
       ),
@@ -762,9 +1103,10 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
   }
 
   void _reloadPending() {
-    _pending = ref.read(sessionProvider.notifier).redeemRequests().then(
-          (list) => list.where((r) => r['status'] == 'pending').toList(),
-        );
+    _pending = ref
+        .read(sessionProvider.notifier)
+        .redeemRequests()
+        .then((list) => list.where((r) => r['status'] == 'pending').toList());
   }
 
   @override
@@ -774,7 +1116,8 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
     super.dispose();
   }
 
-  int? get _coinAmount => int.tryParse(_coins.text.replaceAll(RegExp(r'\D'), ''));
+  int? get _coinAmount =>
+      int.tryParse(_coins.text.replaceAll(RegExp(r'\D'), ''));
 
   int get _bdt {
     final c = _coinAmount ?? 0;
@@ -795,7 +1138,12 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
     final coins = _coinAmount;
     final cap = redeemable < cfg.maxCoins ? redeemable : cfg.maxCoins;
     if (coins == null || coins < cfg.minCoins || coins > cfg.maxCoins) {
-      setState(() => _error = t.redeemRange(formatCoins(cfg.minCoins), formatCoins(cfg.maxCoins)));
+      setState(
+        () => _error = t.redeemRange(
+          formatCoins(cfg.minCoins),
+          formatCoins(cfg.maxCoins),
+        ),
+      );
       return;
     }
     if (coins > redeemable) {
@@ -815,7 +1163,9 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
       _error = null;
     });
     try {
-      await ref.read(sessionProvider.notifier).submitRedeem(
+      await ref
+          .read(sessionProvider.notifier)
+          .submitRedeem(
             coins: coins,
             walletProvider: _provider,
             walletNumber: _wallet.text.trim(),
@@ -823,10 +1173,12 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
       await ref.read(lobbyProvider.notifier).refresh();
       if (mounted) {
         setState(_reloadPending);
-        showDuelMessage(context,
-            title: t.redeemSent,
-            body: t.redeemSentBody(_bdt),
-            icon: Icons.check_circle_rounded);
+        showDuelMessage(
+          context,
+          title: t.redeemSent,
+          body: t.redeemSentBody(_bdt),
+          icon: Icons.check_circle_rounded,
+        );
         _coins.clear();
         _wallet.clear();
       }
@@ -842,48 +1194,153 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
     final t = ref.watch(stringsProvider);
     final cfg = widget.config;
     final session = ref.watch(sessionProvider);
-    final mainBalance = session.walletCoins;
-    final redeemAvailable = session.redeemableCoins;
-    final redeemCap = redeemAvailable < cfg.maxCoins ? redeemAvailable : cfg.maxCoins;
+    final redeemCap = session.redeemableCoins < cfg.maxCoins
+        ? session.redeemableCoins
+        : cfg.maxCoins;
     if (!cfg.enabled) {
       return Center(
-        child: Text(t.redeemTurnedOff, style: AppText.label(22, color: DuelColors.dim, weight: FontWeight.w800)),
+        child: Text(
+          t.redeemTurnedOff,
+          style: AppText.label(
+            22,
+            color: DuelColors.dim,
+            weight: FontWeight.w800,
+          ),
+        ),
       );
     }
-    final input = AppText.label(28, color: Colors.white);
-    const fieldPad = EdgeInsets.symmetric(horizontal: 22, vertical: 22);
-    final fieldLabel = AppText.label(20, color: DuelColors.dim);
+    final phone = ShopPhoneLayout.phone(context);
+    final input = AppText.label(phone ? 16 : 28, color: Colors.white);
+    final fieldPad = EdgeInsets.symmetric(
+      horizontal: phone ? 10 : 22,
+      vertical: phone ? 8 : 22,
+    );
+    final fieldLabel = AppText.label(phone ? 12 : 20, color: DuelColors.dim);
     return _ShopTabScroll(
-      child: Column(
+      fitViewport: phone,
+      child: phone
+          ? LayoutBuilder(
+              builder: (context, constraints) {
+                return SizedBox(
+                  height: constraints.maxHeight,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _redeemTabFields(
+                        t: t,
+                        cfg: cfg,
+                        redeemCap: redeemCap,
+                        input: input,
+                        fieldPad: fieldPad,
+                        fieldLabel: fieldLabel,
+                        phone: true,
+                        scrollable: false,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            )
+          : Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _redeemTabFields(
+            t: t,
+            cfg: cfg,
+            redeemCap: redeemCap,
+            input: input,
+            fieldPad: fieldPad,
+            fieldLabel: fieldLabel,
+            phone: false,
+            scrollable: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _redeemTabFields({
+    required AppStrings t,
+    required RedeemConfig cfg,
+    required int redeemCap,
+    required TextStyle input,
+    required EdgeInsets fieldPad,
+    required TextStyle fieldLabel,
+    required bool phone,
+    required bool scrollable,
+  }) {
+    final mainBalance = ref.watch(sessionProvider).walletCoins;
+    final redeemAvailable = ref.watch(sessionProvider).redeemableCoins;
+    final body = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           CoinTutorialVideoFrame(
             youtubeUrl: widget.tutorialUrl,
             title: t.coinTutorialRedeemTitle,
             tapHint: t.coinTutorialTapPlay,
+            compact: phone,
           ),
           FutureBuilder<List<Map<String, dynamic>>>(
-              future: _pending,
-              builder: (context, snap) {
-                final rows = snap.data ?? const [];
-                if (rows.isEmpty) return const SizedBox.shrink();
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(t.redeemPendingTitle, style: AppText.label(22, color: DuelColors.silver, weight: FontWeight.w900)),
-                    const SizedBox(height: 10),
-                    for (final r in rows)
-                      _PendingRedeemRow(
-                        row: r,
-                        onCancelled: () => setState(_reloadPending),
-                      ),
-                    const SizedBox(height: 20),
-                  ],
-                );
-              },
+            future: _pending,
+            builder: (context, snap) {
+              final rows = snap.data ?? const [];
+              if (rows.isEmpty) return const SizedBox.shrink();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    t.redeemPendingTitle,
+                    style: AppText.label(
+                      phone ? 12 : 22,
+                      color: DuelColors.silver,
+                      weight: FontWeight.w900,
+                    ),
+                  ),
+                  SizedBox(height: phone ? 4 : 10),
+                  for (final r in rows)
+                    _PendingRedeemRow(
+                      row: r,
+                      onCancelled: () => setState(_reloadPending),
+                    ),
+                  SizedBox(height: phone ? 6 : 20),
+                ],
+              );
+            },
+          ),
+          if (!phone)
+            Text(
+              t.cashOutTitle,
+              style: AppText.label(
+                36,
+                color: DuelColors.gold,
+                weight: FontWeight.w900,
+              ),
             ),
-            Text(t.cashOutTitle, style: AppText.label(36, color: DuelColors.gold, weight: FontWeight.w900)),
-            const SizedBox(height: 16),
+          if (!phone) const SizedBox(height: 16),
+          if (phone)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _RedeemBalanceCard(
+                    title: t.mainBalanceShort,
+                    amount: formatCoins(mainBalance),
+                    accent: DuelColors.silver,
+                    compact: true,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: _RedeemBalanceCard(
+                    title: t.redeemAvailableShort,
+                    amount: formatCoins(redeemAvailable),
+                    accent: DuelColors.gold,
+                    compact: true,
+                  ),
+                ),
+              ],
+            )
+          else ...[
             _RedeemBalanceCard(
               title: t.mainBalanceTitle,
               amount: formatCoins(mainBalance),
@@ -895,79 +1352,122 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
               amount: formatCoins(redeemAvailable),
               accent: DuelColors.gold,
             ),
-            const SizedBox(height: 14),
-            Text(
-              t.redeemWinOnlyHint,
-              style: AppText.label(18, color: DuelColors.dim),
-            ),
+          ],
+          SizedBox(height: phone ? 4 : 14),
+          Text(
+            t.redeemWinOnlyHint,
+            maxLines: phone ? 2 : null,
+            overflow: phone ? TextOverflow.ellipsis : null,
+            style: AppText.label(phone ? 9 : 18, color: DuelColors.dim),
+          ),
+          if (!phone) ...[
             const SizedBox(height: 10),
             Text(
               t.redeemRateHint(cfg.coinPerBdt),
               style: AppText.label(18, color: DuelColors.dim),
             ),
-            const SizedBox(height: 22),
-            TextField(
-              controller: _coins,
-              style: input,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(
-                labelText: t.coinAmountLabel,
-                hintText: redeemCap >= cfg.minCoins
-                    ? '${cfg.minCoins} – ${formatCoins(redeemCap)}'
-                    : t.notEnoughRedeemable,
-                contentPadding: fieldPad,
-                labelStyle: fieldLabel,
-              ),
-              onChanged: (_) => setState(() {}),
+          ],
+          SizedBox(height: phone ? 6 : 22),
+          TextField(
+            controller: _coins,
+            style: input,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              isDense: phone,
+              labelText: t.coinAmountLabel,
+              hintText: redeemCap >= cfg.minCoins
+                  ? '${cfg.minCoins} – ${formatCoins(redeemCap)}'
+                  : t.notEnoughRedeemable,
+              contentPadding: fieldPad,
+              labelStyle: fieldLabel,
             ),
-            const SizedBox(height: 10),
-            Text(t.youReceiveBdt(_bdt), style: AppText.label(26, color: DuelColors.silver, weight: FontWeight.w800)),
+            onChanged: (_) => setState(() {}),
+          ),
+          SizedBox(height: phone ? 4 : 10),
+          Text(
+            t.youReceiveBdt(_bdt),
+            style: AppText.label(
+              phone ? 13 : 26,
+              color: DuelColors.silver,
+              weight: FontWeight.w800,
+            ),
+          ),
+          if (!phone) ...[
             const SizedBox(height: 18),
-            Text(t.walletType, style: AppText.label(20, color: DuelColors.dim)),
+            Text(
+              t.walletType,
+              style: AppText.label(20, color: DuelColors.dim),
+            ),
             const SizedBox(height: 10),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                for (final p in cfg.providers)
-                  ChoiceChip(
-                    label: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      child: Text(p.label, style: AppText.label(22, weight: FontWeight.w800)),
+          ],
+          Wrap(
+            spacing: phone ? 4 : 12,
+            runSpacing: phone ? 2 : 12,
+            children: [
+              for (final p in cfg.providers)
+                ChoiceChip(
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  label: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: phone ? 6 : 8,
+                      vertical: phone ? 0 : 8,
                     ),
-                    selected: _provider == p.id,
-                    onSelected: _busy ? null : (_) => setState(() => _provider = p.id),
+                    child: Text(
+                      p.label,
+                      style: AppText.label(
+                        phone ? 10 : 22,
+                        weight: FontWeight.w800,
+                      ),
+                    ),
                   ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _wallet,
-              style: input,
-              keyboardType: TextInputType.phone,
-              maxLength: 14,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(
-                labelText: t.walletNumber,
-                hintText: '01XXXXXXXXX',
-                counterText: '',
-                contentPadding: fieldPad,
-                labelStyle: fieldLabel,
-              ),
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 10),
-              Text(_error!, style: AppText.label(22, color: DuelColors.red)),
+                  selected: _provider == p.id,
+                  onSelected: _busy
+                      ? null
+                      : (_) => setState(() => _provider = p.id),
+                ),
             ],
-            const SizedBox(height: 24),
-            GameButton(
-              label: _busy ? t.sending : t.submitRedeem,
-              height: 88,
-              fontSize: 26,
-              onPressed: _busy ? null : _submit,
+          ),
+          SizedBox(height: phone ? 6 : 16),
+          TextField(
+            controller: _wallet,
+            style: input,
+            keyboardType: TextInputType.phone,
+            maxLength: 14,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              isDense: phone,
+              labelText: t.walletNumber,
+              hintText: '01XXXXXXXXX',
+              counterText: '',
+              contentPadding: fieldPad,
+              labelStyle: fieldLabel,
+            ),
+          ),
+          if (_error != null) ...[
+            SizedBox(height: phone ? 4 : 10),
+            Text(
+              _error!,
+              style: AppText.label(phone ? 11 : 22, color: DuelColors.red),
             ),
           ],
+          SizedBox(height: phone ? 8 : 24),
+          GameButton(
+            label: _busy
+                ? t.sending
+                : (phone ? t.submitRedeemShort : t.submitRedeem),
+            height: phone ? 36 : 88,
+            fontSize: phone ? 12 : 26,
+            onPressed: _busy ? null : _submit,
+          ),
+        ],
+      );
+    if (scrollable) return body;
+    return Expanded(
+      child: SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
+        child: body,
       ),
     );
   }
@@ -989,7 +1489,8 @@ class _ActivityTabState extends ConsumerState<_ActivityTab> {
     _feed = ref.read(sessionProvider.notifier).activity();
   }
 
-  void _reload() => setState(() => _feed = ref.read(sessionProvider.notifier).activity());
+  void _reload() =>
+      setState(() => _feed = ref.read(sessionProvider.notifier).activity());
 
   @override
   Widget build(BuildContext context) {
@@ -1002,11 +1503,23 @@ class _ActivityTabState extends ConsumerState<_ActivityTab> {
           future: snap,
           builder: (context, snap) {
             if (snap.hasError) {
-              body = Center(child: Text(t.historyLoadFail, style: AppText.label(20, color: DuelColors.red)));
+              body = Center(
+                child: Text(
+                  t.historyLoadFail,
+                  style: AppText.label(20, color: DuelColors.red),
+                ),
+              );
             } else if (!snap.hasData) {
-              body = const Center(child: CircularProgressIndicator(color: DuelColors.silver));
+              body = const Center(
+                child: CircularProgressIndicator(color: DuelColors.silver),
+              );
             } else if (snap.data!.isEmpty) {
-              body = Center(child: Text(t.historyEmpty, style: AppText.label(22, color: DuelColors.dim)));
+              body = Center(
+                child: Text(
+                  t.historyEmpty,
+                  style: AppText.label(22, color: DuelColors.dim),
+                ),
+              );
             } else {
               final rows = snap.data!;
               body = RefreshIndicator(
@@ -1015,13 +1528,14 @@ class _ActivityTabState extends ConsumerState<_ActivityTab> {
                 child: ListView.separated(
                   padding: const EdgeInsets.only(bottom: 8),
                   itemCount: rows.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1, color: Color(0xFF1E2546)),
+                  separatorBuilder: (_, _) =>
+                      const Divider(height: 1, color: Color(0xFF1E2546)),
                   itemBuilder: (context, i) => _ActivityRow(item: rows[i]),
                 ),
               );
             }
             return Padding(
-              padding: ShopTabInsets.scroll,
+              padding: ShopTabInsets.forViewport(context),
               child: SizedBox(
                 width: double.infinity,
                 height: constraints.maxHeight,
@@ -1046,7 +1560,8 @@ class _ActivityRow extends ConsumerWidget {
     final t = ref.watch(stringsProvider);
     final at = DateTime.fromMillisecondsSinceEpoch(item['at'] as int);
     String two(int v) => v.toString().padLeft(2, '0');
-    final time = '${two(at.day)}/${two(at.month)} ${two(at.hour)}:${two(at.minute)}';
+    final time =
+        '${two(at.day)}/${two(at.month)} ${two(at.hour)}:${two(at.minute)}';
     final kind = item['kind'] as String;
 
     if (kind == 'match') {
@@ -1054,6 +1569,7 @@ class _ActivityRow extends ConsumerWidget {
       final coins = item['coins'] as int;
       final practice = item['mode'] == 'bots';
       return _rowShell(
+        context,
         badge: won ? t.badgeWin : t.badgeLoss,
         badgeColor: won ? DuelColors.green : DuelColors.red,
         title: t.gameTitleKey(item['game'] as String),
@@ -1065,6 +1581,7 @@ class _ActivityRow extends ConsumerWidget {
     if (kind == 'wallet') {
       final amount = item['amount'] as int;
       return _rowShell(
+        context,
         badge: t.badgeCoin,
         badgeColor: DuelColors.gold,
         title: item['label'] as String? ?? item['reason'] as String,
@@ -1077,9 +1594,12 @@ class _ActivityRow extends ConsumerWidget {
       final sent = item['direction'] == 'sent';
       final amount = item['amount'] as int;
       final fee = item['fee'] as int? ?? 0;
-      final peer = sent ? (item['toName'] as String? ?? '') : (item['fromName'] as String? ?? '');
+      final peer = sent
+          ? (item['toName'] as String? ?? '')
+          : (item['fromName'] as String? ?? '');
       final peerId = sent ? item['toGameId'] : item['fromGameId'];
       return _rowShell(
+        context,
         badge: sent ? t.badgeTransferSuccess : t.badgeTransfer,
         badgeColor: sent ? DuelColors.green : DuelColors.green,
         title: sent ? '${t.transferHistorySentTitle} → $peer' : '← $peer',
@@ -1095,15 +1615,17 @@ class _ActivityRow extends ConsumerWidget {
       final color = status == 'approved'
           ? DuelColors.green
           : status == 'rejected'
-              ? DuelColors.red
-              : status == 'cancelled'
-                  ? DuelColors.dim
-                  : DuelColors.gold;
+          ? DuelColors.red
+          : status == 'cancelled'
+          ? DuelColors.dim
+          : DuelColors.gold;
       return _rowShell(
+        context,
         badge: t.statusLabel(status),
         badgeColor: color,
         title: '${t.badgeRedeem} · ${item['walletProviderLabel']}',
-        sub: '${formatCoins(item['coins'] as int)} → ${item['bdt']} BDT · ${item['walletNumber']}',
+        sub:
+            '${formatCoins(item['coins'] as int)} → ${item['bdt']} BDT · ${item['walletNumber']}',
         coins: -(item['coins'] as int),
         time: time,
       );
@@ -1113,9 +1635,10 @@ class _ActivityRow extends ConsumerWidget {
       final color = status == 'approved'
           ? DuelColors.green
           : status == 'rejected'
-              ? DuelColors.red
-              : DuelColors.gold;
+          ? DuelColors.red
+          : DuelColors.gold;
       return _rowShell(
+        context,
         badge: t.statusLabel(status),
         badgeColor: color,
         title: '${t.badgeAdd} · ${item['providerLabel']}',
@@ -1127,7 +1650,8 @@ class _ActivityRow extends ConsumerWidget {
     return const SizedBox.shrink();
   }
 
-  Widget _rowShell({
+  Widget _rowShell(
+    BuildContext context, {
     required String badge,
     required Color badgeColor,
     required String title,
@@ -1135,41 +1659,65 @@ class _ActivityRow extends ConsumerWidget {
     required int coins,
     required String time,
   }) {
+    final phone = ShopPhoneLayout.phone(context);
+    final rowH = phone ? 52.0 : 68.0;
     return SizedBox(
-      height: 68,
+      height: rowH,
       child: Row(
         children: [
           Container(
-            width: 92,
+            width: phone ? 72 : 92,
             alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(vertical: 6),
+            padding: EdgeInsets.symmetric(vertical: phone ? 4 : 6),
             decoration: BoxDecoration(
               color: badgeColor.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: badgeColor),
             ),
-            child: Text(badge, style: AppText.label(13, color: badgeColor, weight: FontWeight.w900)),
+            child: Text(
+              badge,
+              style: AppText.label(
+                phone ? 10 : 13,
+                color: badgeColor,
+                weight: FontWeight.w900,
+              ),
+            ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: phone ? 8 : 16),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.label(17, weight: FontWeight.w800)),
-                Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.label(13, color: DuelColors.dim)),
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.label(phone ? 12 : 17, weight: FontWeight.w800),
+                ),
+                Text(
+                  sub,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.label(phone ? 10 : 13, color: DuelColors.dim),
+                ),
               ],
             ),
           ),
           if (coins != 0) ...[
-            const PikoCoinIcon(size: 22),
-            const SizedBox(width: 6),
-            Text('${coins > 0 ? '+' : ''}${formatCoins(coins)}',
-                style: AppText.label(18,
-                    color: coins > 0 ? DuelColors.gold : DuelColors.red, weight: FontWeight.w900)),
+            PikoCoinIcon(size: phone ? 16 : 22),
+            SizedBox(width: phone ? 4 : 6),
+            Text(
+              '${coins > 0 ? '+' : ''}${formatCoins(coins)}',
+              style: AppText.label(
+                phone ? 13 : 18,
+                color: coins > 0 ? DuelColors.gold : DuelColors.red,
+                weight: FontWeight.w900,
+              ),
+            ),
           ],
-          const SizedBox(width: 12),
-          Text(time, style: AppText.label(13, color: DuelColors.dim)),
+          SizedBox(width: phone ? 6 : 12),
+          Text(time, style: AppText.label(phone ? 10 : 13, color: DuelColors.dim)),
         ],
       ),
     );
@@ -1195,15 +1743,29 @@ class _CoinPackCard extends ConsumerWidget {
         final w = constraints.maxWidth;
         final h = constraints.maxHeight;
         final bonus = pack.discountPercent;
-        final borderColor = isBestValue ? _ShopUi.bestBorder : _ShopUi.cardBorder;
-        final buyBdt = pack.free ? t.claimNow : '৳${formatCoins(pack.coins, compact: true)}';
+        final borderColor = isBestValue
+            ? _ShopUi.bestBorder
+            : _ShopUi.cardBorder;
+        final buyBdt = pack.free
+            ? t.claimNow
+            : '৳${formatCoins(pack.coins, compact: true)}';
         final amountLabel = formatCoins(pack.coins, compact: true);
         final amountSize = (w * 0.115).clamp(22.0, 34.0);
         final subSize = (w * 0.062).clamp(11.0, 15.0);
-        final btnH = (h * 0.24).clamp(38.0, 48.0);
         final btnFont = (w * 0.075).clamp(12.0, 15.0);
         final coinSlot = (w * 0.34).clamp(52.0, 88.0);
-        final topInset = bonus > 0 || isBestValue ? 28.0 : 10.0;
+        final short = h < 168;
+        final tiny = h < 118;
+        final topInset = bonus > 0 || isBestValue
+            ? (tiny ? 14.0 : short ? 18.0 : 28.0)
+            : (tiny ? 4.0 : short ? 6.0 : 10.0);
+        final btnH = tiny
+            ? (h * 0.22).clamp(24.0, 32.0)
+            : short
+            ? (h * 0.21).clamp(28.0, 38.0)
+            : (h * 0.24).clamp(38.0, 48.0);
+        final amountSizeAdj = tiny ? amountSize * 0.88 : amountSize;
+        final coinSlotAdj = tiny ? coinSlot * 0.82 : coinSlot;
 
         return GestureDetector(
           onTap: () {
@@ -1216,7 +1778,11 @@ class _CoinPackCard extends ConsumerWidget {
               gradient: const LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [_ShopUi.cardFillTop, _ShopUi.cardFillMid, _ShopUi.cardFillBot],
+                colors: [
+                  _ShopUi.cardFillTop,
+                  _ShopUi.cardFillMid,
+                  _ShopUi.cardFillBot,
+                ],
               ),
               border: Border.all(
                 color: borderColor.withValues(alpha: isBestValue ? 1 : 0.85),
@@ -1229,7 +1795,11 @@ class _CoinPackCard extends ConsumerWidget {
                   offset: const Offset(0, 3),
                 ),
                 if (isBestValue)
-                  BoxShadow(color: _ShopUi.bestBorder.withValues(alpha: 0.25), blurRadius: 12, spreadRadius: -2),
+                  BoxShadow(
+                    color: _ShopUi.bestBorder.withValues(alpha: 0.25),
+                    blurRadius: 12,
+                    spreadRadius: -2,
+                  ),
               ],
             ),
             child: ClipRRect(
@@ -1238,38 +1808,63 @@ class _CoinPackCard extends ConsumerWidget {
                 clipBehavior: Clip.hardEdge,
                 children: [
                   Padding(
-                    padding: EdgeInsets.fromLTRB(10, topInset, 10, 8),
+                    padding: EdgeInsets.fromLTRB(
+                      tiny ? 6 : 10,
+                      topInset,
+                      tiny ? 6 : 10,
+                      tiny ? 4 : 8,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Expanded(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              _ShopUi.packCoinArt(pack.coins, coinSlot),
-                              SizedBox(width: (w * 0.04).clamp(6.0, 12.0)),
-                              Expanded(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      amountLabel,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: AppText.label(amountSize, color: Colors.white, weight: FontWeight.w900),
-                                    ),
-                                    SizedBox(height: (h * 0.03).clamp(2.0, 6.0)),
-                                    Text(
-                                      t.youGetCoins(formatPicoCoins(pack.depositReceiveCoins)),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: AppText.label(subSize, color: _ShopUi.skyLine, weight: FontWeight.w800),
-                                    ),
-                                  ],
-                                ),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  _ShopUi.packCoinArt(pack.coins, coinSlotAdj),
+                                  SizedBox(width: (w * 0.04).clamp(4.0, 12.0)),
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        amountLabel,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: AppText.label(
+                                          amountSizeAdj,
+                                          color: Colors.white,
+                                          weight: FontWeight.w900,
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        height: tiny ? 1 : (h * 0.03).clamp(2.0, 6.0),
+                                      ),
+                                      Text(
+                                        t.youGetCoins(
+                                          formatPicoCoins(
+                                            pack.depositReceiveCoins,
+                                          ),
+                                        ),
+                                        maxLines: tiny ? 1 : 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: AppText.label(
+                                          tiny ? subSize * 0.9 : subSize,
+                                          color: _ShopUi.skyLine,
+                                          weight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
                         ),
                         SizedBox(height: (h * 0.04).clamp(4.0, 8.0)),
@@ -1281,7 +1876,11 @@ class _CoinPackCard extends ConsumerWidget {
                             color: _ShopUi.buyGreen,
                             borderRadius: BorderRadius.circular(btnH / 2),
                             boxShadow: const [
-                              BoxShadow(color: Color(0x5500C675), blurRadius: 6, offset: Offset(0, 2)),
+                              BoxShadow(
+                                color: Color(0x5500C675),
+                                blurRadius: 6,
+                                offset: Offset(0, 2),
+                              ),
                             ],
                           ),
                           child: Text(
@@ -1289,31 +1888,51 @@ class _CoinPackCard extends ConsumerWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             textAlign: TextAlign.center,
-                            style: AppText.label(btnFont, color: _ShopUi.buyGreenText, weight: FontWeight.w900),
+                            style: AppText.label(
+                              btnFont,
+                              color: _ShopUi.buyGreenText,
+                              weight: FontWeight.w900,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  if (bonus > 0) _BonusBadge(percent: bonus),
+                  if (bonus > 0) _BonusBadge(percent: bonus, compact: tiny),
                   if (isBestValue)
                     Positioned(
-                      top: 6,
+                      top: tiny ? 2 : 6,
                       left: 0,
                       right: 0,
                       child: Center(
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: tiny ? 6 : 10,
+                            vertical: tiny ? 2 : 4,
+                          ),
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: [Color(0xFFFBBF24), Color(0xFFEAB308)]),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFBBF24), Color(0xFFEAB308)],
+                            ),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.workspace_premium_rounded, size: 13, color: Colors.brown.shade900),
-                              const SizedBox(width: 4),
-                              Text('BEST VALUE', style: AppText.label(10, color: Colors.brown.shade900, weight: FontWeight.w900)),
+                              Icon(
+                                Icons.workspace_premium_rounded,
+                                size: tiny ? 10 : 13,
+                                color: Colors.brown.shade900,
+                              ),
+                              SizedBox(width: tiny ? 2 : 4),
+                              Text(
+                                'BEST VALUE',
+                                style: AppText.label(
+                                  tiny ? 8 : 10,
+                                  color: Colors.brown.shade900,
+                                  weight: FontWeight.w900,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -1330,17 +1949,21 @@ class _CoinPackCard extends ConsumerWidget {
 }
 
 class _BonusBadge extends StatelessWidget {
-  const _BonusBadge({required this.percent});
+  const _BonusBadge({required this.percent, this.compact = false});
 
   final int percent;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      top: 8,
-      left: 8,
+      top: compact ? 4 : 8,
+      left: compact ? 4 : 8,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 5 : 8,
+          vertical: compact ? 2 : 4,
+        ),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
@@ -1348,9 +1971,142 @@ class _BonusBadge extends StatelessWidget {
             colors: [_ShopUi.ribbonStart, _ShopUi.ribbonEnd],
           ),
           borderRadius: BorderRadius.circular(6),
-          boxShadow: [BoxShadow(color: _ShopUi.ribbonStart.withValues(alpha: 0.35), blurRadius: 4)],
+          boxShadow: [
+            BoxShadow(
+              color: _ShopUi.ribbonStart.withValues(alpha: 0.35),
+              blurRadius: 4,
+            ),
+          ],
         ),
-        child: Text('+$percent%', style: AppText.label(11, color: Colors.white, weight: FontWeight.w900)),
+        child: Text(
+          '+$percent%',
+          style: AppText.label(
+            compact ? 8 : 11,
+            color: Colors.white,
+            weight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Full-viewport Pico coin shop on phones (no 1600×900 canvas scale).
+class _ShopPhoneShell extends StatelessWidget {
+  const _ShopPhoneShell({
+    required this.title,
+    required this.subtitle,
+    required this.balance,
+    required this.child,
+  });
+
+  final String title;
+  final String subtitle;
+  final int balance;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: DuelColors.ink,
+      resizeToAvoidBottomInset: true,
+      body: DuelBackdrop(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              DesignAuth.settingsPhonePaddingH,
+              2,
+              DesignAuth.settingsPhonePaddingH,
+              4,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).maybePop(),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: DuelColors.rimLight,
+                              width: 1.2,
+                            ),
+                            color: DuelColors.glass.withValues(alpha: 0.9),
+                          ),
+                          child: const Icon(
+                            Icons.arrow_back_rounded,
+                            color: DuelColors.silver,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: AppText.label(16, weight: FontWeight.w900),
+                          ),
+                          Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.label(
+                              9,
+                              color: DuelColors.dim,
+                              weight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: DuelColors.gold.withValues(alpha: 0.45),
+                        ),
+                        color: const Color(0xFF121830),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const PikoCoinIcon(size: 16),
+                          const SizedBox(width: 4),
+                          Text(
+                            formatCoins(balance, compact: balance >= 100000),
+                            style: AppText.label(
+                              12,
+                              color: DuelColors.gold,
+                              weight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Expanded(child: child),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

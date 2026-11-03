@@ -83,6 +83,12 @@ class SessionState {
   int get redeemableCoins => _asInt(user?['redeemableCoins']);
 }
 
+String _phoneForApi(String fromUi) {
+  final d = fromUi.replaceAll(RegExp(r'\D'), '');
+  if (d.length >= 11) return d;
+  return BdPhone.apiPayload(fromUi);
+}
+
 /// Account on the backend. Browse without signing in; mobile login is required
 /// for online play, wallet, and saved progress.
 class SessionNotifier extends Notifier<SessionState> {
@@ -438,7 +444,7 @@ class SessionNotifier extends Notifier<SessionState> {
     }
     final code = referralCode.trim();
     final body = {
-      'phone': BdPhone.apiPayload(phoneLocal),
+      'phone': _phoneForApi(phoneLocal),
       'password': password,
       if (code.isNotEmpty) 'referralCode': code,
     };
@@ -461,7 +467,7 @@ class SessionNotifier extends Notifier<SessionState> {
     _api.token = null;
     try {
       final r = await _api.post('/auth/login', {
-        'phone': BdPhone.apiPayload(phoneLocal),
+        'phone': _phoneForApi(phoneLocal),
         'password': password,
       });
       _adopt(r['user'] as Map<String, dynamic>, token: r['token'] as String);

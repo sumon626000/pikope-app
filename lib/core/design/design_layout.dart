@@ -60,7 +60,7 @@ abstract final class DesignLayout {
 abstract final class DesignBreakpoints {
   static bool phoneLike(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    return size.shortestSide < DesignLayout.phoneLandscapeMaxShortSide ||
+    return size.shortestSide <= DesignLayout.phoneLandscapeMaxShortSide ||
         size.width < DesignLayout.phoneLandscapeMinWidth;
   }
 

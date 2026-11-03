@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/duel_ui.dart';
-import '../../core/widgets.dart';
 import '../../l10n/strings.dart';
 
 /// Lifetime + today match stats for profile / settings.
@@ -18,6 +17,7 @@ class ProfileMatchStatsPanel extends ConsumerWidget {
     required this.todayWins,
     required this.todayLosses,
     this.loading = false,
+    this.compactHeader = false,
   });
 
   final int totalGames;
@@ -28,6 +28,7 @@ class ProfileMatchStatsPanel extends ConsumerWidget {
   final int todayWins;
   final int todayLosses;
   final bool loading;
+  final bool compactHeader;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -37,53 +38,152 @@ class ProfileMatchStatsPanel extends ConsumerWidget {
         height: 132,
         alignment: Alignment.center,
         decoration: duelPanel(radius: 16, rim: DuelColors.rimLight),
-        child: const CircularProgressIndicator(color: DuelColors.gold, strokeWidth: 2.5),
+        child: const CircularProgressIndicator(
+          color: DuelColors.gold,
+          strokeWidth: 2.5,
+        ),
       );
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.query_stats_rounded, color: DuelColors.gold.withValues(alpha: 0.9), size: 20),
-            const SizedBox(width: 8),
-            Text(t.sectionMatchStats, style: AppText.label(14, weight: FontWeight.w900, color: DuelColors.silver)),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            _StatTile(label: t.statMatches, value: formatCoins(totalGames), accent: DuelColors.silver),
-            _StatTile(label: t.statWins, value: formatCoins(totalWins), accent: DuelColors.green),
-            _StatTile(label: t.statLosses, value: formatCoins(totalLosses), accent: DuelColors.red),
-            _StatTile(label: t.statWinRate, value: '$winRate%', accent: DuelColors.gold, glow: true),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: const Color(0xFF121830),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: DuelColors.rimLight.withValues(alpha: 0.35)),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final narrow = constraints.maxWidth < 520;
+        final statTiles = [
+          _StatTile(
+            label: t.statMatches,
+            value: formatCoins(totalGames),
+            accent: DuelColors.silver,
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: _TodayChip(label: t.statTodayPlayed, value: '$todayPlayed', icon: Icons.today_rounded),
+          _StatTile(
+            label: t.statWins,
+            value: formatCoins(totalWins),
+            accent: DuelColors.green,
+          ),
+          _StatTile(
+            label: t.statLosses,
+            value: formatCoins(totalLosses),
+            accent: DuelColors.red,
+          ),
+          _StatTile(
+            label: t.statWinRate,
+            value: '$winRate%',
+            accent: DuelColors.gold,
+            glow: true,
+          ),
+        ];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (!compactHeader) ...[
+              Row(
+                children: [
+                  Icon(Icons.query_stats_rounded, color: DuelColors.gold.withValues(alpha: 0.9), size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      t.sectionMatchStats,
+                      style: AppText.label(14, weight: FontWeight.w900, color: DuelColors.silver),
+                    ),
+                  ),
+                ],
               ),
-              Container(width: 1, height: 36, color: DuelColors.rimLight.withValues(alpha: 0.25)),
-              Expanded(
-                child: _TodayChip(label: t.statTodayWins, value: '$todayWins', icon: Icons.emoji_events_outlined, color: DuelColors.green),
-              ),
-              Container(width: 1, height: 36, color: DuelColors.rimLight.withValues(alpha: 0.25)),
-              Expanded(
-                child: _TodayChip(label: t.statTodayLosses, value: '$todayLosses', icon: Icons.close_rounded, color: DuelColors.red),
-              ),
+              const SizedBox(height: 10),
             ],
-          ),
-        ),
-      ],
+            if (narrow)
+              Column(
+                children: [
+                  Row(children: [statTiles[0], statTiles[1]]),
+                  const SizedBox(height: 6),
+                  Row(children: [statTiles[2], statTiles[3]]),
+                ],
+              )
+            else
+              Row(children: statTiles),
+            const SizedBox(height: 8),
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: narrow ? 8 : 12,
+                vertical: 10,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFF121830),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: DuelColors.rimLight.withValues(alpha: 0.35),
+                ),
+              ),
+              child: narrow
+                  ? Column(
+                      children: [
+                        _TodayChip(
+                          label: t.statTodayPlayed,
+                          value: '$todayPlayed',
+                          icon: Icons.today_rounded,
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _TodayChip(
+                                label: t.statTodayWins,
+                                value: '$todayWins',
+                                icon: Icons.emoji_events_outlined,
+                                color: DuelColors.green,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _TodayChip(
+                                label: t.statTodayLosses,
+                                value: '$todayLosses',
+                                icon: Icons.close_rounded,
+                                color: DuelColors.red,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(
+                          child: _TodayChip(
+                            label: t.statTodayPlayed,
+                            value: '$todayPlayed',
+                            icon: Icons.today_rounded,
+                          ),
+                        ),
+                        Container(
+                          width: 1,
+                          height: 36,
+                          color: DuelColors.rimLight.withValues(alpha: 0.25),
+                        ),
+                        Expanded(
+                          child: _TodayChip(
+                            label: t.statTodayWins,
+                            value: '$todayWins',
+                            icon: Icons.emoji_events_outlined,
+                            color: DuelColors.green,
+                          ),
+                        ),
+                        Container(
+                          width: 1,
+                          height: 36,
+                          color: DuelColors.rimLight.withValues(alpha: 0.25),
+                        ),
+                        Expanded(
+                          child: _TodayChip(
+                            label: t.statTodayLosses,
+                            value: '$todayLosses',
+                            icon: Icons.close_rounded,
+                            color: DuelColors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -119,12 +219,20 @@ class _StatTile extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppText.label(10, color: DuelColors.dim, weight: FontWeight.w800),
+              style: AppText.label(
+                10,
+                color: DuelColors.dim,
+                weight: FontWeight.w800,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               value,
-              style: AppText.label(20, color: Colors.white, weight: FontWeight.w900),
+              style: AppText.label(
+                20,
+                color: Colors.white,
+                weight: FontWeight.w900,
+              ),
             ),
           ],
         ),
@@ -153,14 +261,25 @@ class _TodayChip extends StatelessWidget {
       children: [
         Icon(icon, size: 18, color: color),
         const SizedBox(height: 4),
-        Text(value, style: AppText.label(18, weight: FontWeight.w900, color: Colors.white)),
+        Text(
+          value,
+          style: AppText.label(
+            18,
+            weight: FontWeight.w900,
+            color: Colors.white,
+          ),
+        ),
         const SizedBox(height: 2),
         Text(
           label,
           textAlign: TextAlign.center,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: AppText.label(9, color: DuelColors.dim, weight: FontWeight.w700),
+          style: AppText.label(
+            9,
+            color: DuelColors.dim,
+            weight: FontWeight.w700,
+          ),
         ),
       ],
     );

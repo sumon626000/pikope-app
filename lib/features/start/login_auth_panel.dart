@@ -7,8 +7,9 @@ import '../../core/app_theme.dart';
 import '../../core/bd_phone.dart';
 import '../../core/design/design.dart';
 import '../../core/env.dart';
+import '../../core/phone_countries.dart';
 import '../../core/widgets.dart';
-import '../../core/widgets/bd_phone_field.dart';
+import '../../core/widgets/international_phone_field.dart';
 import '../../data/api_client.dart';
 import '../../l10n/strings.dart';
 import '../misc/legal_screen.dart';
@@ -34,8 +35,15 @@ class _LoginAuthPanelState extends ConsumerState<LoginAuthPanel> {
   final _phone = TextEditingController();
   final _password = TextEditingController();
   final _referral = TextEditingController();
+  late PhoneCountry _country;
   bool _busy = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _country = PhoneCountries.defaultCountry();
+  }
 
   @override
   void dispose() {
@@ -48,9 +56,11 @@ class _LoginAuthPanelState extends ConsumerState<LoginAuthPanel> {
   InputDecoration _field(String label, IconData icon) =>
       DesignAuth.fieldDecoration(label, icon: icon, dense: widget.compact);
 
+  String get _phonePayload => PhoneInput.apiPayload(_phone.text.trim(), _country);
+
   Future<void> _login() async {
     final l10n = ref.read(stringsProvider);
-    final err = BdPhone.validationMessage(_phone.text.trim(), l10n);
+    final err = PhoneInput.validationMessage(_phone.text.trim(), _country, l10n);
     if (err != null) {
       setState(() => _error = err);
       return;
@@ -62,13 +72,13 @@ class _LoginAuthPanelState extends ConsumerState<LoginAuthPanel> {
     await _run(
       () => ref
           .read(sessionProvider.notifier)
-          .login(_phone.text.trim(), _password.text),
+          .login(_phonePayload, _password.text),
     );
   }
 
   Future<void> _signUp() async {
     final l10n = ref.read(stringsProvider);
-    final err = BdPhone.validationMessage(_phone.text.trim(), l10n);
+    final err = PhoneInput.validationMessage(_phone.text.trim(), _country, l10n);
     if (err != null) {
       setState(() => _error = err);
       return;
@@ -85,7 +95,7 @@ class _LoginAuthPanelState extends ConsumerState<LoginAuthPanel> {
     await _run(
       () => ref
           .read(sessionProvider.notifier)
-          .register(_phone.text.trim(), _password.text, referralCode: refCode),
+          .register(_phonePayload, _password.text, referralCode: refCode),
     );
   }
 
@@ -129,12 +139,12 @@ class _LoginAuthPanelState extends ConsumerState<LoginAuthPanel> {
   Widget build(BuildContext context) {
     final s = ref.watch(stringsProvider);
     final compact = widget.compact;
-    final titleSize = compact ? 22.0 : 46.0;
-    final subSize = compact ? 14.0 : 20.0;
-    final inputSize = compact ? 18.0 : 32.0;
-    final btnH = compact ? 44.0 : DesignLayout.formButtonHeight + 28;
-    final btnFont = compact ? 16.0 : 28.0;
-    final errFont = compact ? 15.0 : 22.0;
+    final titleSize = compact ? 18.0 : 46.0;
+    final subSize = compact ? 12.0 : 20.0;
+    final inputSize = compact ? 15.0 : 32.0;
+    final btnH = compact ? 40.0 : DesignLayout.formButtonHeight + 28;
+    final btnFont = compact ? 14.0 : 28.0;
+    final errFont = compact ? 13.0 : 22.0;
     final padding = compact
         ? DesignAuth.loginPopupPadding
         : DesignAuth.loginPanelPadding;
@@ -157,19 +167,24 @@ class _LoginAuthPanelState extends ConsumerState<LoginAuthPanel> {
             s.signUpOrLogin,
             style: AppText.label(titleSize, weight: FontWeight.w900),
           ),
-          SizedBox(height: compact ? DesignSpacing.x2 : DesignSpacing.x3),
-          Text(
-            s.loginSubtitle(Env.hasBackend),
-            style: TextStyle(
-              fontFamily: DesignTypography.displayFont,
-              fontSize: subSize,
-              height: 1.35,
-              color: AppColors.textDim,
+          if (!compact) ...[
+            SizedBox(height: DesignSpacing.x3),
+            Text(
+              s.loginSubtitle(Env.hasBackend),
+              style: TextStyle(
+                fontFamily: DesignTypography.displayFont,
+                fontSize: subSize,
+                height: 1.35,
+                color: AppColors.textDim,
+              ),
             ),
-          ),
-          SizedBox(height: compact ? DesignSpacing.x3 : DesignSpacing.x6),
-          BdPhoneField(
+          ],
+          SizedBox(height: compact ? DesignSpacing.x2 : DesignSpacing.x6),
+          InternationalPhoneField(
             controller: _phone,
+            country: _country,
+            dense: compact,
+            onCountryChanged: (c) => setState(() => _country = c),
             style: TextStyle(
               fontFamily: 'sans-serif',
               fontSize: inputSize,

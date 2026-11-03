@@ -16,6 +16,7 @@ import 'coin_tutorial_video.dart';
 import 'lobby_data.dart';
 import '../../core/push_service.dart';
 import '../online/notification_unread.dart';
+import 'shop_phone_layout.dart';
 import 'shop_tab_insets.dart';
 
 /// Send Pico coin to another player by 6-digit game ID (registered only).
@@ -221,40 +222,51 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
     final amount = _amountInt ?? 0;
     final fee = amount > 0 ? _feeFor(amount) : 0;
     final total = amount + fee;
+    final phone = ShopPhoneLayout.phone(context);
+    final input = AppText.label(phone ? 16 : 28, color: Colors.white);
+    final fieldPad = EdgeInsets.symmetric(
+      horizontal: phone ? 12 : 22,
+      vertical: phone ? 10 : 22,
+    );
+    final fieldLabel = AppText.label(phone ? 12 : 20, color: DuelColors.dim);
     return LayoutBuilder(
       builder: (context, constraints) {
-        return SingleChildScrollView(
-          padding: ShopTabInsets.scroll,
-          child: SizedBox(
-            width: double.infinity,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+        final form = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
             CoinTutorialVideoFrame(
               youtubeUrl: widget.tutorialUrl,
               title: t.coinTutorialTransferTitle,
               tapHint: t.coinTutorialTapPlay,
+              compact: phone,
             ),
-            Text(t.tabTransfer, style: AppText.label(40, color: DuelColors.gold, weight: FontWeight.w900)),
-            const SizedBox(height: 8),
+            if (!phone) ...[
+              Text(
+                t.tabTransfer,
+                style: AppText.label(40, color: DuelColors.gold, weight: FontWeight.w900),
+              ),
+              const SizedBox(height: 8),
+            ],
             Text(
               t.transferFeeHint(cfg.feePercent, formatCoins(fee), formatCoins(total)),
-              style: AppText.label(18, color: DuelColors.dim),
+              maxLines: phone ? 2 : null,
+              overflow: phone ? TextOverflow.ellipsis : null,
+              style: AppText.label(phone ? 10 : 18, color: DuelColors.dim),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: phone ? 8 : 20),
             TextField(
               controller: _gameId,
-              style: AppText.label(28, color: Colors.white),
+              style: input,
               keyboardType: TextInputType.number,
               maxLength: 6,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               decoration: InputDecoration(
+                isDense: phone,
                 labelText: t.transferGameIdLabel,
                 counterText: '',
-                contentPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 22),
-                labelStyle: AppText.label(20, color: DuelColors.dim),
+                contentPadding: fieldPad,
+                labelStyle: fieldLabel,
               ),
               onChanged: (_) {
                 setState(() {
@@ -265,48 +277,88 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
               },
             ),
             if (_lookupBusy)
-              const Padding(
-                padding: EdgeInsets.only(top: 12),
-                child: Center(child: CircularProgressIndicator(color: DuelColors.silver)),
+              Padding(
+                padding: EdgeInsets.only(top: phone ? 6 : 12),
+                child: Center(
+                  child: SizedBox(
+                    width: phone ? 22 : 36,
+                    height: phone ? 22 : 36,
+                    child: const CircularProgressIndicator(
+                      color: DuelColors.silver,
+                      strokeWidth: 2,
+                    ),
+                  ),
+                ),
               )
             else if (_profile != null) ...[
-              const SizedBox(height: 14),
-              _ProfilePreview(profile: _profile!),
+              SizedBox(height: phone ? 6 : 14),
+              _ProfilePreview(profile: _profile!, compact: phone),
             ],
-            const SizedBox(height: 18),
+            SizedBox(height: phone ? 8 : 18),
             TextField(
               controller: _amount,
-              style: AppText.label(28, color: Colors.white),
+              style: input,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               decoration: InputDecoration(
+                isDense: phone,
                 labelText: t.transferAmountLabel,
                 hintText: '${cfg.minCoins} – ${formatCoins(cfg.maxCoins)}',
-                contentPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 22),
-                labelStyle: AppText.label(20, color: DuelColors.dim),
+                contentPadding: fieldPad,
+                labelStyle: fieldLabel,
               ),
               onChanged: (_) => setState(() {
-                    _error = null;
-                    _success = null;
-                  }),
+                _error = null;
+                _success = null;
+              }),
             ),
             if (_success != null) ...[
-              const SizedBox(height: 10),
-              Text(_success!, style: AppText.label(22, color: DuelColors.green, weight: FontWeight.w800)),
-            ] else if (_error != null) ...[
-              const SizedBox(height: 10),
-              Text(_error!, style: AppText.label(22, color: DuelColors.red)),
-            ],
-            const SizedBox(height: 24),
-                  GameButton(
-                    label: _busy ? t.sending : t.transferSendBtn,
-                    height: 88,
-                    fontSize: 26,
-                    color: DuelColors.gold,
-                    onPressed: _busy ? null : _send,
-                  ),
-                ],
+              SizedBox(height: phone ? 4 : 10),
+              Text(
+                _success!,
+                style: AppText.label(
+                  phone ? 11 : 22,
+                  color: DuelColors.green,
+                  weight: FontWeight.w800,
+                ),
               ),
+            ] else if (_error != null) ...[
+              SizedBox(height: phone ? 4 : 10),
+              Text(
+                _error!,
+                style: AppText.label(phone ? 11 : 22, color: DuelColors.red),
+              ),
+            ],
+            SizedBox(height: phone ? 10 : 24),
+            GameButton(
+              label: _busy ? t.sending : t.transferSendBtn,
+              height: phone ? 40 : 88,
+              fontSize: phone ? 14 : 26,
+              color: DuelColors.gold,
+              onPressed: _busy ? null : _send,
+            ),
+          ],
+        );
+        if (phone) {
+          return Padding(
+            padding: ShopTabInsets.scrollPhoneFit,
+            child: SizedBox(
+              height: constraints.maxHeight,
+              width: double.infinity,
+              child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                child: form,
+              ),
+            ),
+          );
+        }
+        return SingleChildScrollView(
+          padding: ShopTabInsets.forViewport(context),
+          child: SizedBox(
+            width: double.infinity,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: form,
             ),
           ),
         );
@@ -316,9 +368,10 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
 }
 
 class _ProfilePreview extends ConsumerWidget {
-  const _ProfilePreview({required this.profile});
+  const _ProfilePreview({required this.profile, this.compact = false});
 
   final Map<String, dynamic> profile;
+  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -327,25 +380,37 @@ class _ProfilePreview extends ConsumerWidget {
     final name = profile['name'] as String? ?? '—';
     final avatar = profile['avatar'] as String? ?? 'classic';
     final gameId = profile['gameId'] as String? ?? '';
+    final avatarSize = compact ? 36.0 : 64.0;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(compact ? 8 : 16),
       decoration: BoxDecoration(
         color: const Color(0xFF1A2140),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(compact ? 10 : 16),
         border: Border.all(color: eligible ? DuelColors.green.withValues(alpha: 0.5) : DuelColors.red.withValues(alpha: 0.5)),
       ),
       child: Row(
         children: [
-          ClipOval(child: AvatarImage(avatar, size: 64)),
-          const SizedBox(width: 16),
+          ClipOval(child: AvatarImage(avatar, size: avatarSize)),
+          SizedBox(width: compact ? 8 : 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: AppText.label(24, weight: FontWeight.w900)),
-                Text('ID $gameId', style: AppText.label(18, color: DuelColors.dim)),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.label(compact ? 13 : 24, weight: FontWeight.w900),
+                ),
+                Text(
+                  'ID $gameId',
+                  style: AppText.label(compact ? 10 : 18, color: DuelColors.dim),
+                ),
                 if (!eligible)
-                  Text(t.transferNotEligible, style: AppText.label(16, color: DuelColors.red)),
+                  Text(
+                    t.transferNotEligible,
+                    style: AppText.label(compact ? 9 : 16, color: DuelColors.red),
+                  ),
               ],
             ),
           ),

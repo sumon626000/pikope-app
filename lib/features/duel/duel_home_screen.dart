@@ -187,7 +187,9 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
       );
   }
 
-  void _friends() {
+  Future<void> _friends() async {
+    if (!await requireRegisteredAccount(context, ref)) return;
+    if (!mounted) return;
     final t = ref.read(stringsProvider);
     _chooser(
         title: t.friendsTitle,
@@ -218,6 +220,8 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
   }
 
   Future<void> _daily(DailyBonus daily) async {
+    if (!await requireRegisteredAccount(context, ref)) return;
+    if (!mounted) return;
     await showDuelDialog<void>(
       context,
       barrierColor: const Color(0xB3000000),
@@ -230,6 +234,7 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
     final t = ref.watch(stringsProvider);
     final lobby = ref.watch(lobbyProvider);
     final session = ref.watch(sessionProvider);
+    final registered = hasRegisteredAccount(ref);
     final active = ref.watch(activeMatchProvider).valueOrNull;
     final challengePending = ref.watch(challengePendingCountProvider) > 0;
     final data = lobby.valueOrNull;
@@ -271,9 +276,15 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(width: 96, height: 104, child: CustomPaint(painter: _RankBadgePainter(session.rankTier, session.rankName))),
-                  const SizedBox(height: DesignSpacing.x2),
-                  Text(session.rankName, style: AppText.label(15, color: DuelColors.gold, weight: FontWeight.w900)),
+                  if (registered) ...[
+                    SizedBox(width: 96, height: 104, child: CustomPaint(painter: _RankBadgePainter(session.rankTier, session.rankName))),
+                    const SizedBox(height: DesignSpacing.x2),
+                    Text(session.rankName, style: AppText.label(15, color: DuelColors.gold, weight: FontWeight.w900)),
+                  ] else ...[
+                    const Icon(Icons.emoji_events_outlined, color: DuelColors.dim, size: 72),
+                    const SizedBox(height: DesignSpacing.x2),
+                    Text(t.browseProfileTitle, style: AppText.label(14, color: DuelColors.dim, weight: FontWeight.w800)),
+                  ],
                 ],
               ),
             ),
@@ -464,12 +475,22 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
             NavTile(
               icon: Icons.storefront_rounded,
               label: t.navShop,
-              onTap: () => _open(const ShopScreen()),
+              onTap: () async {
+                if (!await requireRegisteredAccount(context, ref)) return;
+                if (mounted) await _open(const ShopScreen());
+              },
             ),
             const SizedBox(width: DesignSpacing.navGap),
             NavTile(icon: Icons.leaderboard_rounded, label: t.navRankings, onTap: () => _open(const LeaderboardScreen())),
             const SizedBox(width: DesignSpacing.navGap),
-            NavTile(icon: Icons.backpack_rounded, label: t.navItems, onTap: () => _open(const ItemsScreen())),
+            NavTile(
+              icon: Icons.backpack_rounded,
+              label: t.navItems,
+              onTap: () async {
+                if (!await requireRegisteredAccount(context, ref)) return;
+                if (mounted) await _open(const ItemsScreen());
+              },
+            ),
             const SizedBox(width: DesignSpacing.navGap),
             NavTile(icon: Icons.groups_rounded, label: t.navFriends, onTap: _friends),
             const SizedBox(width: DesignSpacing.navGap),

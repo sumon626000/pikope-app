@@ -8,6 +8,7 @@ import '../../core/duel_ui.dart';
 import '../duel/bet_level_screen.dart';
 import '../duel/duel_chrome.dart';
 import '../duel/lobby_data.dart';
+import '../start/auth_prompt.dart';
 import 'ludo_board.dart';
 import '../../l10n/strings.dart';
 
@@ -23,8 +24,10 @@ class _LudoLobbyScreenState extends ConsumerState<LudoLobbyScreen> {
   int _players = 2;
   int _colour = 0;
 
-  void _playForCoins() {
-    Navigator.of(context).push(MaterialPageRoute<void>(
+  Future<void> _playForCoins() async {
+    if (!await requireRegisteredAccount(context, ref)) return;
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute<void>(
       builder: (_) => BetLevelScreen(mode: _players == 2 ? DuelMode.ludo2 : DuelMode.ludo4),
     ));
   }

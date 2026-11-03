@@ -340,15 +340,17 @@ class _RoomPainter extends CustomPainter {
   bool shouldRepaint(_RoomPainter old) => false;
 }
 
-/// Lays a fixed 1600x900 design canvas onto any landscape screen.
+/// Lays a fixed design canvas onto any landscape screen ([FittedBox] + [SafeArea]).
+///
+/// Match UIs laid out with [DesignGameplay] coordinates must use [tableSize]
+/// (1950×900). [menuSize] (1600×900) is for home/menu-only screens.
 class DesignCanvas extends StatelessWidget {
   const DesignCanvas({super.key, required this.child, this.size = menuSize});
 
   /// 16:9 canvas of the menu screens.
   static const menuSize = Size(1600, 900);
 
-  /// Wider canvas of the match screens, matching modern phone screens so the
-  /// table can fill them.
+  /// Wider canvas of the match screens (Ludo, Carrom, Pool, Poker).
   static const tableSize = Size(1950, 900);
 
   final Size size;

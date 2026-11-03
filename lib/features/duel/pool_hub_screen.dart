@@ -9,6 +9,7 @@ import '../../l10n/strings.dart';
 import 'bet_level_screen.dart';
 import 'duel_home_screen.dart' show GameCard, HomeBanner, PokerArt;
 import 'lobby_data.dart';
+import '../start/auth_prompt.dart';
 
 /// Everything pool lives here: 8-, 9- and 10-ball tables, Billiard Poker
 /// with its jackpot, the random quick duel, free practice and the cue shop.
@@ -18,6 +19,12 @@ class PoolHubScreen extends ConsumerWidget {
   Future<void> _open(BuildContext context, WidgetRef ref, Widget screen) async {
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
     ref.read(lobbyProvider.notifier).refresh();
+  }
+
+  Future<void> _openStaked(BuildContext context, WidgetRef ref, Widget screen) async {
+    if (!await requireRegisteredAccount(context, ref)) return;
+    if (!context.mounted) return;
+    await _open(context, ref, screen);
   }
 
   @override
@@ -48,7 +55,7 @@ class PoolHubScreen extends ConsumerWidget {
                     title: tables[i].$3,
                     sub: tables[i].$4,
                     art: _BallArt(tables[i].$2),
-                    onPlay: () => _open(context, ref, BetLevelScreen(mode: tables[i].$1)),
+                    onPlay: () => _openStaked(context, ref, BetLevelScreen(mode: tables[i].$1)),
                   ),
                 ],
                 const SizedBox(width: DesignLayout.poolHubCardGap),
@@ -58,7 +65,7 @@ class PoolHubScreen extends ConsumerWidget {
                   title: t.billiardPokerCardTitle,
                   sub: null,
                   art: const PokerArt(),
-                  onPlay: () => _open(context, ref, const BetLevelScreen(mode: DuelMode.poker)),
+                  onPlay: () => _openStaked(context, ref, const BetLevelScreen(mode: DuelMode.poker)),
                 ),
               ],
             ),
@@ -73,7 +80,7 @@ class PoolHubScreen extends ConsumerWidget {
               rim: const Color(0xFF8A6A22),
               titleColor: DuelColors.gold,
               icon: const PikoCoinIcon(size: 96),
-              onTap: () => _open(context, ref, const BetLevelScreen(mode: DuelMode.poker)),
+              onTap: () => _openStaked(context, ref, const BetLevelScreen(mode: DuelMode.poker)),
             ),
             const SizedBox(height: DesignSpacing.x3),
             HomeBanner(
@@ -83,7 +90,7 @@ class PoolHubScreen extends ConsumerWidget {
               rim: DuelColors.blue,
               titleColor: const Color(0xFF9CC2FF),
               icon: const Icon(Icons.shuffle_rounded, color: Color(0xFF9CC2FF), size: 84),
-              onTap: () => _open(context, ref, const BetLevelScreen(mode: DuelMode.billiard)),
+              onTap: () => _openStaked(context, ref, const BetLevelScreen(mode: DuelMode.billiard)),
             ),
           ],
         ),

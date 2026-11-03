@@ -11,10 +11,8 @@ import '../../game/physics/vec2.dart';
 import '../game/game_controller.dart' show SeatConfig;
 import '../online/game_link.dart';
 import '../online/opponent_presence.dart';
+import 'carrom_chat.dart';
 import 'carrom_skins.dart';
-
-/// Quick-chat presets; only the index travels over the network.
-const carromChatPresets = ['GOOD LUCK!', 'NICE SHOT', 'HAHA', 'OH NO!', 'WELL PLAYED', 'HURRY UP'];
 
 class CarromMatchConfig {
   const CarromMatchConfig({required this.seats, this.shotSeconds = 30, this.seed, this.bet = const MatchBet(), this.strikerSkin = 'classic', this.pieceSkin = 'classic', this.boardSkin = 'classic'});
@@ -150,25 +148,58 @@ class CarromController extends ChangeNotifier {
 
   // ---- chat ------------------------------------------------------------------
 
-  final Map<int, (int, double)> _chats = {};
+  final Map<int, (String, double)> _chats = {};
 
-  int? chatOf(int seat) {
+  String? chatTextOf(int seat) {
     final c = _chats[seat];
     return c != null && c.$2 > _time ? c.$1 : null;
   }
 
-  void showChat(int seat, int message) {
-    if (message < 0 || message >= carromChatPresets.length) return;
-    _chats[seat] = (message, _time + 2.8);
+  int? chatOf(int seat) {
+    final text = chatTextOf(seat);
+    if (text == null) return null;
+    final pi = CarromChat.phrases.indexOf(text);
+    if (pi >= 0) return pi;
+    final ei = CarromChat.emojis.indexOf(text);
+    if (ei >= 0) return CarromChat.phrases.length + ei;
+    return null;
+  }
+
+  void showChatText(int seat, String text) {
+    final msg = CarromChat.sanitizeCustom(text);
+    if (msg.isEmpty) return;
+    _chats[seat] = (msg, _time + 2.8);
     audio.play(Sfx.chatPop, volume: 0.8);
     notifyListeners();
   }
 
+  void showChat(int seat, int message) {
+    final msg = CarromChat.messageAt(message);
+    if (msg.isEmpty) return;
+    showChatText(seat, msg);
+  }
+
   void sayChat(int message) {
+    if (message < 0 || message >= CarromChat.catalogLength) return;
     showChat(mySeat, message);
     link?.sendChat(message);
-    if (!online && _random.nextDouble() < 0.6) {
-      _after(1.0 + _random.nextDouble(), () => showChat(1, _random.nextInt(carromChatPresets.length)));
+    _maybeBotChatReply();
+  }
+
+  void sayCustomChat(String text) {
+    final msg = CarromChat.sanitizeCustom(text);
+    if (msg.isEmpty) return;
+    showChatText(mySeat, msg);
+    link?.sendChatText(msg);
+    _maybeBotChatReply();
+  }
+
+  void _maybeBotChatReply() {
+    if (!online && _random.nextDouble() < 0.55) {
+      _after(
+        1.0 + _random.nextDouble(),
+        () => showChat(1, _random.nextInt(CarromChat.catalogLength)),
+      );
     }
   }
 

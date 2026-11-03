@@ -118,7 +118,7 @@ final class LudoEngine
         }
         // Play the turn out for the absent player: roll, then move if possible.
         if ($s['mustRoll']) {
-            $moves = self::applyRoll($s, random_int(1, 6), $nowMs);
+            $moves = self::applyRoll($s, self::rollFairD6(), $nowMs);
             if ($moves !== []) {
                 self::applyMove($s, $moves[0], $nowMs);
             }
@@ -166,7 +166,7 @@ final class LudoEngine
         if (!$s['mustRoll']) {
             throw ApiError::conflict('Move a token first', 'must_move');
         }
-        self::applyRoll($s, random_int(1, 6), $nowMs);
+        self::applyRoll($s, self::rollFairD6(), $nowMs);
     }
 
     /** Action: move a token the current die allows. */
@@ -299,5 +299,11 @@ final class LudoEngine
         }
         $s['turn'] = $next;
         $s['deadline'] = $nowMs + $s['shotSeconds'] * 1000;
+    }
+
+    /** Uniform 1–6 for every player; humans cannot send their own die value. */
+    private static function rollFairD6(): int
+    {
+        return random_int(1, 6);
     }
 }

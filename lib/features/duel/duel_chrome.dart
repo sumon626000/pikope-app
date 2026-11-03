@@ -31,12 +31,24 @@ class DuelTopBar extends ConsumerWidget {
   final bool showProfile;
   final bool showShortcuts;
 
+  Future<void> _walletTap(BuildContext context, WidgetRef ref) async {
+    if (!await requireRegisteredAccount(context, ref)) return;
+    if (context.mounted) pushScreen(context, const ShopScreen());
+  }
+
+  Future<void> _profileTap(BuildContext context, WidgetRef ref) async {
+    if (!await requireRegisteredAccount(context, ref)) return;
+    if (context.mounted) pushScreen(context, const SettingsScreen());
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
     final settings = ref.watch(settingsProvider);
     final session = ref.watch(sessionProvider);
     final unread = ref.watch(notificationUnreadProvider);
+    final registered = hasRegisteredAccount(ref);
+    final coins = lobbyDisplayCoins(ref);
     return SizedBox(
       height: 112,
       child: Row(
@@ -49,7 +61,7 @@ class DuelTopBar extends ConsumerWidget {
               behavior: HitTestBehavior.opaque,
               onTap: () {
                 AudioService.tap();
-                pushScreen(context, const SettingsScreen());
+                _profileTap(context, ref);
               },
               child: Row(
                 children: [
@@ -57,32 +69,40 @@ class DuelTopBar extends ConsumerWidget {
                     width: 82,
                     height: 82,
                     padding: const EdgeInsets.all(3),
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFFFFE08A),
-                          Color(0xFF5C8BFF),
-                          Color(0xFFFF3B4E),
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Color(0x663B6CFF),
-                          blurRadius: 18,
-                          spreadRadius: 1,
-                        ),
-                        BoxShadow(
-                          color: Color(0x99000000),
-                          blurRadius: 8,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
+                      gradient: registered
+                          ? const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Color(0xFFFFE08A),
+                                Color(0xFF5C8BFF),
+                                Color(0xFFFF3B4E),
+                              ],
+                            )
+                          : null,
+                      color: registered ? null : const Color(0xFF1A2140),
+                      border: registered ? null : Border.all(color: DuelColors.rimLight, width: 2),
+                      boxShadow: registered
+                          ? const [
+                              BoxShadow(
+                                color: Color(0x663B6CFF),
+                                blurRadius: 18,
+                                spreadRadius: 1,
+                              ),
+                              BoxShadow(
+                                color: Color(0x99000000),
+                                blurRadius: 8,
+                                offset: Offset(0, 4),
+                              ),
+                            ]
+                          : null,
                     ),
                     child: ClipOval(
-                      child: AvatarImage(settings.avatar, size: 76),
+                      child: registered
+                          ? AvatarImage(settings.avatar, size: 76)
+                          : const Icon(Icons.person_rounded, color: DuelColors.silver, size: 44),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -93,7 +113,7 @@ class DuelTopBar extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          settings.name.toUpperCase(),
+                          registered ? settings.name.toUpperCase() : t.browseProfileTitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppText.label(
@@ -103,62 +123,68 @@ class DuelTopBar extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Text(
-                              t.lvDot(session.level),
-                              style: AppText.label(
-                                13,
-                                color: DuelColors.silver,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Container(
-                                height: 9,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF151A36),
-                                  borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(
-                                    color: const Color(0xFF2B3566),
-                                  ),
+                        if (registered)
+                          Row(
+                            children: [
+                              Text(
+                                t.lvDot(session.level),
+                                style: AppText.label(
+                                  13,
+                                  color: DuelColors.silver,
                                 ),
-                                child: FractionallySizedBox(
-                                  alignment: Alignment.centerLeft,
-                                  widthFactor: (session.levelProgress / 100)
-                                      .clamp(0.02, 1.0),
-                                  child: DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(5),
-                                      gradient: const LinearGradient(
-                                        colors: [
-                                          Color(0xFF9BF26E),
-                                          Color(0xFF2FBF2A),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Container(
+                                  height: 9,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF151A36),
+                                    borderRadius: BorderRadius.circular(5),
+                                    border: Border.all(
+                                      color: const Color(0xFF2B3566),
+                                    ),
+                                  ),
+                                  child: FractionallySizedBox(
+                                    alignment: Alignment.centerLeft,
+                                    widthFactor: (session.levelProgress / 100)
+                                        .clamp(0.02, 1.0),
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(5),
+                                        gradient: const LinearGradient(
+                                          colors: [
+                                            Color(0xFF9BF26E),
+                                            Color(0xFF2FBF2A),
+                                          ],
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: DuelColors.green.withValues(
+                                              alpha: 0.7,
+                                            ),
+                                            blurRadius: 8,
+                                          ),
                                         ],
                                       ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: DuelColors.green.withValues(
-                                            alpha: 0.7,
-                                          ),
-                                          blurRadius: 8,
-                                        ),
-                                      ],
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              '${session.levelProgress}%',
-                              style: AppText.label(
-                                12,
-                                color: DuelColors.silver,
+                              const SizedBox(width: 10),
+                              Text(
+                                '${session.levelProgress}%',
+                                style: AppText.label(
+                                  12,
+                                  color: DuelColors.silver,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          )
+                        else
+                          Text(
+                            t.browseProfileSub,
+                            style: AppText.label(13, color: DuelColors.dim),
+                          ),
                       ],
                     ),
                   ),
@@ -168,8 +194,12 @@ class DuelTopBar extends ConsumerWidget {
           const Spacer(),
           CurrencyPill(
             icon: const PikoCoinIcon(size: 76),
-            amount: lobbyDisplayCoins(ref),
-            onAdd: () => pushScreen(context, const ShopScreen()),
+            amount: coins,
+            placeholderLabel: t.signUpOrLogin,
+            onAdd: () {
+              AudioService.tap();
+              _walletTap(context, ref);
+            },
           ),
           if (showShortcuts) ...[
             const SizedBox(width: 44),
@@ -185,7 +215,7 @@ class DuelTopBar extends ConsumerWidget {
             }, badge: unread),
             _TopIcon(
               Icons.settings_rounded,
-              () => pushScreen(context, const SettingsScreen()),
+              () => _profileTap(context, ref),
             ),
           ],
           const SizedBox(width: 42),

@@ -38,22 +38,23 @@ class CoinTutorialVideoFrame extends StatelessWidget {
     required this.youtubeUrl,
     required this.title,
     required this.tapHint,
+    this.compact = false,
   });
 
   final String youtubeUrl;
   final String title;
   final String tapHint;
-
-  static const _thumbW = 118.0;
-  static const _h = 68.0;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final id = youtubeVideoId(youtubeUrl);
     if (id == null) return const SizedBox.shrink();
+    final thumbW = compact ? 72.0 : 118.0;
+    final h = compact ? 40.0 : 68.0;
     final thumb = 'https://img.youtube.com/vi/$id/mqdefault.jpg';
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: compact ? 6 : 12),
       child: Material(
         color: const Color(0xFF0A1228),
         borderRadius: BorderRadius.circular(12),
@@ -72,9 +73,9 @@ class CoinTutorialVideoFrame extends StatelessWidget {
             );
           },
           child: Container(
-            height: _h,
+            height: h,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(compact ? 8 : 12),
               border: Border.all(color: DuelColors.gold.withValues(alpha: 0.42)),
               boxShadow: [
                 BoxShadow(color: DuelColors.gold.withValues(alpha: 0.12), blurRadius: 10),
@@ -83,8 +84,8 @@ class CoinTutorialVideoFrame extends StatelessWidget {
             child: Row(
               children: [
                 SizedBox(
-                  width: _thumbW,
-                  height: _h,
+                  width: thumbW,
+                  height: h,
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
@@ -96,14 +97,18 @@ class CoinTutorialVideoFrame extends StatelessWidget {
                       const ColoredBox(color: Color(0x66000000)),
                       Center(
                         child: Container(
-                          width: 28,
-                          height: 28,
+                          width: compact ? 22 : 28,
+                          height: compact ? 22 : 28,
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.55),
                             shape: BoxShape.circle,
                             border: Border.all(color: DuelColors.gold, width: 1.6),
                           ),
-                          child: const Icon(Icons.play_arrow_rounded, color: DuelColors.gold, size: 18),
+                          child: Icon(
+                            Icons.play_arrow_rounded,
+                            color: DuelColors.gold,
+                            size: compact ? 14 : 18,
+                          ),
                         ),
                       ),
                     ],
@@ -111,7 +116,7 @@ class CoinTutorialVideoFrame extends StatelessWidget {
                 ),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                    padding: EdgeInsets.fromLTRB(compact ? 8 : 12, compact ? 4 : 8, 6, compact ? 4 : 8),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -120,22 +125,30 @@ class CoinTutorialVideoFrame extends StatelessWidget {
                           title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: AppText.label(13, color: DuelColors.gold, weight: FontWeight.w900),
+                          style: AppText.label(
+                            compact ? 11 : 13,
+                            color: DuelColors.gold,
+                            weight: FontWeight.w900,
+                          ),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: compact ? 2 : 4),
                         Text(
                           tapHint,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: AppText.label(11, color: DuelColors.silver),
+                          style: AppText.label(compact ? 9 : 11, color: DuelColors.silver),
                         ),
                       ],
                     ),
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(right: 10),
-                  child: Icon(Icons.play_circle_outline_rounded, color: DuelColors.gold, size: 22),
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Icon(
+                    Icons.play_circle_outline_rounded,
+                    color: DuelColors.gold,
+                    size: compact ? 18 : 22,
+                  ),
                 ),
               ],
             ),

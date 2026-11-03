@@ -388,10 +388,17 @@ class _ChipPainter extends CustomPainter {
 
 /// Wallet readout in the top bar: icon, amount, "+" (opens the shop).
 class CurrencyPill extends StatelessWidget {
-  const CurrencyPill({super.key, required this.icon, required this.amount, this.onAdd});
+  const CurrencyPill({
+    super.key,
+    required this.icon,
+    this.amount,
+    this.placeholderLabel,
+    this.onAdd,
+  });
 
   final Widget icon;
-  final int amount;
+  final int? amount;
+  final String? placeholderLabel;
   final VoidCallback? onAdd;
 
   @override
@@ -420,8 +427,16 @@ class CurrencyPill extends StatelessWidget {
                   children: [
                     ConstrainedBox(
                       constraints: const BoxConstraints(minWidth: 88),
-                      child: Text(formatCoins(amount, compact: amount >= 10000000),
-                          style: AppText.label(23, color: Colors.white, weight: FontWeight.w800).copyWith(shadows: const [Shadow(color: Color(0x99000000), blurRadius: 3, offset: Offset(0, 1))])),
+                      child: Text(
+                        amount != null
+                            ? formatCoins(amount!, compact: amount! >= 10000000)
+                            : (placeholderLabel ?? '—'),
+                        style: AppText.label(
+                          amount != null ? 23 : 16,
+                          color: Colors.white,
+                          weight: FontWeight.w800,
+                        ).copyWith(shadows: const [Shadow(color: Color(0x99000000), blurRadius: 3, offset: Offset(0, 1))]),
+                      ),
                     ),
                     if (onAdd != null) ...[
                       const SizedBox(width: 12),

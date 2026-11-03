@@ -57,8 +57,11 @@ class OnlineGameDriver implements GameLink {
   /// Called with another player's cue position while they aim.
   void Function(Map<String, dynamic> aim)? onAim;
 
-  /// Called when another player sends a quick-chat preset (seat, preset index).
+  /// Called when another player sends a quick-chat preset (seat, catalog index).
   void Function(int seat, int message)? onChat;
+
+  /// Custom in-match message from another player.
+  void Function(int seat, String text)? onChatText;
 
   /// Called when an action was refused or the server is unreachable.
   void Function(ApiException error)? onError;
@@ -122,8 +125,15 @@ class OnlineGameDriver implements GameLink {
       case 'aim':
         onAim?.call(message);
       case 'chat':
-        final seat = message['s'], m = message['m'];
-        if (seat is int && m is int) onChat?.call(seat, m);
+        final seat = message['s'];
+        if (seat is! int) break;
+        final text = message['text'];
+        if (text is String && text.trim().isNotEmpty) {
+          onChatText?.call(seat, text.trim());
+          break;
+        }
+        final m = message['m'];
+        if (m is int) onChat?.call(seat, m);
       case 'error':
         _settle(message['re']);
         onError?.call(ApiException(409, message['code'] as String? ?? 'error',
@@ -224,6 +234,12 @@ class OnlineGameDriver implements GameLink {
   /// when there is no live connection.
   void sendChat(int message) {
     if (realtime) _socket!.send({'t': 'chat', 'gameId': gameId, 'm': message});
+  }
+
+  void sendChatText(String text) {
+    final t = text.trim();
+    if (t.isEmpty || !realtime) return;
+    _socket!.send({'t': 'chat', 'gameId': gameId, 'text': t});
   }
 
   /// Completes once every action sent so far has been answered.

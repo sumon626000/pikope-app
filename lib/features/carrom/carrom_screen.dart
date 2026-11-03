@@ -23,6 +23,8 @@ import '../online/opponent_presence.dart';
 import '../online/session.dart';
 import 'carrom_board.dart';
 import '../../l10n/strings.dart';
+import '../game/match_chat_dialog.dart';
+import 'carrom_chat.dart';
 import 'carrom_controller.dart';
 import 'carrom_skins.dart';
 
@@ -66,6 +68,7 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
         ..onPresence = _c.applyPresence
         ..onAim = _c.applyRemoteAim
         ..onChat = _c.showChat
+        ..onChatText = _c.showChatText
         ..onError = _onNetError
         ..start();
     }
@@ -162,7 +165,9 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
         backgroundColor: const Color(0xFF2B0B0B),
         body: _CarromBackground(
           child: DesignCanvas(
+            size: DesignCanvas.tableSize,
             child: Stack(
+              clipBehavior: Clip.none,
               children: [
                 Positioned(left: DesignGameplay.menuTabLeft, top: 0, child: _MenuTab(onTap: () => setState(() => _paused = true))),
                 if (widget.config.bet.staked)
@@ -262,7 +267,6 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
         Builder(builder: (context) {
           final p = state.players[seat];
           final you = seat == _c.mySeat;
-          final h = p.name.hashCode & 0x7fffffff;
           return Positioned(
             left: you ? 300 - _SeatPanel.width / 2 : _canvasW - 300 - _SeatPanel.width / 2,
             top: 150,
@@ -274,13 +278,14 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
               hasQueen: p.hasQueen,
               active: _c.turn == seat && !_c.over,
               out: p.out,
-              coins: you ? myCoins : 500 + (h % 9500) ~/ 50 * 50,
-              level: you ? session.level : 1 + h % 10,
+              you: you,
+              coins: you ? myCoins : null,
+              level: you ? session.level : null,
               right: !you,
               clock: _c.clock,
               shotSeconds: state.shotSeconds,
               pieces: _c.pieceSkin,
-              chat: _c.chatOf(seat) == null ? null : carromChatPresets[_c.chatOf(seat)!],
+              chat: _c.chatTextOf(seat),
               missed: widget.driver != null ? p.missed : null,
             ),
           );
@@ -290,46 +295,14 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
 
   void _openChat() {
     final t = ref.read(stringsProvider);
-    showDuelDialog<void>(
-      context,
-      barrierColor: const Color(0xAA000000),
-      builder: (dialog) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          width: 460,
-          padding: const EdgeInsets.all(22),
-          decoration: duelPanel(rim: DuelColors.rimLight),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(t.quickChat, style: AppText.label(18, weight: FontWeight.w900)),
-              const SizedBox(height: 14),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  for (var i = 0; i < carromChatPresets.length; i++)
-                    GestureDetector(
-                      onTap: () {
-                        AudioService.tap();
-                        Navigator.of(dialog).pop();
-                        _c.sayChat(i);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        decoration: duelPanel(radius: 12, rim: DuelColors.rim),
-                        child: Text(carromChatPresets[i], style: AppText.label(15, color: DuelColors.silver, weight: FontWeight.w800)),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              DuelButton(label: t.close, width: 150, height: 44, color: DuelColors.rimLight, onPressed: () => Navigator.of(dialog).pop()),
-            ],
-          ),
-        ),
-      ),
+    showMatchChatDialog(
+      context: context,
+      t: t,
+      maxCustomLength: CarromChat.maxCustomLength,
+      phrases: CarromChat.phrases,
+      emojis: CarromChat.emojis,
+      onPreset: _c.sayChat,
+      onCustom: _c.sayCustomChat,
     );
   }
 
@@ -360,8 +333,9 @@ class _SeatPanel extends StatelessWidget {
     required this.hasQueen,
     required this.active,
     required this.out,
-    required this.coins,
-    required this.level,
+    required this.you,
+    this.coins,
+    this.level,
     required this.right,
     required this.clock,
     required this.shotSeconds,
@@ -380,8 +354,9 @@ class _SeatPanel extends StatelessWidget {
   final bool hasQueen;
   final bool active;
   final bool out;
-  final int coins;
-  final int level;
+  final bool you;
+  final int? coins;
+  final int? level;
   final bool right;
   final ValueListenable<double> clock;
   final int shotSeconds;
@@ -480,31 +455,51 @@ class _SeatPanel extends StatelessWidget {
                 ],
               ),
             ),
-            // Coins and level.
-            Positioned(
-              top: _box + 134,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CustomPaint(size: Size(34, 28), painter: _CoinStackPainter()),
-                  const SizedBox(width: 6),
-                  Text(formatCoins(coins), style: AppText.label(22, color: Colors.white, weight: FontWeight.w900).copyWith(shadows: _shadow)),
-                  const SizedBox(width: 16),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                    decoration: BoxDecoration(color: const Color(0xAA000000), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFF2C230), width: 2)),
-                    child: Text('LVL $level', style: AppText.label(16, color: const Color(0xFFFFE27A), weight: FontWeight.w900)),
-                  ),
-                ],
+            if (you && coins != null)
+              Positioned(
+                top: _box + 134,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CustomPaint(size: Size(34, 28), painter: _CoinStackPainter()),
+                    const SizedBox(width: 6),
+                    Text(
+                      formatCoins(coins!),
+                      style: AppText.label(22, color: Colors.white, weight: FontWeight.w900).copyWith(shadows: _shadow),
+                    ),
+                    if (level != null) ...[
+                      const SizedBox(width: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xAA000000),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFF2C230), width: 2),
+                        ),
+                        child: Text(
+                          'LVL $level',
+                          style: AppText.label(16, color: const Color(0xFFFFE27A), weight: FontWeight.w900),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-            ),
             if (chat != null)
               Positioned(
                 top: -58,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 6)]),
-                  child: Text(chat!, style: AppText.label(18, color: const Color(0xFF1B1F2A), weight: FontWeight.w900)),
+                  child: Text(
+                    chat!,
+                    style: TextStyle(
+                      fontSize: chat!.runes.length <= 4 ? 26 : 16,
+                      height: 1.1,
+                      color: const Color(0xFF1B1F2A),
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                 ),
               ),
           ],

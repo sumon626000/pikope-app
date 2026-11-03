@@ -22,10 +22,17 @@ import '../online/opponent_presence.dart';
 import '../online/session.dart';
 import 'ludo_board.dart';
 import '../../l10n/strings.dart';
+import '../game/match_chat_dialog.dart';
+import 'ludo_chat.dart';
 import 'ludo_controller.dart';
 
 class LudoScreen extends ConsumerStatefulWidget {
-  const LudoScreen({super.key, required this.config, this.driver, this.colours});
+  const LudoScreen({
+    super.key,
+    required this.config,
+    this.driver,
+    this.colours,
+  });
 
   final LudoMatchConfig config;
   final OnlineGameDriver? driver;
@@ -35,7 +42,8 @@ class LudoScreen extends ConsumerStatefulWidget {
   ConsumerState<LudoScreen> createState() => _LudoScreenState();
 }
 
-class _LudoScreenState extends ConsumerState<LudoScreen> with SingleTickerProviderStateMixin {
+class _LudoScreenState extends ConsumerState<LudoScreen>
+    with SingleTickerProviderStateMixin {
   late final LudoController _c;
   late final Ticker _ticker;
   Duration _last = Duration.zero;
@@ -46,14 +54,19 @@ class _LudoScreenState extends ConsumerState<LudoScreen> with SingleTickerProvid
   void initState() {
     super.initState();
     ref.read(audioProvider).playGameplayMusic();
-    _c = LudoController(widget.config, ref.read(audioProvider), link: widget.driver, colours: widget.colours)
-      ..addListener(_onChanged);
+    _c = LudoController(
+      widget.config,
+      ref.read(audioProvider),
+      link: widget.driver,
+      colours: widget.colours,
+    )..addListener(_onChanged);
     final driver = widget.driver;
     if (driver != null) {
       driver
         ..onState = _c.applyRemote
         ..onPresence = _c.applyPresence
         ..onChat = _c.showChat
+        ..onChatText = _c.showChatText
         ..onError = _onNetError
         ..start();
     } else {
@@ -64,8 +77,7 @@ class _LudoScreenState extends ConsumerState<LudoScreen> with SingleTickerProvid
       _last = elapsed;
       // Offline play stops while the pause menu is open; online the server runs on.
       if (!_paused || _c.online) _c.tick(min(dt, 0.1));
-    })
-      ..start();
+    })..start();
   }
 
   bool _wasMyTurn = false;
@@ -73,11 +85,13 @@ class _LudoScreenState extends ConsumerState<LudoScreen> with SingleTickerProvid
   void _onChanged() {
     // A chime when the turn comes round to this player.
     final myTurn = _c.isMyTurn && !_c.over;
-    if (myTurn && !_wasMyTurn) ref.read(audioProvider).play(Sfx.turn, volume: 0.6);
+    if (myTurn && !_wasMyTurn)
+      ref.read(audioProvider).play(Sfx.turn, volume: 0.6);
     _wasMyTurn = myTurn;
     if (_c.over && !_resultBooked) {
       _resultBooked = true;
-      if (widget.driver != null) ref.read(sessionProvider.notifier).refresh().catchError((_) {});
+      if (widget.driver != null)
+        ref.read(sessionProvider.notifier).refresh().catchError((_) {});
     }
     if (mounted) setState(() {});
   }
@@ -127,11 +141,29 @@ class _LudoScreenState extends ConsumerState<LudoScreen> with SingleTickerProvid
         backgroundColor: const Color(0xFF060814),
         body: _LudoBackground(
           child: DesignCanvas(
+            size: DesignCanvas.tableSize,
             child: state == null
-                ? const Center(child: CircularProgressIndicator(color: DuelColors.silver))
+                ? const Center(
+                    child: CircularProgressIndicator(color: DuelColors.silver),
+                  )
                 : Stack(
+                    clipBehavior: Clip.none,
                     children: [
-                      Positioned(left: DesignGameplay.menuTabLeft, top: 0, child: _MenuTab(onTap: () => setState(() => _paused = true))),
+                      Positioned(
+                        left: DesignGameplay.menuTabLeft,
+                        top: 0,
+                        child: _MenuTab(
+                          onTap: () => setState(() => _paused = true),
+                        ),
+                      ),
+                      Positioned(
+                        right: 18,
+                        top: 10,
+                        child: _FairDiceBadge(
+                          online: _c.online,
+                          label: ref.watch(stringsProvider).ludoFairDice,
+                        ),
+                      ),
                       if (widget.config.bet.staked)
                         Positioned(
                           left: DesignGameplay.prizeTileLeft,
@@ -143,62 +175,101 @@ class _LudoScreenState extends ConsumerState<LudoScreen> with SingleTickerProvid
                         top: DesignGameplay.ludoBoardTop,
                         width: DesignGameplay.ludoBoardSize,
                         height: DesignGameplay.ludoBoardSize,
-                        child: RepaintBoundary(child: _Board(controller: _c, theme: ludoThemeOf(settings.ludoBoard), onTapToken: _c.moveToken)),
+                        child: RepaintBoundary(
+                          child: _Board(
+                            controller: _c,
+                            theme: ludoThemeOf(settings.ludoBoard),
+                            onTapToken: _c.moveToken,
+                          ),
+                        ),
                       ),
-                            // Player cards beside the board corners (dice sits in the active card).
-                            ..._seatPanels(),
-                            // Chat bubble above the bottom-left card.
-                            Positioned(left: 232, top: 474, child: _ChatButton(onTap: _openChat)),
-                            // What to do now, under the board.
+                      // Player cards beside the board corners (dice sits in the active card).
+                      ..._seatPanels(),
+                      // Chat bubble above the bottom-left card.
+                      Positioned(
+                        left: 232,
+                        top: 474,
+                        child: _ChatButton(onTap: _openChat),
+                      ),
+                      // What to do now, under the board.
                       Positioned(
                         left: DesignGameplay.ludoBoardLeft,
                         width: DesignGameplay.ludoBoardSize,
-                        top: DesignGameplay.ludoBoardTop + DesignGameplay.ludoBoardSize + 42,
+                        top:
+                            DesignGameplay.ludoBoardTop +
+                            DesignGameplay.ludoBoardSize +
+                            42,
                         height: 36,
                         child: Center(
                           child: Text(
                             _hint(),
-                            style: AppText.label(22, color: _c.canRoll || _c.movable.isNotEmpty ? DesignGameplay.hintActive : DesignGameplay.hintIdle, weight: FontWeight.w900)
-                                .copyWith(shadows: const [Shadow(color: Color(0xCC000000), blurRadius: 4, offset: Offset(0, 2))]),
+                            style:
+                                AppText.label(
+                                  22,
+                                  color: _c.canRoll || _c.movable.isNotEmpty
+                                      ? DesignGameplay.hintActive
+                                      : DesignGameplay.hintIdle,
+                                  weight: FontWeight.w900,
+                                ).copyWith(
+                                  shadows: const [
+                                    Shadow(
+                                      color: Color(0xCC000000),
+                                      blurRadius: 4,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
                           ),
                         ),
                       ),
-                            // Event messages over the board centre.
+                      // Event messages over the board centre.
                       Positioned(
                         left: DesignGameplay.ludoBoardLeft,
                         width: DesignGameplay.ludoBoardSize,
-                        top: DesignGameplay.ludoBoardTop + DesignGameplay.ludoBoardSize / 2 - 60,
+                        top:
+                            DesignGameplay.ludoBoardTop +
+                            DesignGameplay.ludoBoardSize / 2 -
+                            60,
                         child: IgnorePointer(
                           child: Center(
                             child: AnimatedSwitcher(
                               duration: const Duration(milliseconds: 180),
                               child: _c.toast == null
                                   ? const SizedBox.shrink()
-                                  : GameplayToastBanner(key: ValueKey(_c.toast), lines: [_c.toast!]),
+                                  : GameplayToastBanner(
+                                      key: ValueKey(_c.toast),
+                                      lines: [_c.toast!],
+                                    ),
                             ),
                           ),
                         ),
                       ),
-                            if (widget.driver != null) ...[
-                              OpponentDisconnectBanner(
-                                presence: _c.opponentPresence,
-                                serverOffsetMs: _c.serverOffsetMs,
-                                opponentName: _opponentName(),
-                              ),
-                              ConnectionStatusLayer(
-                                offline: widget.driver!.offline,
-                                onLeave: () => Navigator.of(context).pop(),
-                              ),
-                            ],
-                            if (_c.over) _result(),
-                            if (_paused)
-                              PauseOverlay(
-                                soundOn: settings.soundOn,
-                                onResume: () => setState(() => _paused = false),
-                                onToggleSound: () => ref.read(settingsProvider.notifier).update((s) => s.copyWith(soundOn: !s.soundOn)),
-                                onRules: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const HowToPlayScreen())),
-                                onQuit: _quit,
-                              ),
+                      if (widget.driver != null) ...[
+                        OpponentDisconnectBanner(
+                          presence: _c.opponentPresence,
+                          serverOffsetMs: _c.serverOffsetMs,
+                          opponentName: _opponentName(),
+                        ),
+                        ConnectionStatusLayer(
+                          offline: widget.driver!.offline,
+                          onLeave: () => Navigator.of(context).pop(),
+                        ),
+                      ],
+                      if (_c.over) _result(),
+                      if (_paused)
+                        PauseOverlay(
+                          soundOn: settings.soundOn,
+                          onResume: () => setState(() => _paused = false),
+                          onToggleSound: () => ref
+                              .read(settingsProvider.notifier)
+                              .update((s) => s.copyWith(soundOn: !s.soundOn)),
+                          onRules: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const HowToPlayScreen(),
+                            ),
+                          ),
+                          onQuit: _quit,
+                        ),
                     ],
                   ),
           ),
@@ -217,104 +288,63 @@ class _LudoScreenState extends ConsumerState<LudoScreen> with SingleTickerProvid
     return '${p.name.toUpperCase()} IS PLAYING...';
   }
 
-  static const _countries = [
-    ['AL', 'Albania'], ['NG', 'Nigeria'], ['IN', 'India'], ['BD', 'Bangladesh'], ['BR', 'Brazil'],
-    ['PK', 'Pakistan'], ['ID', 'Indonesia'], ['EG', 'Egypt'], ['PH', 'Philippines'], ['TR', 'Turkey'],
-    ['US', 'USA'], ['MY', 'Malaysia'], ['NP', 'Nepal'], ['SA', 'Saudi Arabia'], ['GB', 'UK'],
-  ];
-
   List<Widget> _seatPanels() {
     final state = _c.state!;
     final session = ref.watch(sessionProvider);
-    // The player's own balance (the pot has its own tile).
     final myCoins = ref.watch(settingsProvider).coins;
-    final locale = WidgetsBinding.instance.platformDispatcher.locale.countryCode?.toUpperCase();
-    const left = 565.0 - 34 - _SeatPanel.width, right = 1385.0 + 34;
+    const boardLeft = DesignGameplay.ludoBoardLeft;
+    const boardRight = boardLeft + DesignGameplay.ludoBoardSize;
+    const left = boardLeft - 34 - _SeatPanel.width;
+    const right = boardRight + 34;
     return [
       for (var seat = 0; seat < state.seats; seat++)
-        Builder(builder: (context) {
-          final p = state.players[seat];
-          final top = p.colour == 1 || p.colour == 2;
-          final mirror = p.colour == 2 || p.colour == 3;
-          final you = _c.online && seat == _c.mySeat || (!_c.online && seat == 0);
-          final active = _c.diceSeat == seat && !_c.over;
-          final h = p.name.hashCode & 0x7fffffff;
-          List<String>? country;
-          if (you && locale != null) {
-            country = _countries.firstWhere((c) => c[0] == locale, orElse: () => [locale, '']);
-          } else if (p.isBot) {
-            country = _countries[h % _countries.length];
-          }
-          return Positioned(
-            left: mirror ? right : left,
-            top: top ? 46 : 548,
-            child: _SeatPanel(
-              name: p.name,
-              avatar: p.avatar,
-              colour: LudoBoard.colours[p.colour],
-              active: active,
-              out: p.out,
-              coins: you ? myCoins : 500 + (h % 9500) ~/ 50 * 50,
-              level: you ? session.level : 1 + h % 10,
-              country: country,
-              top: top,
-              mirror: mirror,
-              face: _c.diceFace,
-              rolling: active && _c.diceRolling,
-              canRoll: active && _c.canRoll,
-              onRoll: _c.roll,
-              missed: p.missed,
-              clock: _c.clock,
-              turnLeft: active && _c.online ? () => _c.turnLeft : null,
-              chat: _c.chatOf(seat) == null ? null : ludoChatPresets[_c.chatOf(seat)!],
-            ),
-          );
-        }),
+        Builder(
+          builder: (context) {
+            final p = state.players[seat];
+            final top = p.colour == 1 || p.colour == 2;
+            final mirror = p.colour == 2 || p.colour == 3;
+            final you =
+                _c.online && seat == _c.mySeat || (!_c.online && seat == 0);
+            final active = _c.diceSeat == seat && !_c.over;
+            return Positioned(
+              left: mirror ? right : left,
+              top: top ? 46 : 548,
+              child: _SeatPanel(
+                name: p.name,
+                avatar: p.avatar,
+                colour: LudoBoard.colours[p.colour],
+                active: active,
+                out: p.out,
+                you: you,
+                coins: you ? myCoins : null,
+                level: you ? session.level : null,
+                top: top,
+                mirror: mirror,
+                face: _c.diceFace,
+                rolling: active && _c.diceRolling,
+                canRoll: active && _c.canRoll,
+                onRoll: _c.roll,
+                missed: p.missed,
+                clock: _c.clock,
+                turnLeft: active && _c.online ? () => _c.turnLeft : null,
+                chat: _c.chatTextOf(seat),
+              ),
+            );
+          },
+        ),
     ];
   }
 
   void _openChat() {
     final t = ref.read(stringsProvider);
-    showDuelDialog<void>(
-      context,
-      barrierColor: const Color(0xAA000000),
-      builder: (dialog) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          width: 460,
-          padding: const EdgeInsets.all(22),
-          decoration: duelPanel(rim: DuelColors.rimLight),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(t.quickChat, style: AppText.label(18, weight: FontWeight.w900)),
-              const SizedBox(height: 14),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  for (var i = 0; i < ludoChatPresets.length; i++)
-                    GestureDetector(
-                      onTap: () {
-                        AudioService.tap();
-                        Navigator.of(dialog).pop();
-                        _c.sayChat(i);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        decoration: duelPanel(radius: 12, rim: DuelColors.rim),
-                        child: Text(ludoChatPresets[i], style: AppText.label(15, color: DuelColors.silver, weight: FontWeight.w800)),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              DuelButton(label: t.close, width: 150, height: 44, color: DuelColors.rimLight, onPressed: () => Navigator.of(dialog).pop()),
-            ],
-          ),
-        ),
-      ),
+    showMatchChatDialog(
+      context: context,
+      t: t,
+      maxCustomLength: LudoChat.maxCustomLength,
+      phrases: LudoChat.phrases,
+      emojis: LudoChat.emojis,
+      onPreset: _c.sayChat,
+      onCustom: _c.sayCustomChat,
     );
   }
 
@@ -338,9 +368,7 @@ class _LudoScreenState extends ConsumerState<LudoScreen> with SingleTickerProvid
   }
 }
 
-/// Player card in the reference style: coins outside the card, flag/country
-/// row, gift badge, avatar beside an item slot (the dice while it is this
-/// player's turn), life dots, name, and the level in the card's notch.
+/// Player card: avatar, dice slot, name. Wallet/country/level only for [you].
 class _SeatPanel extends StatelessWidget {
   const _SeatPanel({
     required this.name,
@@ -348,9 +376,9 @@ class _SeatPanel extends StatelessWidget {
     required this.colour,
     required this.active,
     required this.out,
-    required this.coins,
-    required this.level,
-    required this.country,
+    required this.you,
+    this.coins,
+    this.level,
     required this.top,
     required this.mirror,
     required this.face,
@@ -374,9 +402,9 @@ class _SeatPanel extends StatelessWidget {
   final Color colour;
   final bool active;
   final bool out;
-  final int coins;
-  final int level;
-  final List<String>? country;
+  final bool you;
+  final int? coins;
+  final int? level;
   final bool top;
   final bool mirror;
   final int face;
@@ -394,7 +422,9 @@ class _SeatPanel extends StatelessWidget {
   /// Quick-chat line this player is saying.
   final String? chat;
 
-  static const _shadow = [Shadow(color: Color(0xCC000000), blurRadius: 3, offset: Offset(0, 1.5))];
+  static const _shadow = [
+    Shadow(color: Color(0xCC000000), blurRadius: 3, offset: Offset(0, 1.5)),
+  ];
 
   static String _fmt(int n) {
     final str = n.toString();
@@ -410,13 +440,15 @@ class _SeatPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cardTop = top ? _coinsH : 0.0;
+    final showWallet = you && coins != null;
+    final showLevel = you && level != null;
+    final cardTop = top && showWallet ? _coinsH : 0.0;
     const slotX = _pad + _box + _gap;
     return Opacity(
       opacity: out ? 0.5 : 1,
       child: SizedBox(
         width: width,
-        height: _h + _coinsH,
+        height: _h + (showWallet ? _coinsH : 0),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
@@ -425,39 +457,44 @@ class _SeatPanel extends StatelessWidget {
               top: cardTop,
               width: width,
               height: _h,
-              child: CustomPaint(painter: _CardPainter(mirror: mirror, notchX: slotX - 8, notchY: _notchY)),
-            ),
-            // Coins outside the card: above for top seats, below for bottom seats.
-            Positioned(
-              left: mirror ? null : 6,
-              right: mirror ? 6 : null,
-              top: top ? 0 : _h + 6,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CustomPaint(size: Size(34, 28), painter: _CoinStackPainter()),
-                  const SizedBox(width: 6),
-                  Text(_fmt(coins), style: AppText.label(22, color: Colors.white, weight: FontWeight.w900).copyWith(shadows: _shadow)),
-                ],
+              child: CustomPaint(
+                painter: _CardPainter(
+                  mirror: mirror,
+                  notchX: slotX - 8,
+                  notchY: _notchY,
+                ),
               ),
             ),
-            // Flag + country.
-            Positioned(
-              left: mirror ? 62 : _pad,
-              right: mirror ? _pad : 62,
-              top: cardTop + 11,
-              height: 34,
-              child: Row(
-                mainAxisAlignment: mirror ? MainAxisAlignment.end : MainAxisAlignment.start,
-                children: [
-                  if (mirror) ...[_countryText(), const SizedBox(width: 8)],
-                  _flag(),
-                  if (!mirror) ...[const SizedBox(width: 8), _countryText()],
-                ],
+            if (showWallet)
+              Positioned(
+                left: mirror ? null : 6,
+                right: mirror ? 6 : null,
+                top: top ? 0 : _h + 6,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CustomPaint(
+                      size: Size(34, 28),
+                      painter: _CoinStackPainter(),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _fmt(coins!),
+                      style: AppText.label(
+                        22,
+                        color: Colors.white,
+                        weight: FontWeight.w900,
+                      ).copyWith(shadows: _shadow),
+                    ),
+                  ],
+                ),
               ),
-            ),
             // Gift badge over the outer top corner.
-            Positioned(left: _x(width - 44, 56), top: cardTop - 12, child: const _GiftBadge()),
+            Positioned(
+              left: _x(width - 44, 56),
+              top: cardTop - 12,
+              child: const _GiftBadge(),
+            ),
             // Avatar.
             Positioned(
               left: _x(_pad, _box),
@@ -469,20 +506,38 @@ class _SeatPanel extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
-                  border: active ? Border.all(color: const Color(0xFF3BE34F), width: 5) : null,
+                  border: active
+                      ? Border.all(color: const Color(0xFF3BE34F), width: 5)
+                      : null,
                   boxShadow: [
-                    if (active) const BoxShadow(color: Color(0xAA3BE34F), blurRadius: 14, spreadRadius: 1),
-                    const BoxShadow(color: Color(0x55000000), blurRadius: 4, offset: Offset(0, 2)),
+                    if (active)
+                      const BoxShadow(
+                        color: Color(0xAA3BE34F),
+                        blurRadius: 14,
+                        spreadRadius: 1,
+                      ),
+                    const BoxShadow(
+                      color: Color(0x55000000),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
                   ],
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(4),
-                  child: FittedBox(fit: BoxFit.cover, child: AvatarImage(avatar, size: 110)),
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    child: AvatarImage(avatar, size: 110),
+                  ),
                 ),
               ),
             ),
             // Item slot, or the dice while this player is on turn.
-            Positioned(left: _x(slotX, _box), top: cardTop + 52, child: active ? _diceSlot() : _emptySlot()),
+            Positioned(
+              left: _x(slotX, _box),
+              top: cardTop + 52,
+              child: active ? _diceSlot() : _emptySlot(),
+            ),
             // Life dots under the slot.
             Positioned(
               left: _x(slotX, _box),
@@ -490,9 +545,7 @@ class _SeatPanel extends StatelessWidget {
               width: _box,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  TurnLifeDots(missed: missed, size: 12),
-                ],
+                children: [TurnLifeDots(missed: missed, size: 12)],
               ),
             ),
             // Name under the avatar (inside the card).
@@ -506,7 +559,11 @@ class _SeatPanel extends StatelessWidget {
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppText.label(21, color: Colors.white, weight: FontWeight.w900).copyWith(shadows: _shadow),
+                  style: AppText.label(
+                    21,
+                    color: Colors.white,
+                    weight: FontWeight.w900,
+                  ).copyWith(shadows: _shadow),
                 ),
               ),
             ),
@@ -520,7 +577,9 @@ class _SeatPanel extends StatelessWidget {
                 child: IgnorePointer(
                   child: ValueListenableBuilder<double>(
                     valueListenable: clock,
-                    builder: (_, _, _) => CustomPaint(painter: _TurnRingPainter(turnLeft!() ?? 0)),
+                    builder: (_, _, _) => CustomPaint(
+                      painter: _TurnRingPainter(turnLeft!() ?? 0),
+                    ),
                   ),
                 ),
               ),
@@ -534,9 +593,18 @@ class _SeatPanel extends StatelessWidget {
                     valueListenable: clock,
                     builder: (_, t, _) => Transform.translate(
                       offset: Offset(0, (sin(t * 7)).abs() * 12),
-                      child: const Icon(Icons.arrow_downward_rounded, size: 52, color: Color(0xFFFFE45C), shadows: [
-                        Shadow(color: Color(0xEE000000), blurRadius: 6, offset: Offset(0, 2)),
-                      ]),
+                      child: const Icon(
+                        Icons.arrow_downward_rounded,
+                        size: 52,
+                        color: Color(0xFFFFE45C),
+                        shadows: [
+                          Shadow(
+                            color: Color(0xEE000000),
+                            blurRadius: 6,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -549,125 +617,144 @@ class _SeatPanel extends StatelessWidget {
                 top: cardTop + 92,
                 child: IgnorePointer(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 9,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0xFF1B1F2A), width: 2.5),
-                      boxShadow: const [BoxShadow(color: Color(0x88000000), blurRadius: 8, offset: Offset(0, 3))],
+                      border: Border.all(
+                        color: const Color(0xFF1B1F2A),
+                        width: 2.5,
+                      ),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x88000000),
+                          blurRadius: 8,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
                     ),
-                    child: Text(chat!, style: AppText.label(19, color: const Color(0xFF1B1F2A), weight: FontWeight.w900)),
+                    child: Text(
+                      chat!,
+                      style: TextStyle(
+                        fontSize: chat!.runes.length <= 4 ? 28 : 17,
+                        height: 1.1,
+                        color: const Color(0xFF1B1F2A),
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            // Level in the notch, outside the card.
-            Positioned(
-              left: _x(slotX, _box),
-              top: cardTop + _notchY + 4,
-              width: _box,
-              height: 34,
-              child: Center(
-                child: Text('Lvl $level', style: AppText.label(20, color: Colors.white, weight: FontWeight.w900).copyWith(shadows: _shadow)),
+            if (showLevel)
+              Positioned(
+                left: _x(slotX, _box),
+                top: cardTop + _notchY + 4,
+                width: _box,
+                height: 34,
+                child: Center(
+                  child: Text(
+                    'Lvl $level',
+                    style: AppText.label(
+                      20,
+                      color: Colors.white,
+                      weight: FontWeight.w900,
+                    ).copyWith(shadows: _shadow),
+                  ),
+                ),
               ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _countryText() {
-    final c = country;
-    if (c == null || c[1].isEmpty) return const SizedBox.shrink();
-    return Flexible(
-      child: Text(
-        c[1],
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: AppText.label(20, color: Colors.white, weight: FontWeight.w900).copyWith(shadows: _shadow),
-      ),
-    );
-  }
-
-  Widget _flag() {
-    final c = country;
-    if (c == null) {
-      return Container(
-        width: 44,
-        height: 32,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [Color(0xFF3CCB9C), Color(0xFF1C80D2)]),
-          borderRadius: BorderRadius.circular(5),
-          border: Border.all(color: Colors.white, width: 2),
-        ),
-        child: const Icon(Icons.public, color: Colors.white, size: 22),
-      );
-    }
-    final code = c[0];
-    final emoji = String.fromCharCodes(code.codeUnits.map((u) => 0x1F1E6 + u - 0x41));
-    return Container(
-      width: 44,
-      height: 32,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: const Color(0xFF0E3A96),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.white, width: 2),
-      ),
-      child: FittedBox(fit: BoxFit.cover, child: Text(emoji, style: const TextStyle(fontSize: 40, height: 1))),
-    );
-  }
-
   Widget _emptySlot() => Container(
-        width: _box,
-        height: _box,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF6DDE3), Color(0xFFE7B9C4)],
-          ),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFFFF3F6), width: 3),
-          boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 4, offset: Offset(0, 2))],
+    width: _box,
+    height: _box,
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0xFFF6DDE3), Color(0xFFE7B9C4)],
+      ),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: const Color(0xFFFFF3F6), width: 3),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x55000000),
+          blurRadius: 4,
+          offset: Offset(0, 2),
         ),
-      );
+      ],
+    ),
+  );
 
   Widget _diceSlot() => GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: canRoll ? onRoll : null,
-        child: Container(
-          width: _box,
-          height: _box,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color.lerp(colour, Colors.white, 0.3)!, colour, Color.lerp(colour, Colors.black, 0.2)!],
+    behavior: HitTestBehavior.opaque,
+    onTap: canRoll ? onRoll : null,
+    child: Container(
+      width: _box,
+      height: _box,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color.lerp(colour, Colors.white, 0.3)!,
+            colour,
+            Color.lerp(colour, Colors.black, 0.2)!,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white, width: 3),
+        boxShadow: [
+          if (canRoll)
+            const BoxShadow(
+              color: Color(0xDDFFFFFF),
+              blurRadius: 18,
+              spreadRadius: 2,
             ),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.white, width: 3),
-            boxShadow: [
-              if (canRoll) const BoxShadow(color: Color(0xDDFFFFFF), blurRadius: 18, spreadRadius: 2),
-              const BoxShadow(color: Color(0x55000000), blurRadius: 4, offset: Offset(0, 2)),
+          const BoxShadow(
+            color: Color(0x55000000),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      alignment: Alignment.center,
+      child: Transform.rotate(
+        angle: rolling ? (face - 3.5) * 0.35 : 0,
+        child: Container(
+          width: 78,
+          height: 78,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Colors.white, Color(0xFFDCE1EA)],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x77000000),
+                blurRadius: 6,
+                offset: Offset(0, 3),
+              ),
             ],
           ),
-          alignment: Alignment.center,
-          child: Transform.rotate(
-            angle: rolling ? (face - 3.5) * 0.35 : 0,
-            child: Container(
-              width: 78,
-              height: 78,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Colors.white, Color(0xFFDCE1EA)]),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: const [BoxShadow(color: Color(0x77000000), blurRadius: 6, offset: Offset(0, 3))],
-              ),
-              child: CustomPaint(painter: _DicePainter(face, Color.lerp(colour, Colors.black, 0.25)!)),
+          child: CustomPaint(
+            painter: _DicePainter(
+              face,
+              Color.lerp(colour, Colors.black, 0.25)!,
             ),
           ),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 /// Depleting ring round the active avatar (green -> amber -> red).
@@ -678,10 +765,21 @@ class _TurnRingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rr = RRect.fromRectAndRadius((Offset.zero & size).deflate(3), const Radius.circular(10));
-    canvas.drawRRect(rr, Paint()..style = PaintingStyle.stroke..strokeWidth = 6..color = const Color(0x66000000));
+    final rr = RRect.fromRectAndRadius(
+      (Offset.zero & size).deflate(3),
+      const Radius.circular(10),
+    );
+    canvas.drawRRect(
+      rr,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 6
+        ..color = const Color(0x66000000),
+    );
     final metric = (Path()..addRRect(rr)).computeMetrics().first;
-    final colour = left > 0.5 ? const Color(0xFF3BE34F) : (left > 0.25 ? const Color(0xFFFFC02E) : const Color(0xFFFF4A3D));
+    final colour = left > 0.5
+        ? const Color(0xFF3BE34F)
+        : (left > 0.25 ? const Color(0xFFFFC02E) : const Color(0xFFFF4A3D));
     canvas.drawPath(
       metric.extractPath(0, metric.length * left),
       Paint()
@@ -698,7 +796,11 @@ class _TurnRingPainter extends CustomPainter {
 
 /// Card outline with the notch under the item slot (mirrored for right seats).
 class _CardPainter extends CustomPainter {
-  _CardPainter({required this.mirror, required this.notchX, required this.notchY});
+  _CardPainter({
+    required this.mirror,
+    required this.notchX,
+    required this.notchY,
+  });
 
   final bool mirror;
   final double notchX;
@@ -715,7 +817,11 @@ class _CardPainter extends CustomPainter {
       ..lineTo(w, notchY - r)
       ..arcToPoint(Offset(w - r, notchY), radius: const Radius.circular(r))
       ..lineTo(notchX + ri, notchY)
-      ..arcToPoint(Offset(notchX, notchY + ri), radius: const Radius.circular(ri), clockwise: false)
+      ..arcToPoint(
+        Offset(notchX, notchY + ri),
+        radius: const Radius.circular(ri),
+        clockwise: false,
+      )
       ..lineTo(notchX, h - r)
       ..arcToPoint(Offset(notchX - r, h), radius: const Radius.circular(r))
       ..lineTo(r, h)
@@ -728,9 +834,12 @@ class _CardPainter extends CustomPainter {
       canvas.translate(w, 0);
       canvas.scale(-1, 1);
     }
-    canvas.drawPath(path.shift(const Offset(0, 5)), Paint()
-      ..color = const Color(0x77000000)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6));
+    canvas.drawPath(
+      path.shift(const Offset(0, 5)),
+      Paint()
+        ..color = const Color(0x77000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+    );
     canvas.drawPath(
       path,
       Paint()
@@ -740,7 +849,13 @@ class _CardPainter extends CustomPainter {
           colors: [Color(0xFF2C7FEA), Color(0xFF1659C9), Color(0xFF0F45AA)],
         ).createShader(Offset.zero & size),
     );
-    canvas.drawPath(path, Paint()..style = PaintingStyle.stroke..strokeWidth = 7..color = const Color(0xFF4A3200));
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 7
+        ..color = const Color(0xFF4A3200),
+    );
     canvas.drawPath(
       path,
       Paint()
@@ -756,7 +871,8 @@ class _CardPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_CardPainter old) => old.mirror != mirror || old.notchX != notchX || old.notchY != notchY;
+  bool shouldRepaint(_CardPainter old) =>
+      old.mirror != mirror || old.notchX != notchX || old.notchY != notchY;
 }
 
 /// Round gold-rimmed badge with a red gift box.
@@ -765,17 +881,25 @@ class _GiftBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: const RadialGradient(colors: [Color(0xFF2A6FD6), Color(0xFF0C3A8E)]),
-          border: Border.all(color: const Color(0xFFF2C230), width: 3.5),
-          boxShadow: const [BoxShadow(color: Color(0x88000000), blurRadius: 5, offset: Offset(0, 2))],
+    width: 56,
+    height: 56,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      gradient: const RadialGradient(
+        colors: [Color(0xFF2A6FD6), Color(0xFF0C3A8E)],
+      ),
+      border: Border.all(color: const Color(0xFFF2C230), width: 3.5),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x88000000),
+          blurRadius: 5,
+          offset: Offset(0, 2),
         ),
-        alignment: Alignment.center,
-        child: const CustomPaint(size: Size(32, 32), painter: _GiftPainter()),
-      );
+      ],
+    ),
+    alignment: Alignment.center,
+    child: const CustomPaint(size: Size(32, 32), painter: _GiftPainter()),
+  );
 }
 
 class _GiftPainter extends CustomPainter {
@@ -787,12 +911,37 @@ class _GiftPainter extends CustomPainter {
     final red = Paint()..color = const Color(0xFFE53935);
     final redDark = Paint()..color = const Color(0xFFB71C1C);
     final gold = Paint()..color = const Color(0xFFFFD54F);
-    canvas.drawRRect(RRect.fromLTRBR(w * 0.12, h * 0.42, w * 0.88, h * 0.98, Radius.circular(w * 0.06)), red);
-    canvas.drawRRect(RRect.fromLTRBR(w * 0.04, h * 0.28, w * 0.96, h * 0.46, Radius.circular(w * 0.05)), redDark);
-    canvas.drawRect(Rect.fromLTRB(w * 0.43, h * 0.28, w * 0.57, h * 0.98), gold);
+    canvas.drawRRect(
+      RRect.fromLTRBR(
+        w * 0.12,
+        h * 0.42,
+        w * 0.88,
+        h * 0.98,
+        Radius.circular(w * 0.06),
+      ),
+      red,
+    );
+    canvas.drawRRect(
+      RRect.fromLTRBR(
+        w * 0.04,
+        h * 0.28,
+        w * 0.96,
+        h * 0.46,
+        Radius.circular(w * 0.05),
+      ),
+      redDark,
+    );
+    canvas.drawRect(
+      Rect.fromLTRB(w * 0.43, h * 0.28, w * 0.57, h * 0.98),
+      gold,
+    );
     canvas.drawOval(Rect.fromLTRB(w * 0.18, h * 0.04, w * 0.5, h * 0.3), gold);
     canvas.drawOval(Rect.fromLTRB(w * 0.5, h * 0.04, w * 0.82, h * 0.3), gold);
-    canvas.drawCircle(Offset(w * 0.5, h * 0.24), w * 0.07, Paint()..color = const Color(0xFFF9A825));
+    canvas.drawCircle(
+      Offset(w * 0.5, h * 0.24),
+      w * 0.07,
+      Paint()..color = const Color(0xFFF9A825),
+    );
   }
 
   @override
@@ -806,11 +955,23 @@ class _CoinStackPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
-    final edge = Paint()..style = PaintingStyle.stroke..strokeWidth = 1.4..color = const Color(0xFF8A5A00);
+    final edge = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
+      ..color = const Color(0xFF8A5A00);
     void coin(Offset c, double rw, double rh) {
       final r = Rect.fromCenter(center: c, width: rw, height: rh);
-      canvas.drawOval(r.shift(Offset(0, rh * 0.25)), Paint()..color = const Color(0xFFC88A12));
-      canvas.drawOval(r, Paint()..shader = const LinearGradient(colors: [Color(0xFFFFE680), Color(0xFFF2B21E)]).createShader(r));
+      canvas.drawOval(
+        r.shift(Offset(0, rh * 0.25)),
+        Paint()..color = const Color(0xFFC88A12),
+      );
+      canvas.drawOval(
+        r,
+        Paint()
+          ..shader = const LinearGradient(
+            colors: [Color(0xFFFFE680), Color(0xFFF2B21E)],
+          ).createShader(r),
+      );
       canvas.drawOval(r, edge);
     }
 
@@ -819,9 +980,22 @@ class _CoinStackPainter extends CustomPainter {
     coin(Offset(w * 0.34, h * 0.4), w * 0.62, h * 0.32);
     final c = Offset(w * 0.72, h * 0.55);
     final rr = Rect.fromCircle(center: c, radius: h * 0.34);
-    canvas.drawOval(rr, Paint()..shader = const RadialGradient(colors: [Color(0xFFFFEB8A), Color(0xFFF0A818)]).createShader(rr));
+    canvas.drawOval(
+      rr,
+      Paint()
+        ..shader = const RadialGradient(
+          colors: [Color(0xFFFFEB8A), Color(0xFFF0A818)],
+        ).createShader(rr),
+    );
     canvas.drawOval(rr, edge);
-    canvas.drawCircle(c, h * 0.2, Paint()..style = PaintingStyle.stroke..strokeWidth = 1.2..color = const Color(0xFFB8860B));
+    canvas.drawCircle(
+      c,
+      h * 0.2,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..color = const Color(0xFFB8860B),
+    );
   }
 
   @override
@@ -834,12 +1008,39 @@ class _DicePainter extends CustomPainter {
   final Color pip;
 
   static const _pips = {
-    1: [[0.5, 0.5]],
-    2: [[0.28, 0.28], [0.72, 0.72]],
-    3: [[0.26, 0.26], [0.5, 0.5], [0.74, 0.74]],
-    4: [[0.28, 0.28], [0.72, 0.28], [0.28, 0.72], [0.72, 0.72]],
-    5: [[0.26, 0.26], [0.74, 0.26], [0.5, 0.5], [0.26, 0.74], [0.74, 0.74]],
-    6: [[0.28, 0.24], [0.72, 0.24], [0.28, 0.5], [0.72, 0.5], [0.28, 0.76], [0.72, 0.76]],
+    1: [
+      [0.5, 0.5],
+    ],
+    2: [
+      [0.28, 0.28],
+      [0.72, 0.72],
+    ],
+    3: [
+      [0.26, 0.26],
+      [0.5, 0.5],
+      [0.74, 0.74],
+    ],
+    4: [
+      [0.28, 0.28],
+      [0.72, 0.28],
+      [0.28, 0.72],
+      [0.72, 0.72],
+    ],
+    5: [
+      [0.26, 0.26],
+      [0.74, 0.26],
+      [0.5, 0.5],
+      [0.26, 0.74],
+      [0.74, 0.74],
+    ],
+    6: [
+      [0.28, 0.24],
+      [0.72, 0.24],
+      [0.28, 0.5],
+      [0.72, 0.5],
+      [0.28, 0.76],
+      [0.72, 0.76],
+    ],
   };
 
   @override
@@ -847,7 +1048,11 @@ class _DicePainter extends CustomPainter {
     final r = size.width * (face == 1 ? 0.13 : 0.09);
     final paint = Paint()..color = pip;
     for (final p in _pips[face]!) {
-      canvas.drawCircle(Offset(p[0] * size.width, p[1] * size.height), r, paint);
+      canvas.drawCircle(
+        Offset(p[0] * size.width, p[1] * size.height),
+        r,
+        paint,
+      );
     }
   }
 
@@ -856,7 +1061,11 @@ class _DicePainter extends CustomPainter {
 }
 
 class _Board extends StatelessWidget {
-  const _Board({required this.controller, required this.theme, required this.onTapToken});
+  const _Board({
+    required this.controller,
+    required this.theme,
+    required this.onTapToken,
+  });
 
   final LudoController controller;
   final LudoBoardTheme theme;
@@ -886,13 +1095,17 @@ class _Board extends StatelessWidget {
         }
         if (best >= 0 && bestDist < s * 1.2) onTapToken(best);
       },
-      child: CustomPaint(size: const Size.square(820), painter: _BoardPainter(controller, theme)),
+      child: CustomPaint(
+        size: const Size.square(820),
+        painter: _BoardPainter(controller, theme),
+      ),
     );
   }
 }
 
 class _BoardPainter extends CustomPainter {
-  _BoardPainter(this.controller, this.theme) : super(repaint: Listenable.merge([controller, controller.clock]));
+  _BoardPainter(this.controller, this.theme)
+    : super(repaint: Listenable.merge([controller, controller.clock]));
 
   final LudoController controller;
   final LudoBoardTheme theme;
@@ -902,7 +1115,10 @@ class _BoardPainter extends CustomPainter {
     final s = size.width / LudoBoard.n;
     Rect cellRect(int col, int row) => Rect.fromLTWH(col * s, row * s, s, s);
     Offset at(double gx, double gy) => Offset(gx * s, gy * s);
-    final grid = Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = theme.grid;
+    final grid = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = theme.grid;
     canvas.drawRect(Offset.zero & size, Paint()..color = theme.field);
 
     // Track cells; home lanes and start squares in their colour.
@@ -934,7 +1150,10 @@ class _BoardPainter extends CustomPainter {
       final col = LudoBoard.colours[colour];
       canvas.drawRect(rect, Paint()..color = col);
       final inner = Rect.fromLTWH(rect.left + s, rect.top + s, s * 4, s * 4);
-      canvas.drawRRect(RRect.fromRectAndRadius(inner, Radius.circular(s * 0.14)), Paint()..color = theme.track);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(inner, Radius.circular(s * 0.14)),
+        Paint()..color = theme.track,
+      );
       for (final spot in LudoBoard.yard[colour]) {
         canvas.drawCircle(at(spot[0], spot[1]), s * 0.47, Paint()..color = col);
       }
@@ -942,9 +1161,27 @@ class _BoardPainter extends CustomPainter {
     }
 
     // Thin entry arrows at the tip of each arm.
-    _tipArrow(canvas, cellRect(7, 0).center, s, _Dir.down, LudoBoard.colours[2]);
-    _tipArrow(canvas, cellRect(0, 7).center, s, _Dir.right, LudoBoard.colours[1]);
-    _tipArrow(canvas, cellRect(14, 7).center, s, _Dir.left, LudoBoard.colours[3]);
+    _tipArrow(
+      canvas,
+      cellRect(7, 0).center,
+      s,
+      _Dir.down,
+      LudoBoard.colours[2],
+    );
+    _tipArrow(
+      canvas,
+      cellRect(0, 7).center,
+      s,
+      _Dir.right,
+      LudoBoard.colours[1],
+    );
+    _tipArrow(
+      canvas,
+      cellRect(14, 7).center,
+      s,
+      _Dir.left,
+      LudoBoard.colours[3],
+    );
     _tipArrow(canvas, cellRect(7, 14).center, s, _Dir.up, LudoBoard.colours[0]);
 
     // Outlined stars on the safe squares.
@@ -965,12 +1202,26 @@ class _BoardPainter extends CustomPainter {
     canvas.drawRect(Rect.fromLTRB(tl.dx, tl.dy, br.dx, br.dy), grid);
 
     // Board edge.
-    canvas.drawRect((Offset.zero & size).deflate(1.5), Paint()..style = PaintingStyle.stroke..strokeWidth = 3..color = const Color(0xFF3A4252));
+    canvas.drawRect(
+      (Offset.zero & size).deflate(1.5),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..color = const Color(0xFF3A4252),
+    );
 
     // Footprints along the path a token just hopped, fading out.
     for (final m in controller.trail) {
       final alpha = controller.trailAlpha(m);
-      if (alpha > 0) _drawFootprints(canvas, at(m.x, m.y), s, LudoBoard.colours[m.colour], m.angle, alpha);
+      if (alpha > 0)
+        _drawFootprints(
+          canvas,
+          at(m.x, m.y),
+          s,
+          LudoBoard.colours[m.colour],
+          m.angle,
+          alpha,
+        );
     }
 
     // Tokens: stacked tokens fanned out, drawn top-to-bottom so lower pins overlap.
@@ -986,11 +1237,19 @@ class _BoardPainter extends CustomPainter {
         final key = '${pos[0].toStringAsFixed(1)},${pos[1].toStringAsFixed(1)}';
         final idx = occupancy[key] ?? 0;
         occupancy[key] = idx + 1;
-        final centre = at(pos[0], pos[1]) + (idx == 0 ? Offset.zero : Offset((idx.isOdd ? 1 : -1) * s * 0.2, -idx * s * 0.06));
+        final centre =
+            at(pos[0], pos[1]) +
+            (idx == 0
+                ? Offset.zero
+                : Offset((idx.isOdd ? 1 : -1) * s * 0.2, -idx * s * 0.06));
         final canMove = seat == activeSeat && movable.contains(t);
         // Hopping tokens lift; movable ones bob to invite a tap.
         final lift = controller.liftOf(seat, t) + (canMove ? pulse * 0.14 : 0);
-        pins.add((centre - Offset(0, lift * s), LudoBoard.colours[state.players[seat].colour], canMove));
+        pins.add((
+          centre - Offset(0, lift * s),
+          LudoBoard.colours[state.players[seat].colour],
+          canMove,
+        ));
       }
     }
     pins.sort((a, b) => a.$1.dy.compareTo(b.$1.dy));
@@ -1000,16 +1259,46 @@ class _BoardPainter extends CustomPainter {
   }
 
   /// One small footprint pointing along [angle], in the token's colour.
-  void _drawFootprints(Canvas canvas, Offset c, double s, Color colour, double angle, double alpha) {
-    final paint = Paint()..color = Color.lerp(colour, Colors.black, 0.25)!.withValues(alpha: 0.75 * alpha);
+  void _drawFootprints(
+    Canvas canvas,
+    Offset c,
+    double s,
+    Color colour,
+    double angle,
+    double alpha,
+  ) {
+    final paint = Paint()
+      ..color = Color.lerp(
+        colour,
+        Colors.black,
+        0.25,
+      )!.withValues(alpha: 0.75 * alpha);
     canvas.save();
     canvas.translate(c.dx, c.dy);
     canvas.rotate(angle + pi / 2); // foot drawn pointing up (-y)
     // sole, heel and toes
-    canvas.drawOval(Rect.fromCenter(center: Offset(0, -s * 0.04), width: s * 0.13, height: s * 0.17), paint);
-    canvas.drawOval(Rect.fromCenter(center: Offset(0, s * 0.09), width: s * 0.1, height: s * 0.1), paint);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(0, -s * 0.04),
+        width: s * 0.13,
+        height: s * 0.17,
+      ),
+      paint,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(0, s * 0.09),
+        width: s * 0.1,
+        height: s * 0.1,
+      ),
+      paint,
+    );
     for (var i = 0; i < 3; i++) {
-      canvas.drawCircle(Offset((i - 1) * s * 0.04, -s * 0.15 - (i == 1 ? s * 0.012 : 0)), s * 0.021, paint);
+      canvas.drawCircle(
+        Offset((i - 1) * s * 0.04, -s * 0.15 - (i == 1 ? s * 0.012 : 0)),
+        s * 0.021,
+        paint,
+      );
     }
     canvas.restore();
   }
@@ -1020,22 +1309,43 @@ class _BoardPainter extends CustomPainter {
     final dark = Color.lerp(colour, Colors.black, 0.32)!;
     final base = c.translate(0, s * 0.16);
     if (movable) {
-      canvas.drawOval(Rect.fromCenter(center: base, width: s * 1.0, height: s * 0.55), Paint()
-        ..color = Colors.white
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6));
+      canvas.drawOval(
+        Rect.fromCenter(center: base, width: s * 1.0, height: s * 0.55),
+        Paint()
+          ..color = Colors.white
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+      );
     }
-    canvas.drawOval(Rect.fromCenter(center: base, width: s * 0.8, height: s * 0.42), Paint()..color = dark);
-    canvas.drawOval(Rect.fromCenter(center: base, width: s * 0.52, height: s * 0.25), Paint()..color = colour);
+    canvas.drawOval(
+      Rect.fromCenter(center: base, width: s * 0.8, height: s * 0.42),
+      Paint()..color = dark,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(center: base, width: s * 0.52, height: s * 0.25),
+      Paint()..color = colour,
+    );
     if (movable) {
-      canvas.drawOval(Rect.fromCenter(center: base, width: s * 0.82, height: s * 0.46),
-          Paint()..style = PaintingStyle.stroke..strokeWidth = s * 0.05..color = Colors.white);
+      canvas.drawOval(
+        Rect.fromCenter(center: base, width: s * 0.82, height: s * 0.46),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = s * 0.05
+          ..color = Colors.white,
+      );
     }
 
     final hr = s * 0.36;
     final hc = c.translate(0, -s * 0.5);
     final a = acos(hr / (base - hc).distance);
-    final pin = Path.combine(PathOperation.union, Path()..addOval(Rect.fromCircle(center: hc, radius: hr)), _teardrop(hc, base, hr, a));
-    canvas.drawPath(pin.shift(Offset(s * 0.05, s * 0.04)), Paint()..color = const Color(0x55000000));
+    final pin = Path.combine(
+      PathOperation.union,
+      Path()..addOval(Rect.fromCircle(center: hc, radius: hr)),
+      _teardrop(hc, base, hr, a),
+    );
+    canvas.drawPath(
+      pin.shift(Offset(s * 0.05, s * 0.04)),
+      Paint()..color = const Color(0x55000000),
+    );
     canvas.drawPath(
       pin,
       Paint()
@@ -1045,7 +1355,13 @@ class _BoardPainter extends CustomPainter {
           colors: [Colors.white, Color(0xFFE6EAF0), Color(0xFFB4BCC8)],
         ).createShader(Rect.fromCircle(center: hc, radius: hr * 1.8)),
     );
-    canvas.drawPath(pin, Paint()..style = PaintingStyle.stroke..strokeWidth = s * 0.045..color = const Color(0xFF59616E));
+    canvas.drawPath(
+      pin,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = s * 0.045
+        ..color = const Color(0xFF59616E),
+    );
     final disc = Rect.fromCircle(center: hc, radius: hr * 0.64);
     canvas.drawOval(
       disc,
@@ -1056,8 +1372,18 @@ class _BoardPainter extends CustomPainter {
           stops: const [0, 0.6, 1],
         ).createShader(disc),
     );
-    canvas.drawOval(disc, Paint()..style = PaintingStyle.stroke..strokeWidth = s * 0.03..color = dark);
-    canvas.drawCircle(hc.translate(-hr * 0.2, -hr * 0.22), hr * 0.14, Paint()..color = Colors.white.withValues(alpha: 0.85));
+    canvas.drawOval(
+      disc,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = s * 0.03
+        ..color = dark,
+    );
+    canvas.drawCircle(
+      hc.translate(-hr * 0.2, -hr * 0.22),
+      hr * 0.14,
+      Paint()..color = Colors.white.withValues(alpha: 0.85),
+    );
   }
 
   /// Triangle point of a pin: from [tip] up to two base points on the head
@@ -1081,7 +1407,14 @@ class _BoardPainter extends CustomPainter {
     }
     path.close();
     canvas.drawPath(path, Paint()..color = Colors.white);
-    canvas.drawPath(path, Paint()..style = PaintingStyle.stroke..strokeWidth = 2.2..strokeJoin = StrokeJoin.round..color = theme.grid);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.2
+        ..strokeJoin = StrokeJoin.round
+        ..color = theme.grid,
+    );
   }
 
   void _tipArrow(Canvas canvas, Offset c, double s, _Dir dir, Color colour) {
@@ -1102,17 +1435,39 @@ class _BoardPainter extends CustomPainter {
     canvas.drawLine(c - v * s * 0.3, tip, pen);
     canvas.drawPath(
       Path()
-        ..moveTo((tip - v * s * 0.17 + perp * s * 0.15).dx, (tip - v * s * 0.17 + perp * s * 0.15).dy)
+        ..moveTo(
+          (tip - v * s * 0.17 + perp * s * 0.15).dx,
+          (tip - v * s * 0.17 + perp * s * 0.15).dy,
+        )
         ..lineTo(tip.dx, tip.dy)
-        ..lineTo((tip - v * s * 0.17 - perp * s * 0.15).dx, (tip - v * s * 0.17 - perp * s * 0.15).dy),
+        ..lineTo(
+          (tip - v * s * 0.17 - perp * s * 0.15).dx,
+          (tip - v * s * 0.17 - perp * s * 0.15).dy,
+        ),
       pen,
     );
   }
 
   void _tri(Canvas canvas, Offset a, Offset b, Offset c, Color colour) {
-    canvas.drawPath(Path()..moveTo(a.dx, a.dy)..lineTo(b.dx, b.dy)..lineTo(c.dx, c.dy)..close(), Paint()..color = colour);
-    canvas.drawPath(Path()..moveTo(a.dx, a.dy)..lineTo(b.dx, b.dy)..lineTo(c.dx, c.dy)..close(),
-        Paint()..style = PaintingStyle.stroke..strokeWidth = 1..color = const Color(0x552A3350));
+    canvas.drawPath(
+      Path()
+        ..moveTo(a.dx, a.dy)
+        ..lineTo(b.dx, b.dy)
+        ..lineTo(c.dx, c.dy)
+        ..close(),
+      Paint()..color = colour,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(a.dx, a.dy)
+        ..lineTo(b.dx, b.dy)
+        ..lineTo(c.dx, c.dy)
+        ..close(),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = const Color(0x552A3350),
+    );
   }
 
   @override
@@ -1129,20 +1484,26 @@ class _ChatButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          AudioService.tap();
-          onTap();
-        },
-        child: CustomPaint(size: const Size(78, 66), painter: _BubblePainter()),
-      );
+    behavior: HitTestBehavior.opaque,
+    onTap: () {
+      AudioService.tap();
+      onTap();
+    },
+    child: CustomPaint(size: const Size(78, 66), painter: _BubblePainter()),
+  );
 }
 
 class _BubblePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final r = RRect.fromRectAndRadius(Rect.fromLTWH(0, 0, size.width, size.height * 0.78), Radius.circular(size.height * 0.26));
-    canvas.drawRRect(r.shift(const Offset(0, 4)), Paint()..color = const Color(0x55000000));
+    final r = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, size.width, size.height * 0.78),
+      Radius.circular(size.height * 0.26),
+    );
+    canvas.drawRRect(
+      r.shift(const Offset(0, 4)),
+      Paint()..color = const Color(0x55000000),
+    );
     canvas.drawRRect(r, Paint()..color = Colors.white);
     // tail
     final tail = Path()
@@ -1151,9 +1512,19 @@ class _BubblePainter extends CustomPainter {
       ..lineTo(size.width * 0.46, size.height * 0.74)
       ..close();
     canvas.drawPath(tail, Paint()..color = Colors.white);
-    canvas.drawRRect(r, Paint()..style = PaintingStyle.stroke..strokeWidth = 3..color = const Color(0xFF1B1F2A));
+    canvas.drawRRect(
+      r,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..color = const Color(0xFF1B1F2A),
+    );
     for (var i = 0; i < 3; i++) {
-      canvas.drawCircle(Offset(size.width * (0.3 + i * 0.2), size.height * 0.38), size.height * 0.072, Paint()..color = const Color(0xFF2A3350));
+      canvas.drawCircle(
+        Offset(size.width * (0.3 + i * 0.2), size.height * 0.38),
+        size.height * 0.072,
+        Paint()..color = const Color(0xFF2A3350),
+      );
     }
   }
 
@@ -1162,6 +1533,50 @@ class _BubblePainter extends CustomPainter {
 }
 
 /// Gold tab hanging from the top edge that opens the pause menu.
+class _FairDiceBadge extends StatelessWidget {
+  const _FairDiceBadge({required this.online, required this.label});
+
+  final bool online;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = online ? Icons.verified_user_rounded : Icons.casino_outlined;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xCC0E1428),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0x55FFE27A)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x44000000),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: const Color(0xFFFFE27A)),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: AppText.label(
+                11,
+                color: const Color(0xFFE8ECFF),
+                weight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _MenuTab extends StatelessWidget {
   const _MenuTab({required this.onTap});
 
@@ -1169,13 +1584,13 @@ class _MenuTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          AudioService.tap();
-          onTap();
-        },
-        child: const CustomPaint(size: Size(96, 46), painter: _MenuTabPainter()),
-      );
+    behavior: HitTestBehavior.opaque,
+    onTap: () {
+      AudioService.tap();
+      onTap();
+    },
+    child: const CustomPaint(size: Size(96, 46), painter: _MenuTabPainter()),
+  );
 }
 
 class _MenuTabPainter extends CustomPainter {
@@ -1192,7 +1607,10 @@ class _MenuTabPainter extends CustomPainter {
       ..lineTo(w * 0.32, h)
       ..quadraticBezierTo(w * 0.23, h, w * 0.2, h * 0.82)
       ..close();
-    canvas.drawPath(tab.shift(const Offset(0, 3)), Paint()..color = const Color(0x66000000));
+    canvas.drawPath(
+      tab.shift(const Offset(0, 3)),
+      Paint()..color = const Color(0x66000000),
+    );
     canvas.drawPath(
       tab,
       Paint()
@@ -1202,7 +1620,13 @@ class _MenuTabPainter extends CustomPainter {
           colors: [Color(0xFFFFE27A), Color(0xFFE9A920)],
         ).createShader(Offset.zero & size),
     );
-    canvas.drawPath(tab, Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = const Color(0xFF8A5A00));
+    canvas.drawPath(
+      tab,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = const Color(0xFF8A5A00),
+    );
     final line = Paint()
       ..strokeWidth = 3.5
       ..strokeCap = StrokeCap.round
@@ -1226,12 +1650,14 @@ class _LudoBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Stack(
-        fit: StackFit.expand,
-        children: [
-          const RepaintBoundary(child: CustomPaint(painter: _LudoBgPainter(), isComplex: true)),
-          child,
-        ],
-      );
+    fit: StackFit.expand,
+    children: [
+      const RepaintBoundary(
+        child: CustomPaint(painter: _LudoBgPainter(), isComplex: true),
+      ),
+      child,
+    ],
+  );
 }
 
 /// Ludo King style wallpaper: giant Ludo boards tiled edge to edge, turned
@@ -1258,11 +1684,16 @@ class _LudoBgPainter extends CustomPainter {
     canvas.save();
     canvas.translate(size.width / 2, size.height / 2);
     canvas.rotate(-pi / 4);
-    final reach = sqrt(size.width * size.width + size.height * size.height) / 2 + period;
+    final reach =
+        sqrt(size.width * size.width + size.height * size.height) / 2 + period;
     final n = (reach / period).ceil();
     for (var i = -n; i <= n; i++) {
       for (var j = -n; j <= n; j++) {
-        _board(canvas, Offset(i * period - period / 2, j * period - period / 2), u);
+        _board(
+          canvas,
+          Offset(i * period - period / 2, j * period - period / 2),
+          u,
+        );
       }
     }
     canvas.restore();
@@ -1280,7 +1711,8 @@ class _LudoBgPainter extends CustomPainter {
   }
 
   void _board(Canvas canvas, Offset o, double u) {
-    Rect cells(double c, double r, double w, double h) => Rect.fromLTWH(o.dx + c * u, o.dy + r * u, w * u, h * u);
+    Rect cells(double c, double r, double w, double h) =>
+        Rect.fromLTWH(o.dx + c * u, o.dy + r * u, w * u, h * u);
     final line = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = u * 0.1
@@ -1296,21 +1728,47 @@ class _LudoBgPainter extends CustomPainter {
     canvas.drawRect(cells(9, 7, 5, 1), lane);
     for (var k = 0; k <= 15; k++) {
       if (k <= 6 || k >= 9) {
-        canvas.drawLine(Offset(o.dx + 6 * u, o.dy + k * u), Offset(o.dx + 9 * u, o.dy + k * u), line);
-        canvas.drawLine(Offset(o.dx + k * u, o.dy + 6 * u), Offset(o.dx + k * u, o.dy + 9 * u), line);
+        canvas.drawLine(
+          Offset(o.dx + 6 * u, o.dy + k * u),
+          Offset(o.dx + 9 * u, o.dy + k * u),
+          line,
+        );
+        canvas.drawLine(
+          Offset(o.dx + k * u, o.dy + 6 * u),
+          Offset(o.dx + k * u, o.dy + 9 * u),
+          line,
+        );
       }
     }
     for (final k in [6.0, 7.0, 8.0, 9.0]) {
-      canvas.drawLine(Offset(o.dx + k * u, o.dy), Offset(o.dx + k * u, o.dy + 6 * u), line);
-      canvas.drawLine(Offset(o.dx + k * u, o.dy + 9 * u), Offset(o.dx + k * u, o.dy + 15 * u), line);
-      canvas.drawLine(Offset(o.dx, o.dy + k * u), Offset(o.dx + 6 * u, o.dy + k * u), line);
-      canvas.drawLine(Offset(o.dx + 9 * u, o.dy + k * u), Offset(o.dx + 15 * u, o.dy + k * u), line);
+      canvas.drawLine(
+        Offset(o.dx + k * u, o.dy),
+        Offset(o.dx + k * u, o.dy + 6 * u),
+        line,
+      );
+      canvas.drawLine(
+        Offset(o.dx + k * u, o.dy + 9 * u),
+        Offset(o.dx + k * u, o.dy + 15 * u),
+        line,
+      );
+      canvas.drawLine(
+        Offset(o.dx, o.dy + k * u),
+        Offset(o.dx + 6 * u, o.dy + k * u),
+        line,
+      );
+      canvas.drawLine(
+        Offset(o.dx + 9 * u, o.dy + k * u),
+        Offset(o.dx + 15 * u, o.dy + k * u),
+        line,
+      );
     }
 
     // Centre: four triangles in two shades.
     final c = Offset(o.dx + 7.5 * u, o.dy + 7.5 * u);
-    final tl = Offset(o.dx + 6 * u, o.dy + 6 * u), tr = Offset(o.dx + 9 * u, o.dy + 6 * u);
-    final br = Offset(o.dx + 9 * u, o.dy + 9 * u), bl = Offset(o.dx + 6 * u, o.dy + 9 * u);
+    final tl = Offset(o.dx + 6 * u, o.dy + 6 * u),
+        tr = Offset(o.dx + 9 * u, o.dy + 6 * u);
+    final br = Offset(o.dx + 9 * u, o.dy + 9 * u),
+        bl = Offset(o.dx + 6 * u, o.dy + 9 * u);
     Path tri(Offset a, Offset b) => Path()
       ..moveTo(c.dx, c.dy)
       ..lineTo(a.dx, a.dy)
@@ -1322,12 +1780,38 @@ class _LudoBgPainter extends CustomPainter {
     canvas.drawPath(tri(bl, tl), Paint()..color = _yardInner);
 
     // Yards: big rounded square, an inner panel and four dark sockets.
-    for (final corner in const [Offset(0, 0), Offset(9, 0), Offset(0, 9), Offset(9, 9)]) {
+    for (final corner in const [
+      Offset(0, 0),
+      Offset(9, 0),
+      Offset(0, 9),
+      Offset(9, 9),
+    ]) {
       final yard = cells(corner.dx, corner.dy, 6, 6);
-      canvas.drawRRect(RRect.fromRectAndRadius(yard.deflate(u * 0.35), Radius.circular(u * 1.1)), Paint()..color = _yard);
-      canvas.drawRRect(RRect.fromRectAndRadius(yard.deflate(u * 1.05), Radius.circular(u * 0.7)), Paint()..color = _yardInner);
-      for (final s in const [Offset(2, 2), Offset(4, 2), Offset(2, 4), Offset(4, 4)]) {
-        canvas.drawCircle(Offset(yard.left + s.dx * u, yard.top + s.dy * u), u * 0.62, Paint()..color = _socket);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          yard.deflate(u * 0.35),
+          Radius.circular(u * 1.1),
+        ),
+        Paint()..color = _yard,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          yard.deflate(u * 1.05),
+          Radius.circular(u * 0.7),
+        ),
+        Paint()..color = _yardInner,
+      );
+      for (final s in const [
+        Offset(2, 2),
+        Offset(4, 2),
+        Offset(2, 4),
+        Offset(4, 4),
+      ]) {
+        canvas.drawCircle(
+          Offset(yard.left + s.dx * u, yard.top + s.dy * u),
+          u * 0.62,
+          Paint()..color = _socket,
+        );
       }
     }
   }

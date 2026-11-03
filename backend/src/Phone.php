@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace App;
 
-/** Bangladesh mobile numbers only, stored as 8801XXXXXXXXX (13 digits). */
+/** Mobile numbers stored as digits only (E.164 without +). Bangladesh + international. */
 final class Phone
 {
     /** @throws ApiError */
@@ -22,14 +22,20 @@ final class Phone
         if (str_starts_with($d, '880') && strlen($d) === 12) {
             $d = '880' . substr($d, 3);
         }
-        if (!preg_match('/^8801[3-9]\d{8}$/', $d)) {
-            throw ApiError::badRequest('Use a valid Bangladesh mobile number (+880)', 'bad_phone');
+        if (preg_match('/^8801[3-9]\d{8}$/', $d)) {
+            return $d;
         }
-        return $d;
+        if (strlen($d) >= 10 && strlen($d) <= 15 && preg_match('/^[1-9]\d+$/', $d)) {
+            return $d;
+        }
+        throw ApiError::badRequest('Use a valid mobile number with country code', 'bad_phone');
     }
 
     public static function display(string $normalized): string
     {
-        return '+880 ' . substr($normalized, 3);
+        if (preg_match('/^8801[3-9]\d{8}$/', $normalized)) {
+            return '+880 ' . substr($normalized, 3);
+        }
+        return '+' . $normalized;
     }
 }

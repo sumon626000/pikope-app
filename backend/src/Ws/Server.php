@@ -349,11 +349,9 @@ final class Server
                 return;
 
             case 'chat':
-                // A quick-chat preset (index only, never free text), relayed
-                // to the other players of the match; not stored.
+                // Preset index and/or short custom text; relay only, not stored.
                 $gameId = (int) ($msg['gameId'] ?? 0);
-                $m = $msg['m'] ?? null;
-                if (!isset($c->games[$gameId]) || !is_int($m) || $m < 0 || $m > 15) {
+                if (!isset($c->games[$gameId])) {
                     return;
                 }
                 $now = microtime(true);
@@ -361,7 +359,23 @@ final class Server
                     return;
                 }
                 $c->lastChat = $now;
-                $chat = ['t' => 'chat', 'gameId' => $gameId, 's' => $c->seats[$gameId] ?? -1, 'm' => $m];
+                $seat = $c->seats[$gameId] ?? -1;
+                $text = isset($msg['text']) ? trim((string) $msg['text']) : '';
+                if ($text !== '') {
+                    if (strlen($text) > 80) {
+                        return;
+                    }
+                    if (preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', $text)) {
+                        return;
+                    }
+                    $chat = ['t' => 'chat', 'gameId' => $gameId, 's' => $seat, 'text' => $text];
+                } else {
+                    $m = $msg['m'] ?? null;
+                    if (!is_int($m) || $m < 0 || $m > 59) {
+                        return;
+                    }
+                    $chat = ['t' => 'chat', 'gameId' => $gameId, 's' => $seat, 'm' => $m];
+                }
                 foreach ($this->clients as $other) {
                     if ($other !== $c && isset($other->games[$gameId])) {
                         $this->send($other, $chat);

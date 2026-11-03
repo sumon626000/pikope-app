@@ -67,18 +67,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  ({int games, int wins, int losses, int winRate, int todayPlayed, int todayWins, int todayLosses})
-      _resolvedStats(AppSettings s) {
+  ({
+    int games,
+    int wins,
+    int losses,
+    int winRate,
+    int todayPlayed,
+    int todayWins,
+    int todayLosses,
+  })
+  _resolvedStats(AppSettings s) {
     final m = _matchStats;
     if (m != null) {
       final games = (m['totalGames'] as num?)?.toInt() ?? s.games;
       final wins = (m['totalWins'] as num?)?.toInt() ?? s.wins;
-      final losses = (m['totalLosses'] as num?)?.toInt() ?? (games - wins).clamp(0, games);
+      final losses =
+          (m['totalLosses'] as num?)?.toInt() ?? (games - wins).clamp(0, games);
       return (
         games: games,
         wins: wins,
         losses: losses,
-        winRate: (m['winRate'] as num?)?.toInt() ?? (games == 0 ? 0 : (100 * wins / games).round()),
+        winRate:
+            (m['winRate'] as num?)?.toInt() ??
+            (games == 0 ? 0 : (100 * wins / games).round()),
         todayPlayed: (m['todayPlayed'] as num?)?.toInt() ?? 0,
         todayWins: (m['todayWins'] as num?)?.toInt() ?? 0,
         todayLosses: (m['todayLosses'] as num?)?.toInt() ?? 0,
@@ -247,67 +258,116 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ref.read(sessionProvider.notifier).pushProfile();
   }
 
-  Widget _settingsPanel(String label, Widget control, {double? minHeight}) {
+  Widget _settingsCard({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
     return Container(
       width: double.infinity,
-      constraints: BoxConstraints(
-        minHeight: minHeight ?? DesignAuth.settingsPanelMinHeight,
-      ),
-      padding: const EdgeInsets.fromLTRB(
-        DesignSpacing.x4,
-        DesignSpacing.x3,
-        DesignSpacing.x4,
-        DesignSpacing.x3,
-      ),
-      decoration: duelPanel(radius: DesignRadii.md, rim: DuelColors.rim),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      decoration: duelPanel(radius: 18, rim: DuelColors.rimLight, glow: true),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            label,
-            style: AppText.label(
-              14,
-              color: DuelColors.dim,
-              weight: FontWeight.w800,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  color: DuelColors.gold.withValues(alpha: 0.12),
+                  border: Border.all(
+                    color: DuelColors.gold.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Icon(icon, color: DuelColors.gold, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppText.label(16, weight: FontWeight.w900),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: DesignSpacing.x2),
-          control,
+          const SizedBox(height: 12),
+          ...children,
         ],
       ),
     );
   }
 
-  Widget _sectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8, top: 4),
-      child: Row(
-        children: [
-          Container(
-            width: 4,
-            height: 16,
-            margin: const EdgeInsets.only(right: 10),
-            decoration: BoxDecoration(
-              color: DuelColors.gold,
-              borderRadius: BorderRadius.circular(2),
-              boxShadow: [
-                BoxShadow(
-                  color: DuelColors.gold.withValues(alpha: 0.45),
-                  blurRadius: 8,
+  Widget _cardDivider() => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 10),
+    child: Divider(
+      height: 1,
+      color: DuelColors.rimLight.withValues(alpha: 0.32),
+    ),
+  );
+
+  Widget _prefInline(String label, Widget control, {required bool stack}) {
+    final title = Text(
+      label,
+      style: AppText.label(13, color: DuelColors.dim, weight: FontWeight.w800),
+    );
+    if (stack) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [title, const SizedBox(height: 8), control],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(flex: 2, child: title),
+        const SizedBox(width: 8),
+        Expanded(flex: 3, child: control),
+      ],
+    );
+  }
+
+  Widget _compactLink({
+    required String label,
+    required IconData icon,
+    required Color accent,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: accent.withValues(alpha: 0.1),
+            border: Border.all(color: accent.withValues(alpha: 0.35)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: accent, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.label(13, weight: FontWeight.w800),
                 ),
-              ],
-            ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: DuelColors.dim.withValues(alpha: 0.8),
+              ),
+            ],
           ),
-          Text(
-            title,
-            style: AppText.label(
-              15,
-              color: DuelColors.gold,
-              weight: FontWeight.w900,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -428,284 +488,434 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  Widget _avatarStrip(AppSettings s, bool canUpload) {
+  Widget _avatarPicker(AppSettings s, bool canUpload) {
     final t = ref.watch(stringsProvider);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      decoration: duelPanel(radius: 16, rim: DuelColors.rimLight),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            t.uploadPhoto,
-            style: AppText.label(
-              13,
-              color: DuelColors.dim,
-              weight: FontWeight.w800,
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          t.uploadPhoto,
+          style: AppText.label(
+            13,
+            color: DuelColors.dim,
+            weight: FontWeight.w800,
           ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 56,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: DemoData.avatars.length + 1,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
-              itemBuilder: (context, i) {
-                if (i == DemoData.avatars.length) {
-                  return GameButton(
-                    label: _uploading ? '…' : t.uploadPhoto,
-                    icon: Icons.cloud_upload_rounded,
-                    height: 48,
-                    width: 128,
-                    fontSize: 13,
-                    color: DuelColors.blue,
-                    onPressed: canUpload && !_uploading ? _uploadAvatar : null,
-                  );
-                }
-                final a = DemoData.avatars[i];
-                final selected = a == s.avatar;
-                return GestureDetector(
-                  onTap: () => _update((st) => st.copyWith(avatar: a)),
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: selected ? DuelColors.green : DuelColors.rim,
-                        width: selected ? 2.5 : 1.5,
-                      ),
-                      boxShadow: selected
-                          ? [
-                              BoxShadow(
-                                color: DuelColors.green.withValues(alpha: 0.35),
-                                blurRadius: 10,
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: ClipOval(child: AvatarImage(a, size: 44)),
-                  ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 52,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: DemoData.avatars.length + 1,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (context, i) {
+              if (i == DemoData.avatars.length) {
+                return GameButton(
+                  label: _uploading ? '…' : t.uploadPhoto,
+                  icon: Icons.cloud_upload_rounded,
+                  height: 44,
+                  width: 118,
+                  fontSize: 12,
+                  color: DuelColors.blue,
+                  onPressed: canUpload && !_uploading ? _uploadAvatar : null,
                 );
-              },
-            ),
+              }
+              final a = DemoData.avatars[i];
+              final selected = a == s.avatar;
+              return GestureDetector(
+                onTap: () => _update((st) => st.copyWith(avatar: a)),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: selected ? DuelColors.green : DuelColors.rim,
+                      width: selected ? 2.5 : 1.5,
+                    ),
+                    boxShadow: selected
+                        ? [
+                            BoxShadow(
+                              color: DuelColors.green.withValues(alpha: 0.35),
+                              blurRadius: 8,
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: ClipOval(child: AvatarImage(a, size: 40)),
+                ),
+              );
+            },
           ),
-          if (!canUpload) ...[
-            const SizedBox(height: 6),
-            Text(
+        ),
+        if (!canUpload)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
               t.uploadNeedsServer,
               style: AppText.label(11, color: DuelColors.dim),
             ),
-          ],
-        ],
-      ),
+          ),
+      ],
     );
   }
 
-  Widget _settingsActionButton({
-    required String label,
-    required VoidCallback onPressed,
-    IconData? icon,
-    Color? color,
-  }) {
-    return GameButton(
-      label: label,
-      icon: icon,
-      height: DesignAuth.settingsActionHeight,
-      width: double.infinity,
-      fontSize: DesignAuth.settingsActionFontSize,
-      color: color ?? DuelColors.blue,
-      onPressed: onPressed,
-    );
-  }
-
-  Widget _actionButtonGrid(
+  Widget _supportLinksGrid(
     BuildContext context, {
     required String facebook,
     required String telegram,
   }) {
     final t = ref.watch(stringsProvider);
-    final phone = DesignBreakpoints.phoneLike(context);
-    final cols = phone
-        ? DesignAuth.settingsActionColumnsPhone
-        : DesignAuth.settingsActionColumnsWide;
-    const gap = DesignAuth.settingsPanelGap;
-    final items = <Widget>[
-      _settingsActionButton(
+    final nav = Navigator.of(context);
+    final links = <Widget>[
+      _compactLink(
         label: t.facebookSupport,
         icon: Icons.facebook_rounded,
-        color: const Color(0xFF1877F2),
-        onPressed: () => _openSupport(facebook),
+        accent: const Color(0xFF1877F2),
+        onTap: () => _openSupport(facebook),
       ),
-      _settingsActionButton(
+      _compactLink(
         label: t.telegramSupport,
         icon: Icons.send_rounded,
-        color: const Color(0xFF229ED9),
-        onPressed: () => _openSupport(telegram),
+        accent: const Color(0xFF229ED9),
+        onTap: () => _openSupport(telegram),
       ),
-      _settingsActionButton(
+      _compactLink(
         label: t.privacy,
-        onPressed: () => Navigator.of(context).push(
+        icon: Icons.privacy_tip_outlined,
+        accent: DuelColors.blue,
+        onTap: () => nav.push(
           MaterialPageRoute<void>(
             builder: (_) => const LegalScreen(doc: LegalDoc.privacy),
           ),
         ),
       ),
-      _settingsActionButton(
+      _compactLink(
         label: t.terms,
-        onPressed: () => Navigator.of(context).push(
+        icon: Icons.description_outlined,
+        accent: DuelColors.silver,
+        onTap: () => nav.push(
           MaterialPageRoute<void>(
             builder: (_) => const LegalScreen(doc: LegalDoc.terms),
           ),
         ),
       ),
-      _settingsActionButton(
+      _compactLink(
         label: t.conditions,
-        onPressed: () => Navigator.of(context).push(
+        icon: Icons.gavel_rounded,
+        accent: DuelColors.silver,
+        onTap: () => nav.push(
           MaterialPageRoute<void>(
             builder: (_) => const LegalScreen(doc: LegalDoc.conditions),
           ),
         ),
       ),
-      _settingsActionButton(
+      _compactLink(
         label: t.logout,
         icon: Icons.logout_rounded,
-        color: DuelColors.red,
-        onPressed: _logout,
+        accent: DuelColors.red,
+        onTap: _logout,
       ),
     ];
     return LayoutBuilder(
-      builder: (context, constraints) {
-        final w = constraints.maxWidth;
-        final cellW = (w - gap * (cols - 1)) / cols;
+      builder: (context, c) {
+        final twoCol = c.maxWidth >= 340;
+        const gap = 8.0;
+        if (!twoCol) {
+          return Column(
+            children: [
+              for (var i = 0; i < links.length; i++) ...[
+                if (i > 0) const SizedBox(height: gap),
+                links[i],
+              ],
+            ],
+          );
+        }
+        final cellW = (c.maxWidth - gap) / 2;
         return Wrap(
           spacing: gap,
           runSpacing: gap,
           children: [
-            for (final btn in items) SizedBox(width: cellW, child: btn),
+            for (final link in links) SizedBox(width: cellW, child: link),
           ],
         );
       },
     );
   }
 
-  Widget _prefPanelRow({
-    required bool stackVertical,
-    required List<Widget> panels,
-  }) {
-    if (stackVertical) {
-      return Column(
-        children: [
-          for (var i = 0; i < panels.length; i++) ...[
-            if (i > 0) const SizedBox(height: DesignAuth.settingsPanelGap),
-            panels[i],
-          ],
-        ],
-      );
-    }
-    return Row(
+  Widget _referralSection(Map<String, dynamic> referral) {
+    final t = ref.watch(stringsProvider);
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: panels[0]),
-        const SizedBox(width: DesignAuth.settingsPanelGap),
-        Expanded(child: panels[1]),
+        Text(
+          t.sectionPlayerId,
+          style: AppText.label(
+            14,
+            weight: FontWeight.w900,
+            color: DuelColors.gold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '${referral['code']}',
+                style: AppText.label(28, weight: FontWeight.w900),
+              ),
+            ),
+            GameButton(
+              label: t.copy,
+              height: 40,
+              width: 88,
+              fontSize: 13,
+              color: DuelColors.blue,
+              onPressed: () => Clipboard.setData(
+                ClipboardData(text: referral['code'] as String),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          t.invitedCount(referral['invited'] as int),
+          style: AppText.label(12, weight: FontWeight.w800),
+        ),
+        Text(
+          '${t.referralEarn(referral['percent'] as int)} · ${t.referralTotals('${referral['earnedToday']}', '${referral['earnedMonth']}', '${referral['earned']}')}',
+          style: AppText.label(11, color: DuelColors.dim),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          t.playerIdHint,
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+          style: AppText.label(12, color: DuelColors.silver),
+        ),
+        if (referral['referredBy'] == null) ...[
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _invite,
+                  maxLength: 6,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  style: AppText.label(16),
+                  decoration: InputDecoration(
+                    labelText: t.friendIdOptional,
+                    counterText: '',
+                    filled: true,
+                    fillColor: DesignAuth.fieldFillLobby,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              GameButton(
+                label: _applying ? t.saving : t.useId,
+                height: 44,
+                width: 96,
+                fontSize: 12,
+                onPressed: _applying ? null : _applyInvite,
+              ),
+            ],
+          ),
+          if (_inviteError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                _inviteError!,
+                style: AppText.label(11, color: DuelColors.red),
+              ),
+            ),
+        ],
       ],
     );
   }
 
-  Widget _referralCard(Map<String, dynamic> referral) {
-    final t = ref.watch(stringsProvider);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: duelPanel(radius: 16, rim: DuelColors.gold, glow: true),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '${referral['code']}',
-                  style: AppText.label(28, weight: FontWeight.w900),
-                ),
-              ),
-              GameButton(
-                label: t.copy,
-                height: 40,
-                width: 88,
-                fontSize: 13,
-                color: DuelColors.blue,
-                onPressed: () => Clipboard.setData(
-                  ClipboardData(text: referral['code'] as String),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            t.invitedCount(referral['invited'] as int),
-            style: AppText.label(12, weight: FontWeight.w800),
-          ),
-          Text(
-            '${t.referralEarn(referral['percent'] as int)} · ${t.referralTotals('${referral['earnedToday']}', '${referral['earnedMonth']}', '${referral['earned']}')}',
-            style: AppText.label(11, color: DuelColors.dim),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            t.playerIdHint,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: AppText.label(12, color: DuelColors.silver),
-          ),
-          if (referral['referredBy'] == null) ...[
-            const SizedBox(height: 10),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _invite,
-                    maxLength: 6,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    style: AppText.label(16),
-                    decoration: InputDecoration(
-                      labelText: t.friendIdOptional,
-                      counterText: '',
-                      filled: true,
-                      fillColor: DesignAuth.fieldFillLobby,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                GameButton(
-                  label: _applying ? t.saving : t.useId,
-                  height: 44,
-                  width: 96,
-                  fontSize: 12,
-                  onPressed: _applying ? null : _applyInvite,
-                ),
-              ],
+  Widget _settingsScrollBody({
+    required BuildContext context,
+    required bool phoneLayout,
+    required AppSettings s,
+    required SessionState session,
+    required AppStrings t,
+    required bool canRename,
+    required DateTime? next,
+    required bool canUpload,
+    required Map<String, dynamic>? referral,
+  }) {
+    final gap = phoneLayout
+        ? DesignAuth.settingsPhoneSectionGap
+        : DesignAuth.settingsSectionGap;
+    final stackPrefs = phoneLayout;
+    final st = _resolvedStats(s);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _settingsCard(
+          title: t.sectionAccount,
+          icon: Icons.account_circle_rounded,
+          children: [
+            _profileHeader(s, session, t, compact: phoneLayout),
+            _cardDivider(),
+            ProfileMatchStatsPanel(
+              totalGames: st.games,
+              totalWins: st.wins,
+              totalLosses: st.losses,
+              winRate: st.winRate,
+              todayPlayed: st.todayPlayed,
+              todayWins: st.todayWins,
+              todayLosses: st.todayLosses,
+              loading: Env.hasBackend && _statsLoading && _matchStats == null,
+              compactHeader: true,
             ),
-            if (_inviteError != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  _inviteError!,
-                  style: AppText.label(11, color: DuelColors.red),
+            _cardDivider(),
+            _nicknameRow(t, canRename, next),
+            _cardDivider(),
+            _avatarPicker(s, canUpload),
+            if (Env.hasBackend && referral != null) ...[
+              _cardDivider(),
+              _referralSection(referral),
+            ],
+          ],
+        ),
+        SizedBox(height: gap),
+        _settingsCard(
+          title: t.settingsPrefsBlock,
+          icon: Icons.sports_esports_rounded,
+          children: [
+            _prefInline(
+              t.language,
+              ChoiceRow<String>(
+                dense: true,
+                options: {'en': t.languageEnglish, 'bn': t.languageBangla},
+                value: s.languageCode == 'bn' ? 'bn' : 'en',
+                onChanged: (v) => ref
+                    .read(settingsProvider.notifier)
+                    .update((st) => st.copyWith(languageCode: v)),
+              ),
+              stack: stackPrefs,
+            ),
+            _cardDivider(),
+            _prefInline(
+              t.sound,
+              ChoiceRow<bool>(
+                dense: true,
+                options: {true: t.on, false: t.off},
+                value: s.soundOn,
+                onChanged: (v) => _update((st) => st.copyWith(soundOn: v)),
+              ),
+              stack: stackPrefs,
+            ),
+            _cardDivider(),
+            _prefInline(
+              t.sectionShotClock,
+              ChoiceRow<int>(
+                dense: true,
+                options: {
+                  20: t.secLabel(20),
+                  30: t.secLabel(30),
+                  45: t.secLabel(45),
+                  60: t.secLabel(60),
+                },
+                value: s.shotSeconds,
+                onChanged: (v) => _update((st) => st.copyWith(shotSeconds: v)),
+              ),
+              stack: stackPrefs,
+            ),
+            _cardDivider(),
+            _prefInline(
+              t.sectionBot,
+              ChoiceRow<int>(
+                dense: true,
+                options: {0: t.botEasy, 1: t.botNormal, 2: t.botHard},
+                value: s.botLevel,
+                onChanged: (v) => _update((st) => st.copyWith(botLevel: v)),
+              ),
+              stack: stackPrefs,
+            ),
+            if (Env.hasBackend) ...[
+              _cardDivider(),
+              Text(
+                t.sectionChallenges,
+                style: AppText.label(
+                  13,
+                  weight: FontWeight.w900,
+                  color: DuelColors.gold,
                 ),
               ),
+              const SizedBox(height: 8),
+              phoneLayout
+                  ? Column(
+                      children: [
+                        _challengeChip(
+                          t.challengeReceivePool,
+                          s.challengePoolEnabled,
+                          (v) => _setChallengeFamily(ChallengeFamily.pool, v),
+                          stacked: true,
+                        ),
+                        const SizedBox(height: 8),
+                        _challengeChip(
+                          t.challengeReceiveLudo,
+                          s.challengeLudoEnabled,
+                          (v) => _setChallengeFamily(ChallengeFamily.ludo, v),
+                          stacked: true,
+                        ),
+                        const SizedBox(height: 8),
+                        _challengeChip(
+                          t.challengeReceiveCarrom,
+                          s.challengeCarromEnabled,
+                          (v) => _setChallengeFamily(ChallengeFamily.carrom, v),
+                          stacked: true,
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        _challengeChip(
+                          t.challengeReceivePool,
+                          s.challengePoolEnabled,
+                          (v) => _setChallengeFamily(ChallengeFamily.pool, v),
+                        ),
+                        const SizedBox(width: 8),
+                        _challengeChip(
+                          t.challengeReceiveLudo,
+                          s.challengeLudoEnabled,
+                          (v) => _setChallengeFamily(ChallengeFamily.ludo, v),
+                        ),
+                        const SizedBox(width: 8),
+                        _challengeChip(
+                          t.challengeReceiveCarrom,
+                          s.challengeCarromEnabled,
+                          (v) => _setChallengeFamily(ChallengeFamily.carrom, v),
+                        ),
+                      ],
+                    ),
+            ],
           ],
-        ],
-      ),
+        ),
+        SizedBox(height: gap),
+        _settingsCard(
+          title: '${t.sectionSupport} · ${t.sectionLegal}',
+          icon: Icons.support_agent_rounded,
+          children: [
+            _supportLinksGrid(
+              context,
+              facebook: _facebook,
+              telegram: _telegram,
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -718,9 +928,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final next = session.nameChangeAllowedAt?.toLocal();
     final canUpload = Env.hasBackend || ref.watch(cloudinaryProvider).canUpload;
     final referral = _referral;
-
     final phoneLayout = DesignBreakpoints.phoneLike(context);
-    final stackPrefs = phoneLayout;
+
+    final body = _settingsScrollBody(
+      context: context,
+      phoneLayout: phoneLayout,
+      s: s,
+      session: session,
+      t: t,
+      canRename: canRename,
+      next: next,
+      canUpload: canUpload,
+      referral: referral,
+    );
+
+    if (phoneLayout) {
+      return _SettingsPhoneShell(title: t.settingsTitle, child: body);
+    }
 
     return DuelPage(
       title: t.settingsTitle,
@@ -735,318 +959,228 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             constraints: const BoxConstraints(
               maxWidth: DesignAuth.settingsContentMaxWidth,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (!phoneLayout && Env.hasBackend && referral != null)
-                  IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          flex: 11,
-                          child: _profileColumn(s, session, t, canRename, next),
-                        ),
-                        const SizedBox(width: DesignAuth.settingsPanelGap),
-                        Expanded(flex: 9, child: _referralCard(referral)),
-                      ],
-                    ),
-                  )
-                else ...[
-                  _profileColumn(s, session, t, canRename, next),
-                  if (Env.hasBackend && referral != null) ...[
-                    const SizedBox(height: DesignAuth.settingsPanelGap),
-                    _referralCard(referral),
-                  ],
-                ],
-                const SizedBox(height: DesignAuth.settingsSectionGap),
-                _avatarStrip(s, canUpload),
-                const SizedBox(height: DesignAuth.settingsSectionGap),
-                _sectionTitle(t.settingsPrefsBlock),
-                _prefPanelRow(
-                  stackVertical: stackPrefs,
-                  panels: [
-                    _settingsPanel(
-                      t.language,
-                      ChoiceRow<String>(
-                        dense: phoneLayout,
-                        options: {
-                          'en': t.languageEnglish,
-                          'bn': t.languageBangla,
-                        },
-                        value: s.languageCode == 'bn' ? 'bn' : 'en',
-                        onChanged: (v) => ref
-                            .read(settingsProvider.notifier)
-                            .update((st) => st.copyWith(languageCode: v)),
-                      ),
-                    ),
-                    _settingsPanel(
-                      t.sound,
-                      ChoiceRow<bool>(
-                        dense: phoneLayout,
-                        options: {true: t.on, false: t.off},
-                        value: s.soundOn,
-                        onChanged: (v) =>
-                            _update((st) => st.copyWith(soundOn: v)),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: DesignAuth.settingsPanelGap),
-                _prefPanelRow(
-                  stackVertical: stackPrefs,
-                  panels: [
-                    _settingsPanel(
-                      t.sectionShotClock,
-                      minHeight: phoneLayout
-                          ? 116
-                          : DesignAuth.settingsPanelMinHeight,
-                      ChoiceRow<int>(
-                        dense: true,
-                        options: {
-                          20: t.secLabel(20),
-                          30: t.secLabel(30),
-                          45: t.secLabel(45),
-                          60: t.secLabel(60),
-                        },
-                        value: s.shotSeconds,
-                        onChanged: (v) =>
-                            _update((st) => st.copyWith(shotSeconds: v)),
-                      ),
-                    ),
-                    _settingsPanel(
-                      t.sectionBot,
-                      ChoiceRow<int>(
-                        dense: phoneLayout,
-                        options: {0: t.botEasy, 1: t.botNormal, 2: t.botHard},
-                        value: s.botLevel,
-                        onChanged: (v) =>
-                            _update((st) => st.copyWith(botLevel: v)),
-                      ),
-                    ),
-                  ],
-                ),
-                if (Env.hasBackend) ...[
-                  const SizedBox(height: DesignAuth.settingsSectionGap),
-                  _sectionTitle(t.sectionChallenges),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(DesignSpacing.x3),
-                    decoration: duelPanel(radius: DesignRadii.md),
-                    child: phoneLayout
-                        ? Column(
-                            children: [
-                              _challengeChip(
-                                t.challengeReceivePool,
-                                s.challengePoolEnabled,
-                                (v) => _setChallengeFamily(
-                                  ChallengeFamily.pool,
-                                  v,
-                                ),
-                                stacked: true,
-                              ),
-                              const SizedBox(
-                                height: DesignAuth.settingsPanelGap,
-                              ),
-                              _challengeChip(
-                                t.challengeReceiveLudo,
-                                s.challengeLudoEnabled,
-                                (v) => _setChallengeFamily(
-                                  ChallengeFamily.ludo,
-                                  v,
-                                ),
-                                stacked: true,
-                              ),
-                              const SizedBox(
-                                height: DesignAuth.settingsPanelGap,
-                              ),
-                              _challengeChip(
-                                t.challengeReceiveCarrom,
-                                s.challengeCarromEnabled,
-                                (v) => _setChallengeFamily(
-                                  ChallengeFamily.carrom,
-                                  v,
-                                ),
-                                stacked: true,
-                              ),
-                            ],
-                          )
-                        : Row(
-                            children: [
-                              _challengeChip(
-                                t.challengeReceivePool,
-                                s.challengePoolEnabled,
-                                (v) => _setChallengeFamily(
-                                  ChallengeFamily.pool,
-                                  v,
-                                ),
-                              ),
-                              const SizedBox(
-                                width: DesignAuth.settingsPanelGap,
-                              ),
-                              _challengeChip(
-                                t.challengeReceiveLudo,
-                                s.challengeLudoEnabled,
-                                (v) => _setChallengeFamily(
-                                  ChallengeFamily.ludo,
-                                  v,
-                                ),
-                              ),
-                              const SizedBox(
-                                width: DesignAuth.settingsPanelGap,
-                              ),
-                              _challengeChip(
-                                t.challengeReceiveCarrom,
-                                s.challengeCarromEnabled,
-                                (v) => _setChallengeFamily(
-                                  ChallengeFamily.carrom,
-                                  v,
-                                ),
-                              ),
-                            ],
-                          ),
-                  ),
-                ],
-                const SizedBox(height: DesignAuth.settingsSectionGap),
-                _sectionTitle('${t.sectionSupport} · ${t.sectionLegal}'),
-                _actionButtonGrid(
-                  context,
-                  facebook: _facebook,
-                  telegram: _telegram,
-                ),
-              ],
-            ),
+            child: body,
           ),
         ),
       ),
     );
   }
 
-  Widget _profileColumn(
+  Widget _profileHeader(
     AppSettings s,
     SessionState session,
-    AppStrings t,
-    bool canRename,
-    DateTime? next,
-  ) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: duelPanel(radius: 18, rim: DuelColors.rimLight, glow: true),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle(t.sectionPlayer),
-          Row(
+    AppStrings t, {
+    required bool compact,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: compact ? 68 : 76,
+          height: compact ? 68 : 76,
+          padding: const EdgeInsets.all(3),
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFFFE08A), Color(0xFF5C8BFF), Color(0xFFFF3B4E)],
+            ),
+          ),
+          child: ClipOval(
+            child: AvatarImage(s.avatar, size: compact ? 62 : 70),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 76,
-                height: 76,
-                padding: const EdgeInsets.all(3),
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFFFFE08A),
-                      Color(0xFF5C8BFF),
-                      Color(0xFFFF3B4E),
-                    ],
-                  ),
+              Text(
+                session.phone ?? t.noPhoneYet,
+                style: AppText.label(
+                  compact ? 16 : 17,
+                  weight: FontWeight.w900,
                 ),
-                child: ClipOval(child: AvatarImage(s.avatar, size: 70)),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      session.phone ?? t.noPhoneYet,
-                      style: AppText.label(17, weight: FontWeight.w900),
+              const SizedBox(height: 4),
+              Text(
+                t.winsGames(s.wins, s.games),
+                style: AppText.label(12, color: DuelColors.dim),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  PikoCoinIcon(size: compact ? 18 : 20),
+                  const SizedBox(width: 6),
+                  Text(
+                    formatPicoCoins(s.coins),
+                    style: AppText.label(
+                      compact ? 14 : 15,
+                      color: DuelColors.gold,
+                      weight: FontWeight.w800,
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text(
-                          t.winsGames(s.wins, s.games),
-                          style: AppText.label(12, color: DuelColors.dim),
-                        ),
-                        const SizedBox(width: 14),
-                        const PikoCoinIcon(size: 18),
-                        const SizedBox(width: 6),
-                        Text(
-                          formatPicoCoins(s.coins),
-                          style: AppText.label(
-                            14,
-                            color: DuelColors.gold,
-                            weight: FontWeight.w800,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _nicknameRow(AppStrings t, bool canRename, DateTime? next) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _name,
+                enabled: canRename && !_savingName,
+                maxLength: 16,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp('[A-Za-z0-9_]')),
+                ],
+                style: AppText.label(16),
+                decoration: DesignAuth.fieldDecoration(
+                  t.nicknameLabel,
+                  dense: true,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            GameButton(
+              label: t.saveName,
+              height: 44,
+              width: 100,
+              fontSize: 12,
+              onPressed: canRename && !_savingName ? _saveName : null,
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          canRename || next == null
+              ? t.nameEvery7
+              : t.nameNextChange(
+                  '${next.year}-${next.month.toString().padLeft(2, '0')}-${next.day.toString().padLeft(2, '0')}',
+                ),
+          style: AppText.label(11, color: DuelColors.dim),
+        ),
+      ],
+    );
+  }
+}
+
+/// Full-screen settings on phones — uses the real viewport instead of scaling 1600×900.
+class _SettingsPhoneShell extends StatelessWidget {
+  const _SettingsPhoneShell({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: DuelColors.ink,
+      resizeToAvoidBottomInset: true,
+      body: DuelBackdrop(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(6, 4, 10, 0),
+                child: Row(
+                  children: [
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).maybePop(),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          width: 46,
+                          height: 46,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: DuelColors.rimLight,
+                              width: 1.5,
+                            ),
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                DuelColors.glass,
+                                DuelColors.glass.withValues(alpha: 0.85),
+                              ],
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.arrow_back_rounded,
+                            color: DuelColors.silver,
+                            size: 26,
                           ),
                         ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: AppText.label(22, weight: FontWeight.w900),
+                      ),
+                    ),
+                    const SizedBox(width: 46),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  DesignAuth.settingsPhonePaddingH,
+                  8,
+                  DesignAuth.settingsPhonePaddingH,
+                  6,
+                ),
+                child: Container(
+                  height: 2,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(1),
+                    gradient: LinearGradient(
+                      colors: [
+                        DuelColors.gold.withValues(alpha: 0.05),
+                        DuelColors.gold.withValues(alpha: 0.55),
+                        DuelColors.gold.withValues(alpha: 0.05),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Builder(
-            builder: (context) {
-              final st = _resolvedStats(s);
-              return ProfileMatchStatsPanel(
-                totalGames: st.games,
-                totalWins: st.wins,
-                totalLosses: st.losses,
-                winRate: st.winRate,
-                todayPlayed: st.todayPlayed,
-                todayWins: st.todayWins,
-                todayLosses: st.todayLosses,
-                loading: Env.hasBackend && _statsLoading && _matchStats == null,
-              );
-            },
-          ),
-          const SizedBox(height: 14),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
               Expanded(
-                child: TextField(
-                  controller: _name,
-                  enabled: canRename && !_savingName,
-                  maxLength: 16,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp('[A-Za-z0-9_]')),
-                  ],
-                  style: AppText.label(16),
-                  decoration: DesignAuth.fieldDecoration(
-                    t.nicknameLabel,
-                    dense: true,
+                child: Scrollbar(
+                  thumbVisibility: true,
+                  radius: const Radius.circular(8),
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(
+                      DesignAuth.settingsPhonePaddingH,
+                      4,
+                      DesignAuth.settingsPhonePaddingH,
+                      DesignAuth.settingsPhonePaddingBottom,
+                    ),
+                    child: child,
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              GameButton(
-                label: t.saveName,
-                height: 46,
-                width: 110,
-                fontSize: 13,
-                onPressed: canRename && !_savingName ? _saveName : null,
-              ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            canRename || next == null
-                ? t.nameEvery7
-                : t.nameNextChange(
-                    '${next.year}-${next.month.toString().padLeft(2, '0')}-${next.day.toString().padLeft(2, '0')}',
-                  ),
-            style: AppText.label(11, color: DuelColors.dim),
-          ),
-        ],
+        ),
       ),
     );
   }

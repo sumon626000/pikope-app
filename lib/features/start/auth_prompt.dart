@@ -18,13 +18,10 @@ bool hasRegisteredAccount(WidgetRef ref) {
   return session.signedIn && !session.isGuest;
 }
 
-/// Header wallet: real balance when registered; local demo (2000) when browsing without login.
-int lobbyDisplayCoins(WidgetRef ref) {
-  final session = ref.watch(sessionProvider);
-  if (session.signedIn && !session.isGuest) return session.walletCoins;
-  final local = ref.watch(settingsProvider).coins;
-  if (local <= 0) return const AppSettings().coins;
-  return local;
+/// Header wallet when registered; null while browsing without an account.
+int? lobbyDisplayCoins(WidgetRef ref) {
+  if (!hasRegisteredAccount(ref)) return null;
+  return ref.watch(sessionProvider).walletCoins;
 }
 
 bool _loginPopupOpen = false;
@@ -148,7 +145,7 @@ Future<bool> showLoginAuthPopup(BuildContext context, WidgetRef ref) async {
                 Material(
                   color: Colors.transparent,
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.only(top: 4, right: 32),
+                    padding: const EdgeInsets.only(top: 2, right: 28),
                     child: LoginAuthPanel(
                       compact: true,
                       onAuthenticated: () =>

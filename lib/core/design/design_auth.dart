@@ -21,9 +21,9 @@ abstract final class DesignAuth {
   static const loginPromptWidth = 440.0;
 
   /// Home-overlay sign-in form (step 2 after prompt; not full [LoginScreen] route).
-  static const loginPopupMaxWidth = 460.0;
-  static const loginPopupPadding = EdgeInsets.fromLTRB(18, 14, 18, 14);
-  static const loginPopupRadius = 24.0;
+  static const loginPopupMaxWidth = 380.0;
+  static const loginPopupPadding = EdgeInsets.fromLTRB(14, 12, 14, 12);
+  static const loginPopupRadius = 20.0;
 
   /// [SettingsScreen] on [DuelPage] — centered column, panel grid, footer actions.
   static const settingsContentMaxWidth = 1340.0;
@@ -34,6 +34,12 @@ abstract final class DesignAuth {
   static const settingsActionFontSize = 14.0;
   static const settingsActionColumnsWide = 3;
   static const settingsActionColumnsPhone = 2;
+
+  /// Full-viewport settings on phones (no 1600×900 canvas scale).
+  static const settingsPhonePaddingH = 14.0;
+  static const settingsPhonePaddingBottom = 20.0;
+  static const settingsPhoneSectionGap = 12.0;
+  static const settingsPhonePanelGap = 10.0;
 
   static const overlayScrim = Color(0xB3000000);
   static const dialogChooserWidth = 460.0;

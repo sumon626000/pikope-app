@@ -4,18 +4,24 @@ import 'package:flutter/widgets.dart';
 
 import '../../core/audio_service.dart';
 import '../../data/match_bet.dart';
+import '../../game/ludo/fair_die.dart';
 import '../../game/ludo/ludo_bot.dart';
 import '../../game/ludo/ludo_rules.dart';
 import '../game/game_controller.dart' show SeatConfig;
 import '../online/game_link.dart';
 import '../online/opponent_presence.dart';
 import 'ludo_board.dart';
-
-/// Quick-chat presets; only the index travels over the network.
-const ludoChatPresets = ['GOOD LUCK!', 'NICE MOVE', 'HAHA', 'OH NO!', 'WELL PLAYED', 'HURRY UP'];
+import 'ludo_chat.dart';
 
 class LudoMatchConfig {
-  const LudoMatchConfig({required this.seats, required this.players, this.shotSeconds = 30, this.seed, this.bet = const MatchBet(), this.humanSeats = 1});
+  const LudoMatchConfig({
+    required this.seats,
+    required this.players,
+    this.shotSeconds = 30,
+    this.seed,
+    this.bet = const MatchBet(),
+    this.humanSeats = 1,
+  });
 
   final int seats;
   final List<SeatConfig> players;
@@ -33,8 +39,10 @@ class LudoMatchConfig {
 /// online (the server rolls the die and rules; this mirrors its state).
 class LudoController extends ChangeNotifier {
   LudoController(this.config, this.audio, {this.link, List<int>? colours})
-      : _rng = config.seed == null ? Random.secure() : Random(config.seed) {
-    final cols = colours ?? (config.seats == 2 ? const [0, 2] : const [0, 1, 2, 3]);
+    : _outcomeRng = FairDie.outcomeRandom(seed: config.seed),
+      _playRng = Random() {
+    final cols =
+        colours ?? (config.seats == 2 ? const [0, 2] : const [0, 1, 2, 3]);
     if (online) {
       // State arrives from the server; start empty until the first view.
       _state = null;
@@ -55,7 +63,12 @@ class LudoController extends ChangeNotifier {
   final LudoMatchConfig config;
   final AudioService audio;
   final OnlineGameDriver? link;
-  final Random _rng;
+
+  /// Die results only (uniform 1–6 for every seat).
+  final Random _outcomeRng;
+
+  /// Animation, chat, and bot move variety — never used for the final die value.
+  final Random _playRng;
 
   bool get online => link != null;
   int get mySeat => online ? _mySeat : _localTurnSeat;
@@ -89,13 +102,22 @@ class LudoController extends ChangeNotifier {
   final List<LudoTrailMark> _trail = [];
   static const trailLife = 1.4;
   List<LudoTrailMark> get trail => _trail;
-  double trailAlpha(LudoTrailMark m) => (1 - (_time - m.born) / trailLife).clamp(0.0, 1.0);
+  double trailAlpha(LudoTrailMark m) =>
+      (1 - (_time - m.born) / trailLife).clamp(0.0, 1.0);
 
   /// Leaves a footprint on [cell] heading towards [next].
   void _footprint(List<double> cell, List<double> next) {
     final key = _animKey;
     if (key == null || _state == null) return;
-    _trail.add(LudoTrailMark(cell[0], cell[1], _colour(key ~/ 4), atan2(next[1] - cell[1], next[0] - cell[0]), _time));
+    _trail.add(
+      LudoTrailMark(
+        cell[0],
+        cell[1],
+        _colour(key ~/ 4),
+        atan2(next[1] - cell[1], next[0] - cell[0]),
+        _time,
+      ),
+    );
   }
 
   /// Dice: the value being shown, and a short roll animation.
@@ -124,31 +146,68 @@ class LudoController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Quick-chat bubbles: seat -> (preset index, shown until).
-  final Map<int, (int, double)> _chats = {};
+  /// Chat bubbles: seat -> (message text, shown until).
+  final Map<int, (String, double)> _chats = {};
 
-  /// The preset a seat is saying right now, if any.
-  int? chatOf(int seat) {
+  /// Bubble text for [seat], if still visible.
+  String? chatTextOf(int seat) {
     final c = _chats[seat];
     return c != null && c.$2 > _time ? c.$1 : null;
   }
 
-  void showChat(int seat, int message) {
-    if (message < 0 || message >= ludoChatPresets.length) return;
-    _chats[seat] = (message, _time + 2.8);
+  /// Preset/emoji catalog index (for tests); null if custom text or hidden.
+  int? chatOf(int seat) {
+    final text = chatTextOf(seat);
+    if (text == null) return null;
+    final pi = LudoChat.phrases.indexOf(text);
+    if (pi >= 0) return pi;
+    final ei = LudoChat.emojis.indexOf(text);
+    if (ei >= 0) return LudoChat.phrases.length + ei;
+    return null;
+  }
+
+  void showChatText(int seat, String text) {
+    final msg = LudoChat.sanitizeCustom(text);
+    if (msg.isEmpty) return;
+    _chats[seat] = (msg, _time + 2.8);
     audio.play(Sfx.chatPop, volume: 0.8);
     notifyListeners();
   }
 
-  /// The local player says a preset; offline a bot may answer.
+  /// Catalog index from network or bots.
+  void showChat(int seat, int message) {
+    final msg = LudoChat.messageAt(message);
+    if (msg.isEmpty) return;
+    showChatText(seat, msg);
+  }
+
   void sayChat(int message) {
+    if (message < 0 || message >= LudoChat.catalogLength) return;
     showChat(mySeatForChat, message);
     link?.sendChat(message);
-    if (!online && _state != null && _rng.nextDouble() < 0.6) {
-      final bots = [for (var i = 0; i < _state!.seats; i++) if (_state!.players[i].isBot) i];
+    _maybeBotChatReply();
+  }
+
+  void sayCustomChat(String text) {
+    final msg = LudoChat.sanitizeCustom(text);
+    if (msg.isEmpty) return;
+    showChatText(mySeatForChat, msg);
+    link?.sendChatText(msg);
+    _maybeBotChatReply();
+  }
+
+  void _maybeBotChatReply() {
+    if (!online && _state != null && _playRng.nextDouble() < 0.55) {
+      final bots = [
+        for (var i = 0; i < _state!.seats; i++)
+          if (_state!.players[i].isBot) i,
+      ];
       if (bots.isNotEmpty) {
-        final seat = bots[_rng.nextInt(bots.length)];
-        _after(1.0 + _rng.nextDouble(), () => showChat(seat, _rng.nextInt(ludoChatPresets.length)));
+        final seat = bots[_playRng.nextInt(bots.length)];
+        _after(
+          1.0 + _playRng.nextDouble(),
+          () => showChat(seat, _playRng.nextInt(LudoChat.catalogLength)),
+        );
       }
     }
   }
@@ -164,15 +223,20 @@ class LudoController extends ChangeNotifier {
   /// Fraction of the turn time left (online only), else null.
   double? get turnLeft {
     final at = _deadlineAt, st = _state;
-    if (!online || at == null || st == null || over || st.shotSeconds <= 0) return null;
-    return ((at - DateTime.now().millisecondsSinceEpoch) / (st.shotSeconds * 1000)).clamp(0.0, 1.0);
+    if (!online || at == null || st == null || over || st.shotSeconds <= 0)
+      return null;
+    return ((at - DateTime.now().millisecondsSinceEpoch) /
+            (st.shotSeconds * 1000))
+        .clamp(0.0, 1.0);
   }
 
   /// Extra upward offset (cells) of a token while it hops.
-  double liftOf(int seat, int token) => (seat * 4 + token) == _animKey ? sin(pi * _animT) * 0.3 : 0;
+  double liftOf(int seat, int token) =>
+      (seat * 4 + token) == _animKey ? sin(pi * _animT) * 0.3 : 0;
 
   /// Whether a seat is played by this device's human (for messages).
-  bool _isMe(int seat) => online ? seat == _mySeat : !(_state?.players[seat].isBot ?? true);
+  bool _isMe(int seat) =>
+      online ? seat == _mySeat : !(_state?.players[seat].isBot ?? true);
 
   double _botCooldown = 0;
   bool _presenting = false;
@@ -183,16 +247,24 @@ class LudoController extends ChangeNotifier {
   String? get winReason => _state?.winReason;
   int get turn => _state?.turn ?? 0;
 
-  LudoPlayer? player(int seat) => (_state != null && seat < _state!.players.length) ? _state!.players[seat] : null;
+  LudoPlayer? player(int seat) =>
+      (_state != null && seat < _state!.players.length)
+      ? _state!.players[seat]
+      : null;
 
-  bool get _busy => _animKey != null || _captures.isNotEmpty || _presenting || diceRolling;
+  bool get _busy =>
+      _animKey != null || _captures.isNotEmpty || _presenting || diceRolling;
   bool get isMyTurn {
     final s = _state;
     if (s == null || s.phase != LudoPhase.playerTurn) return false;
     return online ? s.turn == _mySeat : !s.players[s.turn].isBot;
   }
-  bool get canRoll => isMyTurn && _state!.mustRoll && !_busy && !(_state!.players[mySeat].out);
-  List<int> get movable => (isMyTurn && !_state!.mustRoll && !_busy) ? (_state!.movable ?? const []) : const [];
+
+  bool get canRoll =>
+      isMyTurn && _state!.mustRoll && !_busy && !(_state!.players[mySeat].out);
+  List<int> get movable => (isMyTurn && !_state!.mustRoll && !_busy)
+      ? (_state!.movable ?? const [])
+      : const [];
 
   /// Human turn with exactly one movable token: play it automatically.
   void _autoMoveIfForced() {
@@ -202,12 +274,18 @@ class LudoController extends ChangeNotifier {
       if (m.length == 1) _after(0.25, () => moveToken(m.first));
     }
   }
+
   bool canMoveToken(int token) => movable.contains(token);
 
   /// Token render position (col,row) centre.
   List<double> tokenPos(int seat, int token) {
     final key = seat * 4 + token;
-    return _pos[key] ?? LudoBoard.cellOf(_colour(seat), _state?.players[seat].tokens[token] ?? -1, token);
+    return _pos[key] ??
+        LudoBoard.cellOf(
+          _colour(seat),
+          _state?.players[seat].tokens[token] ?? -1,
+          token,
+        );
   }
 
   int _colour(int seat) => _state!.players[seat].colour;
@@ -216,7 +294,13 @@ class LudoController extends ChangeNotifier {
     if (_state == null) return;
     for (var s = 0; s < _state!.seats; s++) {
       for (var t = 0; t < 4; t++) {
-        _pos[s * 4 + t] = List.of(LudoBoard.cellOf(_state!.players[s].colour, _state!.players[s].tokens[t], t));
+        _pos[s * 4 + t] = List.of(
+          LudoBoard.cellOf(
+            _state!.players[s].colour,
+            _state!.players[s].tokens[t],
+            t,
+          ),
+        );
       }
     }
   }
@@ -226,7 +310,11 @@ class LudoController extends ChangeNotifier {
   void applyPresence(Object? raw, int serverNow) {
     if (_disposed || !online) return;
     _serverOffsetMs = serverNow - DateTime.now().millisecondsSinceEpoch;
-    opponentPresence = opponentPresenceFromPoll(raw, _mySeat, serverNowMs: serverNow);
+    opponentPresence = opponentPresenceFromPoll(
+      raw,
+      _mySeat,
+      serverNowMs: serverNow,
+    );
     notifyListeners();
   }
 
@@ -234,12 +322,15 @@ class LudoController extends ChangeNotifier {
     if (_disposed || !online) return;
     _mySeat = view['you'] as int? ?? 0;
     _serverOffsetMs = serverNow - DateTime.now().millisecondsSinceEpoch;
-    opponentPresence = opponentPresenceFromState(view, _mySeat, serverNow) ?? opponentPresence;
+    opponentPresence =
+        opponentPresenceFromState(view, _mySeat, serverNow) ?? opponentPresence;
     final fresh = LudoState.fromJson(view);
     final first = _state == null;
     final newSeq = (view['lastResult'] as Map?)?['seq'] as int? ?? 0;
     final deadline = view['deadline'];
-    _deadlineAt = deadline is int ? DateTime.now().millisecondsSinceEpoch + (deadline - serverNow) : null;
+    _deadlineAt = deadline is int
+        ? DateTime.now().millisecondsSinceEpoch + (deadline - serverNow)
+        : null;
     final lastRoll = view['lastRoll'] as Map<String, dynamic>?;
     final rollSeq = lastRoll?['seq'] as int? ?? 0;
     _state = fresh;
@@ -253,7 +344,12 @@ class LudoController extends ChangeNotifier {
     }
     if (rollSeq > _lastRollSeq && lastRoll != null) {
       _lastRollSeq = rollSeq;
-      _showRemoteRoll(lastRoll['seat'] as int, lastRoll['die'] as int, lastRoll['dead'] == true, lastRoll['three'] == true);
+      _showRemoteRoll(
+        lastRoll['seat'] as int,
+        lastRoll['die'] as int,
+        lastRoll['dead'] == true,
+        lastRoll['three'] == true,
+      );
     }
     if (newSeq > _lastSeq && fresh.lastResult != null) {
       _lastSeq = newSeq;
@@ -326,7 +422,7 @@ class LudoController extends ChangeNotifier {
     final seat = _state!.turn;
     _diceSeat = seat;
     _startDiceSpin(() {
-      final value = _rng.nextInt(6) + 1;
+      final value = FairDie.roll(_outcomeRng);
       final threeSixes = value == 6 && _state!.sixes == 2;
       final moves = LudoRules.roll(_state!, value);
       die = value;
@@ -379,7 +475,10 @@ class LudoController extends ChangeNotifier {
   List<List<double>> _hops(int colour, int from, int to, int token) {
     _fromYard = from == -1;
     if (from == -1 || to < from) return [LudoBoard.cellOf(colour, to, token)];
-    return [for (var st = from + 1; st <= to; st++) LudoBoard.cellOf(colour, st, token)];
+    return [
+      for (var st = from + 1; st <= to; st++)
+        LudoBoard.cellOf(colour, st, token),
+    ];
   }
 
   String? _messageFor(int seat, List<int> captured, bool finished, bool extra) {
@@ -389,7 +488,8 @@ class LudoController extends ChangeNotifier {
       if (extra) return 'ROLL AGAIN';
       return null;
     }
-    if (captured.any((enc) => _isMe(enc ~/ 4))) return 'YOUR TOKEN WAS CAPTURED';
+    if (captured.any((enc) => _isMe(enc ~/ 4)))
+      return 'YOUR TOKEN WAS CAPTURED';
     return null;
   }
 
@@ -404,9 +504,17 @@ class LudoController extends ChangeNotifier {
     final to = LudoBoard.cellOf(_colour(seat), r.to, r.token);
     for (final enc in r.captured) {
       final cs = enc ~/ 4, ct = enc % 4;
-      _captures.add(_Capture(cs * 4 + ct, _pos[cs * 4 + ct] ?? to, LudoBoard.cellOf(_colour(cs), -1, ct)));
+      _captures.add(
+        _Capture(
+          cs * 4 + ct,
+          _pos[cs * 4 + ct] ?? to,
+          LudoBoard.cellOf(_colour(cs), -1, ct),
+        ),
+      );
     }
-    _pendingToast = _state!.phase == LudoPhase.gameOver ? null : _messageFor(seat, r.captured, r.finishedToken, r.extraTurn);
+    _pendingToast = _state!.phase == LudoPhase.gameOver
+        ? null
+        : _messageFor(seat, r.captured, r.finishedToken, r.extraTurn);
     _animateMove(key, from, _hops(_colour(seat), r.from, r.to, r.token));
   }
 
@@ -416,9 +524,17 @@ class LudoController extends ChangeNotifier {
     final from = _pos[key]!;
     for (final enc in m.captured) {
       final cs = enc ~/ 4, ct = enc % 4;
-      _captures.add(_Capture(cs * 4 + ct, _pos[cs * 4 + ct]!, LudoBoard.cellOf(_state!.players[cs].colour, -1, ct)));
+      _captures.add(
+        _Capture(
+          cs * 4 + ct,
+          _pos[cs * 4 + ct]!,
+          LudoBoard.cellOf(_state!.players[cs].colour, -1, ct),
+        ),
+      );
     }
-    _pendingToast = m.won ? null : _messageFor(seat, m.captured, m.finished, m.extraTurn);
+    _pendingToast = m.won
+        ? null
+        : _messageFor(seat, m.captured, m.finished, m.extraTurn);
     _animateMove(key, from, _hops(p.colour, fromStep, p.tokens[token], token));
   }
 
@@ -431,13 +547,19 @@ class LudoController extends ChangeNotifier {
     _animT = 0;
     // Leaving the yard is a slide; on the track the start cell gets a print.
     if (path.length > 1) _footprint(from, path.first);
-    audio.play(path.length == 1 && _fromYard ? Sfx.tokenOut : Sfx.hop, volume: 0.7);
+    audio.play(
+      path.length == 1 && _fromYard ? Sfx.tokenOut : Sfx.hop,
+      volume: 0.7,
+    );
     notifyListeners();
   }
 
   void _finishMove() {
     final moved = _animKey;
-    final reachedHome = moved != null && _state != null && _state!.players[moved ~/ 4].tokens[moved % 4] == LudoRules.homeStep;
+    final reachedHome =
+        moved != null &&
+        _state != null &&
+        _state!.players[moved ~/ 4].tokens[moved % 4] == LudoRules.homeStep;
     if (_animKey != null) {
       _pos[_animKey!] = List.of(_animTo!);
       _animKey = null;
@@ -508,7 +630,8 @@ class LudoController extends ChangeNotifier {
   final List<_Timer> _timers = [];
   double _time = 0;
 
-  void _after(double seconds, VoidCallback run) => _timers.add(_Timer(_time + seconds, run));
+  void _after(double seconds, VoidCallback run) =>
+      _timers.add(_Timer(_time + seconds, run));
 
   void tick(double dt) {
     if (_disposed) return;
@@ -532,7 +655,7 @@ class LudoController extends ChangeNotifier {
 
     if (_diceSpin > 0) {
       _diceSpin -= dt;
-      _rollFace = _rng.nextInt(6) + 1;
+      _rollFace = _playRng.nextInt(6) + 1;
       if (_diceSpin <= 0) {
         _diceSpin = 0;
         audio.play(Sfx.diceLand, volume: 0.8);
@@ -562,7 +685,11 @@ class LudoController extends ChangeNotifier {
           _finishMove();
         }
       } else {
-        _pos[_animKey!] = _lerp(_animFrom!, _animTo!, Curves.easeInOut.transform(_animT));
+        _pos[_animKey!] = _lerp(
+          _animFrom!,
+          _animTo!,
+          Curves.easeInOut.transform(_animT),
+        );
         notifyListeners();
       }
       return;
@@ -587,14 +714,18 @@ class LudoController extends ChangeNotifier {
     } else {
       final moves = _state!.movable ?? const [];
       if (moves.isNotEmpty) {
-        final t = LudoBot(_rng).chooseToken(_state!, seat, _state!.die!, moves);
+        final t = LudoBot(
+          _playRng,
+        ).chooseToken(_state!, seat, _state!.die!, moves);
         _doMoveOffline(t);
       }
     }
   }
 
-  List<double> _lerp(List<double> a, List<double> b, double t) =>
-      [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+  List<double> _lerp(List<double> a, List<double> b, double t) => [
+    a[0] + (b[0] - a[0]) * t,
+    a[1] + (b[1] - a[1]) * t,
+  ];
 
   /// Call once after construction (offline) to let a bot open if it leads.
   void start() {

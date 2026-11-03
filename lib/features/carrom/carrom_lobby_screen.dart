@@ -9,6 +9,7 @@ import '../../core/duel_ui.dart';
 import '../duel/bet_level_screen.dart';
 import '../duel/duel_chrome.dart';
 import '../duel/lobby_data.dart';
+import '../start/auth_prompt.dart';
 import 'carrom_skins.dart';
 import '../../l10n/strings.dart';
 
@@ -61,7 +62,13 @@ class CarromLobbyScreen extends ConsumerWidget {
               width: 420,
               height: 72,
               color: DuelColors.gold,
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BetLevelScreen(mode: DuelMode.carrom))),
+              onPressed: () async {
+                if (!await requireRegisteredAccount(context, ref)) return;
+                if (!context.mounted) return;
+                await Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const BetLevelScreen(mode: DuelMode.carrom)),
+                );
+              },
             ),
             const SizedBox(height: DesignSpacing.x8),
           ],
