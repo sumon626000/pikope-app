@@ -863,6 +863,9 @@ class AppStrings {
     'ডেমো ডেটা — সার্ভার নেই',
   );
   String get playerId => _t('PLAYER ID', 'প্লেয়ার আইডি');
+  String referListHeader(int n) =>
+      _t('REFERRED FRIENDS ($n)', 'রেফার করা বন্ধু ($n)');
+
   String get noFriendsReferYet => _t(
     'NO FRIENDS HAVE USED YOUR ID YET',
     'এখনো কেউ আপনার আইডি ব্যবহার করেনি',

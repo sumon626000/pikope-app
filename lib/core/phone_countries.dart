@@ -1,5 +1,3 @@
-import 'dart:ui' show PlatformDispatcher;
-
 /// Dialing metadata for sign-in / sign-up (flag + country code picker).
 class PhoneCountry {
   const PhoneCountry({
@@ -85,15 +83,8 @@ abstract final class PhoneCountries {
     const PhoneCountry(iso: 'AR', name: 'Argentina', dialCode: '54', nationalMinLength: 10, nationalMaxLength: 10),
   ]..sort((a, b) => a.name.compareTo(b.name));
 
-  static PhoneCountry defaultCountry() {
-    final iso = PlatformDispatcher.instance.locale.countryCode?.toUpperCase();
-    if (iso != null) {
-      for (final c in all) {
-        if (c.iso == iso) return c;
-      }
-    }
-    return _bd;
-  }
+  /// Sign-up / log-in always opens on Bangladesh (+880); user can change country.
+  static PhoneCountry defaultCountry() => bangladesh;
 
   static PhoneCountry? byIso(String iso) {
     final u = iso.toUpperCase();

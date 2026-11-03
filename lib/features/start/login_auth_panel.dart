@@ -137,7 +137,8 @@ class _LoginAuthPanelState extends ConsumerState<LoginAuthPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final s = ref.watch(stringsProvider);
+    // read: avoid rebuild-on-keyboard MediaQuery churn in compact login dialog.
+    final s = ref.read(stringsProvider);
     final compact = widget.compact;
     final titleSize = compact ? 18.0 : 46.0;
     final subSize = compact ? 12.0 : 20.0;
