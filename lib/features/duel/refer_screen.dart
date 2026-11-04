@@ -44,16 +44,21 @@ class _ReferScreenState extends ConsumerState<ReferScreen> {
       return;
     }
     try {
-      if (!await ref.read(sessionProvider.notifier).tryRestoreExistingSession()) {
-        if (mounted) setState(() => _error = ref.read(stringsProvider).loginRequiredBody);
+      if (!await ref
+          .read(sessionProvider.notifier)
+          .tryRestoreExistingSession()) {
+        if (mounted)
+          setState(() => _error = ref.read(stringsProvider).loginRequiredBody);
         return;
       }
       final info = await ref.read(apiProvider)!.get('/referral');
       if (mounted) setState(() => _info = info);
     } on ApiException catch (e) {
-      if (mounted) setState(() => _error = ref.read(stringsProvider).maybeApi(e.message));
+      if (mounted)
+        setState(() => _error = ref.read(stringsProvider).maybeApi(e.message));
     } catch (_) {
-      if (mounted) setState(() => _error = ref.read(stringsProvider).referLoadFail);
+      if (mounted)
+        setState(() => _error = ref.read(stringsProvider).referLoadFail);
     }
   }
 
@@ -72,7 +77,8 @@ class _ReferScreenState extends ConsumerState<ReferScreen> {
       final info = await ref.read(apiProvider)!.get('/referral');
       if (mounted) setState(() => _info = info);
     } on ApiException catch (e) {
-      if (mounted) setState(() => _error = ref.read(stringsProvider).maybeApi(e.message));
+      if (mounted)
+        setState(() => _error = ref.read(stringsProvider).maybeApi(e.message));
     } finally {
       if (mounted) setState(() => _applying = false);
     }
@@ -93,10 +99,18 @@ class _ReferScreenState extends ConsumerState<ReferScreen> {
       final loading = Center(
         child: _error == null
             ? const CircularProgressIndicator(color: DuelColors.silver)
-            : Text(_error!, textAlign: TextAlign.center, style: AppText.label(18, color: DuelColors.red)),
+            : Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: AppText.label(18, color: DuelColors.red),
+              ),
       );
       if (phone) {
-        return _ReferPhoneShell(title: t.referTitle, sub: t.referSub, child: loading);
+        return _ReferPhoneShell(
+          title: t.referTitle,
+          sub: t.referSub,
+          child: loading,
+        );
       }
       return DuelPage(title: t.referTitle, sub: t.referSub, child: loading);
     }
@@ -114,7 +128,11 @@ class _ReferScreenState extends ConsumerState<ReferScreen> {
     );
 
     if (phone) {
-      return _ReferPhoneShell(title: t.referTitle, sub: t.referSub, child: content);
+      return _ReferPhoneShell(
+        title: t.referTitle,
+        sub: t.referSub,
+        child: content,
+      );
     }
 
     return DuelPage(
@@ -156,37 +174,137 @@ class ReferScreenContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final id = info['code'] as String?;
-    final people = (info['people'] as List?)?.cast<Map<String, dynamic>>() ?? const <Map<String, dynamic>>[];
+    final people =
+        (info['people'] as List?)?.cast<Map<String, dynamic>>() ??
+        const <Map<String, dynamic>>[];
+
+    if (phone) {
+      return CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(child: _topSection(context, id: id)),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 6, bottom: 4),
+              child: people.isEmpty
+                  ? _EmptyReferPanel(t: t, phone: true)
+                  : Text(
+                      t.referListHeader(people.length),
+                      style: AppText.label(
+                        12,
+                        color: DuelColors.dim,
+                        weight: FontWeight.w800,
+                      ),
+                    ),
+            ),
+          ),
+          if (people.isNotEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.only(bottom: 8),
+              sliver: DecoratedSliver(
+                decoration: duelPanel(radius: 12),
+                sliver: SliverPadding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  sliver: SliverList.separated(
+                    itemCount: people.length,
+                    separatorBuilder: (_, _) => Divider(
+                      height: 1,
+                      color: const Color(0xFF1E2546).withValues(alpha: 0.85),
+                    ),
+                    itemBuilder: (_, i) => _ReferPersonRow(
+                      index: i + 1,
+                      name: '${people[i]['name']}',
+                      earned: _earnedCoins(people[i]['earned']),
+                      phone: true,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          const SliverToBoxAdapter(child: SizedBox(height: 4)),
+        ],
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _IdCard(
-          t: t,
-          phone: phone,
-          id: id,
-          copied: copied,
-          onCopy: onCopy,
+        _topSection(context, id: id),
+        const SizedBox(height: 12),
+        if (people.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6, left: 2),
+            child: Text(
+              t.referListHeader(people.length),
+              style: AppText.label(
+                14,
+                color: DuelColors.dim,
+                weight: FontWeight.w800,
+              ),
+            ),
+          ),
+        Expanded(
+          child: Container(
+            decoration: duelPanel(radius: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+            child: people.isEmpty
+                ? Center(
+                    child: Text(
+                      t.noFriendsReferYet,
+                      style: AppText.label(16, color: DuelColors.dim),
+                    ),
+                  )
+                : ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    cacheExtent: 400,
+                    itemCount: people.length,
+                    separatorBuilder: (_, _) => Divider(
+                      height: 1,
+                      color: const Color(0xFF1E2546).withValues(alpha: 0.85),
+                    ),
+                    itemBuilder: (_, i) => _ReferPersonRow(
+                      index: i + 1,
+                      name: '${people[i]['name']}',
+                      earned: _earnedCoins(people[i]['earned']),
+                      phone: false,
+                    ),
+                  ),
+          ),
         ),
-        SizedBox(height: phone ? 6 : 8),
+      ],
+    );
+  }
+
+  Widget _topSection(BuildContext context, {required String? id}) {
+    final widePhone = phone && MediaQuery.sizeOf(context).width >= 480;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _IdCard(t: t, phone: phone, id: id, copied: copied, onCopy: onCopy),
+        SizedBox(height: phone ? 4 : 8),
         Text(
           t.referFriendsEarnPct(info['percent'] as int),
           maxLines: phone ? 2 : 3,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontFamily: 'sans-serif',
-            fontSize: phone ? 11 : 14,
-            height: 1.35,
+            fontSize: phone ? 10 : 14,
+            height: 1.3,
             color: DuelColors.dim,
           ),
         ),
-        SizedBox(height: phone ? 8 : 16),
+        SizedBox(height: phone ? 6 : 16),
         _StatsRow(info: info, t: t, phone: phone),
         if (info['referredBy'] == null) ...[
-          SizedBox(height: phone ? 8 : 16),
+          SizedBox(height: phone ? 6 : 16),
           _FriendApplyRow(
             t: t,
             phone: phone,
+            wideLandscape: widePhone,
             controller: friendController,
             applying: applying,
             onApply: onApply,
@@ -194,38 +312,12 @@ class ReferScreenContent extends StatelessWidget {
         ],
         if (error != null)
           Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(error!, style: AppText.label(phone ? 12 : 14, color: DuelColors.red)),
-          ),
-        SizedBox(height: phone ? 8 : 12),
-        if (people.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6, left: 2),
+            padding: const EdgeInsets.only(top: 4),
             child: Text(
-              t.referListHeader(people.length),
-              style: AppText.label(phone ? 12 : 14, color: DuelColors.dim, weight: FontWeight.w800),
+              error!,
+              style: AppText.label(phone ? 11 : 14, color: DuelColors.red),
             ),
           ),
-        Expanded(
-          child: Container(
-            decoration: duelPanel(radius: phone ? 12 : 16),
-            padding: EdgeInsets.symmetric(horizontal: phone ? 10 : 18, vertical: phone ? 4 : 8),
-            child: people.isEmpty
-                ? Center(child: Text(t.noFriendsReferYet, style: AppText.label(phone ? 14 : 16, color: DuelColors.dim)))
-                : ListView.separated(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    cacheExtent: 400,
-                    itemCount: people.length,
-                    separatorBuilder: (_, _) => Divider(height: 1, color: const Color(0xFF1E2546).withValues(alpha: 0.85)),
-                    itemBuilder: (_, i) => _ReferPersonRow(
-                      index: i + 1,
-                      name: '${people[i]['name']}',
-                      earned: _earnedCoins(people[i]['earned']),
-                      phone: phone,
-                    ),
-                  ),
-          ),
-        ),
       ],
     );
   }
@@ -239,7 +331,11 @@ class ReferScreenContent extends StatelessWidget {
 }
 
 class _ReferPhoneShell extends StatelessWidget {
-  const _ReferPhoneShell({required this.title, required this.sub, required this.child});
+  const _ReferPhoneShell({
+    required this.title,
+    required this.sub,
+    required this.child,
+  });
 
   final String title;
   final String sub;
@@ -275,10 +371,17 @@ class _ReferPhoneShell extends StatelessWidget {
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: DuelColors.rimLight, width: 1.2),
+                            border: Border.all(
+                              color: DuelColors.rimLight,
+                              width: 1.2,
+                            ),
                             color: DuelColors.glass.withValues(alpha: 0.9),
                           ),
-                          child: const Icon(Icons.arrow_back_rounded, color: DuelColors.silver, size: 20),
+                          child: const Icon(
+                            Icons.arrow_back_rounded,
+                            color: DuelColors.silver,
+                            size: 20,
+                          ),
                         ),
                       ),
                     ),
@@ -287,19 +390,26 @@ class _ReferPhoneShell extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(title, style: AppText.label(16, weight: FontWeight.w900)),
+                          Text(
+                            title,
+                            style: AppText.label(16, weight: FontWeight.w900),
+                          ),
                           Text(
                             sub,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: AppText.label(9, color: DuelColors.dim, weight: FontWeight.w700),
+                            style: AppText.label(
+                              9,
+                              color: DuelColors.dim,
+                              weight: FontWeight.w700,
+                            ),
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Expanded(child: child),
               ],
             ),
@@ -328,7 +438,10 @@ class _IdCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: phone ? 12 : 22, vertical: phone ? 10 : 16),
+      padding: EdgeInsets.symmetric(
+        horizontal: phone ? 10 : 22,
+        vertical: phone ? 8 : 16,
+      ),
       decoration: duelPanel(radius: phone ? 12 : 16),
       child: Row(
         children: [
@@ -336,12 +449,21 @@ class _IdCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(t.playerId, style: AppText.label(phone ? 11 : 14, color: DuelColors.dim)),
+                Text(
+                  t.playerId,
+                  style: AppText.label(phone ? 11 : 14, color: DuelColors.dim),
+                ),
                 const SizedBox(height: 2),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
-                  child: Text(id ?? '', style: AppText.label(phone ? 28 : 40, weight: FontWeight.w900)),
+                  child: Text(
+                    id ?? '',
+                    style: AppText.label(
+                      phone ? 26 : 40,
+                      weight: FontWeight.w900,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -349,9 +471,9 @@ class _IdCard extends StatelessWidget {
           DuelButton(
             label: copied ? t.copied : t.copy,
             icon: Icons.copy_rounded,
-            width: phone ? 120 : 180,
-            height: phone ? 40 : 52,
-            fontSize: phone ? 14 : 18,
+            width: phone ? 108 : 180,
+            height: phone ? 36 : 52,
+            fontSize: phone ? 13 : 18,
             onPressed: id == null ? null : () => onCopy(id!),
           ),
         ],
@@ -371,17 +493,37 @@ class _StatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final boxes = [
       _StatBox(label: t.statInvited, value: '${info['invited']}', phone: phone),
-      _StatBox(label: t.statToday, value: '${info['earnedToday']}', phone: phone),
-      _StatBox(label: t.statThisMonth, value: '${info['earnedMonth']}', phone: phone),
+      _StatBox(
+        label: t.statToday,
+        value: '${info['earnedToday']}',
+        phone: phone,
+      ),
+      _StatBox(
+        label: t.statThisMonth,
+        value: '${info['earnedMonth']}',
+        phone: phone,
+      ),
       _StatBox(label: t.statTotal, value: '${info['earned']}', phone: phone),
     ];
 
     if (phone) {
       return Column(
         children: [
-          Row(children: [Expanded(child: boxes[0]), const SizedBox(width: 8), Expanded(child: boxes[1])]),
-          const SizedBox(height: 8),
-          Row(children: [Expanded(child: boxes[2]), const SizedBox(width: 8), Expanded(child: boxes[3])]),
+          Row(
+            children: [
+              Expanded(child: boxes[0]),
+              const SizedBox(width: 6),
+              Expanded(child: boxes[1]),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(child: boxes[2]),
+              const SizedBox(width: 6),
+              Expanded(child: boxes[3]),
+            ],
+          ),
         ],
       );
     }
@@ -391,7 +533,11 @@ class _StatsRow extends StatelessWidget {
 }
 
 class _StatBox extends StatelessWidget {
-  const _StatBox({required this.label, required this.value, required this.phone});
+  const _StatBox({
+    required this.label,
+    required this.value,
+    required this.phone,
+  });
 
   final String label;
   final String value;
@@ -401,16 +547,47 @@ class _StatBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: EdgeInsets.only(right: phone ? 0 : 10),
-      padding: EdgeInsets.symmetric(vertical: phone ? 8 : 10),
+      padding: EdgeInsets.symmetric(vertical: phone ? 6 : 10),
       decoration: duelPanel(radius: phone ? 10 : 12),
       child: Column(
         children: [
           FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(value, style: AppText.label(phone ? 16 : 22, weight: FontWeight.w900)),
+            child: Text(
+              value,
+              style: AppText.label(phone ? 16 : 22, weight: FontWeight.w900),
+            ),
           ),
-          Text(label, textAlign: TextAlign.center, style: AppText.label(phone ? 9 : 11, color: DuelColors.dim)),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: AppText.label(phone ? 9 : 11, color: DuelColors.dim),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _EmptyReferPanel extends StatelessWidget {
+  const _EmptyReferPanel({required this.t, required this.phone});
+
+  final AppStrings t;
+  final bool phone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: phone ? 12 : 18,
+        vertical: phone ? 10 : 20,
+      ),
+      decoration: duelPanel(radius: phone ? 12 : 16),
+      child: Text(
+        t.noFriendsReferYet,
+        textAlign: TextAlign.center,
+        style: AppText.label(phone ? 13 : 16, color: DuelColors.dim),
       ),
     );
   }
@@ -420,6 +597,7 @@ class _FriendApplyRow extends StatelessWidget {
   const _FriendApplyRow({
     required this.t,
     required this.phone,
+    required this.wideLandscape,
     required this.controller,
     required this.applying,
     required this.onApply,
@@ -427,6 +605,7 @@ class _FriendApplyRow extends StatelessWidget {
 
   final AppStrings t;
   final bool phone;
+  final bool wideLandscape;
   final TextEditingController controller;
   final bool applying;
   final VoidCallback onApply;
@@ -438,22 +617,41 @@ class _FriendApplyRow extends StatelessWidget {
       maxLength: 6,
       keyboardType: TextInputType.number,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-      style: AppText.label(phone ? 16 : 20),
-      decoration: InputDecoration(labelText: t.friendIdOptional, counterText: ''),
+      style: AppText.label(phone ? 15 : 20),
+      decoration: InputDecoration(
+        labelText: t.friendIdOptional,
+        counterText: '',
+        isDense: phone,
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: phone ? 10 : 16,
+          vertical: phone ? 10 : 16,
+        ),
+      ),
     );
     final btn = DuelButton(
       label: applying ? t.saving : t.useId,
-      width: phone ? double.infinity : 180,
-      height: phone ? 42 : 52,
-      fontSize: phone ? 15 : 18,
+      width: phone ? (wideLandscape ? 100 : double.infinity) : 180,
+      height: phone ? 38 : 52,
+      fontSize: phone ? 13 : 18,
       color: DuelColors.blue,
       onPressed: applying ? null : onApply,
     );
 
+    if (phone && wideLandscape) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: field),
+          const SizedBox(width: 8),
+          Padding(padding: const EdgeInsets.only(top: 4), child: btn),
+        ],
+      );
+    }
+
     if (phone) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [field, const SizedBox(height: 8), btn],
+        children: [field, const SizedBox(height: 6), btn],
       );
     }
 
@@ -488,7 +686,10 @@ class _ReferPersonRow extends StatelessWidget {
         children: [
           SizedBox(
             width: phone ? 22 : 28,
-            child: Text('$index.', style: AppText.label(phone ? 11 : 13, color: DuelColors.dim)),
+            child: Text(
+              '$index.',
+              style: AppText.label(phone ? 11 : 13, color: DuelColors.dim),
+            ),
           ),
           Expanded(
             child: Text(
@@ -506,7 +707,11 @@ class _ReferPersonRow extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 formatCoins(earned, compact: earned >= 100000),
-                style: AppText.label(phone ? 13 : 15, color: DuelColors.gold, weight: FontWeight.w800),
+                style: AppText.label(
+                  phone ? 13 : 15,
+                  color: DuelColors.gold,
+                  weight: FontWeight.w800,
+                ),
               ),
             ],
           ),
