@@ -22,6 +22,7 @@ import '../online/session.dart';
 import '../carrom/carrom_lobby_screen.dart';
 import '../ludo/ludo_lobby_screen.dart';
 import '../misc/how_to_play_screen.dart';
+import 'duel_chrome.dart';
 import 'bet_level_screen.dart';
 import 'practice_launch.dart';
 import 'challenge_inbox_host.dart';
@@ -32,8 +33,11 @@ import 'lobby_data.dart';
 import 'pool_hub_screen.dart';
 import '../../l10n/strings.dart';
 import 'items_screen.dart';
+import 'portrait_widgets.dart';
 import 'shop_screen.dart';
 import '../start/auth_prompt.dart';
+
+part 'portrait_home.dart';
 
 /// Home lobby: pick Pool, Ludo or Carrom (every game gets the same billing),
 /// with the wallet, daily bonus, rank and the shortcuts around it.
@@ -44,7 +48,8 @@ class DuelHomeScreen extends ConsumerStatefulWidget {
   ConsumerState<DuelHomeScreen> createState() => _DuelHomeScreenState();
 }
 
-class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBindingObserver {
+class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen>
+    with WidgetsBindingObserver {
   Timer? _refresh;
   Timer? _pushPoll;
 
@@ -54,7 +59,8 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
     WidgetsBinding.instance.addObserver(this);
     // Wallet and "players online" stay current while the lobby is open.
     _refresh = Timer.periodic(const Duration(seconds: 20), (_) {
-      if (ModalRoute.of(context)?.isCurrent ?? false) ref.read(lobbyProvider.notifier).refresh();
+      if (ModalRoute.of(context)?.isCurrent ?? false)
+        ref.read(lobbyProvider.notifier).refresh();
     });
     _pushPoll = Timer.periodic(const Duration(seconds: 25), (_) => _pollPush());
     _pollPush();
@@ -91,7 +97,8 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
     if (api == null || !ref.read(sessionProvider).signedIn) return;
     try {
       final poll = await PushService.pollInbox(api);
-      if (mounted) ref.read(notificationUnreadProvider.notifier).set(poll.unread);
+      if (mounted)
+        ref.read(notificationUnreadProvider.notifier).set(poll.unread);
       if (poll.walletChanged) {
         await ref.read(sessionProvider.notifier).refresh();
         if (mounted) ref.read(lobbyProvider.notifier).refresh();
@@ -103,7 +110,9 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
 
   /// Anything opened from here may change coins or leave a match running.
   Future<void> _open(Widget screen) async {
-    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => screen));
     if (mounted) _reload();
   }
 
@@ -113,54 +122,66 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
   }
 
   /// A dialog with one big button per choice.
-  Future<void> _chooser({required String title, required String body, required List<(String, Color, VoidCallback)> choices}) =>
-      showDuelDialog<void>(
-        context,
-        barrierColor: DesignAuth.overlayScrim,
-        builder: (dialog) => Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            width: DesignAuth.dialogChooserWidth,
-            padding: const EdgeInsets.all(DesignSpacing.x5),
-            decoration: duelPanel(rim: DuelColors.rimLight),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(title, style: AppText.label(18, weight: FontWeight.w900)),
-                const SizedBox(height: 6),
-                Text(body, textAlign: TextAlign.center, style: const TextStyle(fontFamily: 'sans-serif', fontSize: 13, height: 1.4, color: DuelColors.dim)),
-                const SizedBox(height: 14),
-                for (final (label, color, go) in choices)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: DuelButton(
-                      label: label,
-                      width: 320,
-                      height: 44,
-                      fontSize: 16,
-                      color: color,
-                      onPressed: () {
-                        Navigator.of(dialog).pop();
-                        go();
-                      },
-                    ),
-                  ),
-              ],
+  Future<void> _chooser({
+    required String title,
+    required String body,
+    required List<(String, Color, VoidCallback)> choices,
+  }) => showDuelDialog<void>(
+    context,
+    barrierColor: DesignAuth.overlayScrim,
+    builder: (dialog) => Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: DesignAuth.dialogChooserWidth,
+        padding: const EdgeInsets.all(DesignSpacing.x5),
+        decoration: duelPanel(rim: DuelColors.rimLight),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(title, style: AppText.label(18, weight: FontWeight.w900)),
+            const SizedBox(height: 6),
+            Text(
+              body,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'sans-serif',
+                fontSize: 13,
+                height: 1.4,
+                color: DuelColors.dim,
+              ),
             ),
-          ),
+            const SizedBox(height: 14),
+            for (final (label, color, go) in choices)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: DuelButton(
+                  label: label,
+                  width: 320,
+                  height: 44,
+                  fontSize: 16,
+                  color: color,
+                  onPressed: () {
+                    Navigator.of(dialog).pop();
+                    go();
+                  },
+                ),
+              ),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 
   static const _poolColor = DuelColors.green;
   static const _ludoColor = DesignColors.ludoAccent;
   static const _carromColor = DesignColors.carromAccent;
 
   static DuelMode _friendsDuelMode(AppGame game) => switch (game) {
-        AppGame.poker => DuelMode.poker,
-        AppGame.eightBall => DuelMode.eight,
-        AppGame.nineBall => DuelMode.nine,
-        AppGame.tenBall => DuelMode.ten,
-      };
+    AppGame.poker => DuelMode.poker,
+    AppGame.eightBall => DuelMode.eight,
+    AppGame.nineBall => DuelMode.nine,
+    AppGame.tenBall => DuelMode.ten,
+  };
 
   void _practiceLudoPick() {
     final t = ref.read(stringsProvider);
@@ -168,8 +189,16 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
       title: t.ludoTitle,
       body: t.practiceSubLudo,
       choices: [
-        (t.twoPlayers, _ludoColor, () => launchLudoPractice(context, ref, players: 2)),
-        (t.fourPlayers, _ludoColor, () => launchLudoPractice(context, ref, players: 4)),
+        (
+          t.twoPlayers,
+          _ludoColor,
+          () => launchLudoPractice(context, ref, players: 2),
+        ),
+        (
+          t.fourPlayers,
+          _ludoColor,
+          () => launchLudoPractice(context, ref, players: 4),
+        ),
       ],
     );
   }
@@ -177,14 +206,18 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
   void _practice() {
     final t = ref.read(stringsProvider);
     _chooser(
-        title: t.practiceTitle,
-        body: t.practiceChooserBody,
-        choices: [
-          (t.poolTitle, _poolColor, () => showPoolPracticeDialog(context, open: _open)),
-          (t.ludoTitle, _ludoColor, _practiceLudoPick),
-          (t.carromTitle, _carromColor, () => launchCarromPractice(context, ref)),
-        ],
-      );
+      title: t.practiceTitle,
+      body: t.practiceChooserBody,
+      choices: [
+        (
+          t.poolTitle,
+          _poolColor,
+          () => showPoolPracticeDialog(context, open: _open),
+        ),
+        (t.ludoTitle, _ludoColor, _practiceLudoPick),
+        (t.carromTitle, _carromColor, () => launchCarromPractice(context, ref)),
+      ],
+    );
   }
 
   Future<void> _friends() async {
@@ -192,15 +225,33 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
     if (!mounted) return;
     final t = ref.read(stringsProvider);
     _chooser(
-        title: t.friendsTitle,
-        body: t.friendsBody,
-        choices: [
-          (t.poolTitle, _poolColor, _friendsPool),
-          (t.ludoPlayers(2), _ludoColor, () => _open(const BetLevelScreen(mode: DuelMode.ludo2, friendsRoom: true))),
-          (t.ludoPlayers(4), _ludoColor, () => _open(const BetLevelScreen(mode: DuelMode.ludo4, friendsRoom: true))),
-          (t.carromTitle, _carromColor, () => _open(const BetLevelScreen(mode: DuelMode.carrom, friendsRoom: true))),
-        ],
-      );
+      title: t.friendsTitle,
+      body: t.friendsBody,
+      choices: [
+        (t.poolTitle, _poolColor, _friendsPool),
+        (
+          t.ludoPlayers(2),
+          _ludoColor,
+          () => _open(
+            const BetLevelScreen(mode: DuelMode.ludo2, friendsRoom: true),
+          ),
+        ),
+        (
+          t.ludoPlayers(4),
+          _ludoColor,
+          () => _open(
+            const BetLevelScreen(mode: DuelMode.ludo4, friendsRoom: true),
+          ),
+        ),
+        (
+          t.carromTitle,
+          _carromColor,
+          () => _open(
+            const BetLevelScreen(mode: DuelMode.carrom, friendsRoom: true),
+          ),
+        ),
+      ],
+    );
   }
 
   void _friendsPool() {
@@ -213,7 +264,9 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
           (
             t.appGameTitle(game),
             game == AppGame.poker ? DuelColors.purple : DuelColors.blue,
-            () => _open(BetLevelScreen(mode: _friendsDuelMode(game), friendsRoom: true)),
+            () => _open(
+              BetLevelScreen(mode: _friendsDuelMode(game), friendsRoom: true),
+            ),
           ),
       ],
     );
@@ -231,6 +284,9 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
 
   @override
   Widget build(BuildContext context) {
+    if (DesignBreakpoints.portraitLayout(context)) {
+      return DuelCanvas(child: buildPortraitHome());
+    }
     final t = ref.watch(stringsProvider);
     final lobby = ref.watch(lobbyProvider);
     final session = ref.watch(sessionProvider);
@@ -240,7 +296,9 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
     final data = lobby.valueOrNull;
     return DuelCanvas(
       child: LobbyScaffold(
-        title: Center(child: DuelTitle(t.chooseTable, size: 50, sub: t.pickGameDuel)),
+        title: Center(
+          child: DuelTitle(t.chooseTable, size: 50, sub: t.pickGameDuel),
+        ),
         centerPadding: EdgeInsets.zero,
         leftRail: FittedBox(
           fit: BoxFit.scaleDown,
@@ -249,59 +307,116 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
             mainAxisSize: MainAxisSize.min,
             children: [
               _SideTile(
-              height: 158,
-              title: t.dailyBonus,
-              titleColor: DuelColors.gold,
-              onTap: data == null ? null : () => _daily(data.daily),
-              badge: data?.daily.available ?? false,
-              attention: data?.daily.available ?? false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.redeem_rounded, color: Color(0xFFFF9A2E), size: 70),
-                  const SizedBox(height: 4),
-                  data == null
-                      ? const SizedBox(height: 18)
-                      : data.daily.available
-                          ? Text(t.claimNow, style: AppText.label(14, color: DuelColors.green, weight: FontWeight.w900))
-                          : _Countdown(from: data.fetchedAt, seconds: data.daily.secondsToNext),
-                ],
-              ),
-            ),
-            const SizedBox(height: DesignSpacing.x3),
-            _SideTile(
-              height: 206,
-              title: t.rank,
-              onTap: () => _open(const LeaderboardScreen()),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (registered) ...[
-                    SizedBox(width: 96, height: 104, child: CustomPaint(painter: _RankBadgePainter(session.rankTier, session.rankName))),
-                    const SizedBox(height: DesignSpacing.x2),
-                    Text(session.rankName, style: AppText.label(15, color: DuelColors.gold, weight: FontWeight.w900)),
-                  ] else ...[
-                    const Icon(Icons.emoji_events_outlined, color: DuelColors.dim, size: 72),
-                    const SizedBox(height: DesignSpacing.x2),
-                    Text(t.browseProfileTitle, style: AppText.label(14, color: DuelColors.dim, weight: FontWeight.w800)),
+                height: 158,
+                title: t.dailyBonus,
+                titleColor: DuelColors.gold,
+                onTap: data == null ? null : () => _daily(data.daily),
+                badge: data?.daily.available ?? false,
+                attention: data?.daily.available ?? false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.redeem_rounded,
+                      color: Color(0xFFFF9A2E),
+                      size: 70,
+                    ),
+                    const SizedBox(height: 4),
+                    data == null
+                        ? const SizedBox(height: 18)
+                        : data.daily.available
+                        ? Text(
+                            t.claimNow,
+                            style: AppText.label(
+                              14,
+                              color: DuelColors.green,
+                              weight: FontWeight.w900,
+                            ),
+                          )
+                        : _Countdown(
+                            from: data.fetchedAt,
+                            seconds: data.daily.secondsToNext,
+                          ),
                   ],
-                ],
+                ),
               ),
-            ),
-            const SizedBox(height: DesignSpacing.x3),
-            _SideTile(
-              height: 158,
-              title: '',
-              onTap: () => showDuelMessage(context, title: t.missions, body: t.missionsBody, icon: Icons.flag_rounded),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.flag_rounded, color: Color(0xFF8EDB5A), size: 74),
-                  const SizedBox(height: 6),
-                  Text(t.mission, style: AppText.label(15, color: DuelColors.dim, weight: FontWeight.w800)),
-                ],
+              const SizedBox(height: DesignSpacing.x3),
+              _SideTile(
+                height: 206,
+                title: t.rank,
+                onTap: () => _open(const LeaderboardScreen()),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (registered) ...[
+                      SizedBox(
+                        width: 96,
+                        height: 104,
+                        child: CustomPaint(
+                          painter: _RankBadgePainter(
+                            session.rankTier,
+                            session.rankName,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: DesignSpacing.x2),
+                      Text(
+                        session.rankName,
+                        style: AppText.label(
+                          15,
+                          color: DuelColors.gold,
+                          weight: FontWeight.w900,
+                        ),
+                      ),
+                    ] else ...[
+                      const Icon(
+                        Icons.emoji_events_outlined,
+                        color: DuelColors.dim,
+                        size: 72,
+                      ),
+                      const SizedBox(height: DesignSpacing.x2),
+                      Text(
+                        t.browseProfileTitle,
+                        style: AppText.label(
+                          14,
+                          color: DuelColors.dim,
+                          weight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(height: DesignSpacing.x3),
+              _SideTile(
+                height: 158,
+                title: '',
+                onTap: () => showDuelMessage(
+                  context,
+                  title: t.missions,
+                  body: t.missionsBody,
+                  icon: Icons.flag_rounded,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.flag_rounded,
+                      color: Color(0xFF8EDB5A),
+                      size: 74,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      t.mission,
+                      style: AppText.label(
+                        15,
+                        color: DuelColors.dim,
+                        weight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -319,30 +434,30 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         GameCard(
-                        width: DesignLayout.gameCardWidth,
-                        color: DuelColors.green,
-                        title: t.poolTitle,
-                        sub: t.poolSub,
-                        art: const BilliardArt(),
-                        onPlay: () => _open(const PoolHubScreen()),
-                      ),
-                      const SizedBox(width: DesignSpacing.gameCardGap),
-                      GameCard(
-                        width: DesignLayout.gameCardWidth,
-                        color: DesignColors.ludoAccent,
-                        title: t.ludoTitle,
-                        sub: t.ludoSub,
-                        art: const LudoArt(),
-                        onPlay: () => _open(const LudoLobbyScreen()),
-                      ),
-                      const SizedBox(width: DesignSpacing.gameCardGap),
-                      GameCard(
-                        width: DesignLayout.gameCardWidth,
-                        color: DesignColors.carromAccent,
-                        title: t.carromTitle,
-                        sub: t.carromSub,
-                        art: const CarromArt(),
-                        onPlay: () => _open(const CarromLobbyScreen()),
+                          width: DesignLayout.gameCardWidth,
+                          color: DuelColors.green,
+                          title: t.poolTitle,
+                          sub: t.poolSub,
+                          art: const BilliardArt(),
+                          onPlay: () => _open(const PoolHubScreen()),
+                        ),
+                        const SizedBox(width: DesignSpacing.gameCardGap),
+                        GameCard(
+                          width: DesignLayout.gameCardWidth,
+                          color: DesignColors.ludoAccent,
+                          title: t.ludoTitle,
+                          sub: t.ludoSub,
+                          art: const LudoArt(),
+                          onPlay: () => _open(const LudoLobbyScreen()),
+                        ),
+                        const SizedBox(width: DesignSpacing.gameCardGap),
+                        GameCard(
+                          width: DesignLayout.gameCardWidth,
+                          color: DesignColors.carromAccent,
+                          title: t.carromTitle,
+                          sub: t.carromSub,
+                          art: const CarromArt(),
+                          onPlay: () => _open(const CarromLobbyScreen()),
                         ),
                       ],
                     ),
@@ -354,7 +469,11 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
               Padding(
                 padding: const EdgeInsets.only(bottom: DesignSpacing.x4),
                 child: Text(
-                  lobby.error is ApiException ? ref.read(stringsProvider).maybeApi((lobby.error as ApiException).message) : t.offlineServer,
+                  lobby.error is ApiException
+                      ? ref
+                            .read(stringsProvider)
+                            .maybeApi((lobby.error as ApiException).message)
+                      : t.offlineServer,
                   style: AppText.label(14, color: DuelColors.red),
                 ),
               ),
@@ -367,34 +486,46 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
             mainAxisSize: MainAxisSize.min,
             children: [
               HomeBanner(
-              title: t.howToPlayTitle,
-              sub: t.howToPlaySub,
-              colors: const [Color(0xFF2A1A4A), Color(0xFF0E0820)],
-              rim: const Color(0xFF7B5BFF),
-              titleColor: const Color(0xFFC9B8FF),
-              icon: const Icon(Icons.menu_book_rounded, color: Color(0xFFC9B8FF), size: 84),
-              onTap: () => _open(const HowToPlayScreen()),
-            ),
-            const SizedBox(height: DesignSpacing.x3),
-            HomeBanner(
-              title: t.practiceFreeTitle,
-              sub: t.practiceFreeSub,
-              colors: const [Color(0xFF0E3A22), Color(0xFF07140D)],
-              rim: DesignColors.poolEightAccent,
-              titleColor: const Color(0xFF9BF2B5),
-              icon: const Icon(Icons.smart_toy_rounded, color: Color(0xFF9BF2B5), size: 84),
-              onTap: _practice,
-            ),
-            const SizedBox(height: DesignSpacing.x3),
-            HomeBanner(
-              title: t.friendsBannerTitle,
-              sub: t.friendsBannerSub,
-              colors: const [Color(0xFF0B2A66), Color(0xFF070E24)],
-              rim: DuelColors.blue,
-              titleColor: const Color(0xFF9CC2FF),
-              icon: const Icon(Icons.groups_rounded, color: Color(0xFF9CC2FF), size: 88),
-              onTap: _friends,
-            ),
+                title: t.howToPlayTitle,
+                sub: t.howToPlaySub,
+                colors: const [Color(0xFF2A1A4A), Color(0xFF0E0820)],
+                rim: const Color(0xFF7B5BFF),
+                titleColor: const Color(0xFFC9B8FF),
+                icon: const Icon(
+                  Icons.menu_book_rounded,
+                  color: Color(0xFFC9B8FF),
+                  size: 84,
+                ),
+                onTap: () => _open(const HowToPlayScreen()),
+              ),
+              const SizedBox(height: DesignSpacing.x3),
+              HomeBanner(
+                title: t.practiceFreeTitle,
+                sub: t.practiceFreeSub,
+                colors: const [Color(0xFF0E3A22), Color(0xFF07140D)],
+                rim: DesignColors.poolEightAccent,
+                titleColor: const Color(0xFF9BF2B5),
+                icon: const Icon(
+                  Icons.smart_toy_rounded,
+                  color: Color(0xFF9BF2B5),
+                  size: 84,
+                ),
+                onTap: _practice,
+              ),
+              const SizedBox(height: DesignSpacing.x3),
+              HomeBanner(
+                title: t.friendsBannerTitle,
+                sub: t.friendsBannerSub,
+                colors: const [Color(0xFF0B2A66), Color(0xFF070E24)],
+                rim: DuelColors.blue,
+                titleColor: const Color(0xFF9CC2FF),
+                icon: const Icon(
+                  Icons.groups_rounded,
+                  color: Color(0xFF9CC2FF),
+                  size: 88,
+                ),
+                onTap: _friends,
+              ),
             ],
           ),
         ),
@@ -408,23 +539,41 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
                 child: Container(
                   width: 430,
                   height: DesignLayout.navTileSize,
-                  decoration: duelPanel(radius: DesignRadii.lg, rim: DuelColors.gold, glow: true),
+                  decoration: duelPanel(
+                    radius: DesignRadii.lg,
+                    rim: DuelColors.gold,
+                    glow: true,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       PulseBadge(
                         minScale: 0.94,
                         maxScale: 1.12,
-                        child: const Icon(Icons.play_circle_fill_rounded, color: DuelColors.gold, size: 58),
+                        child: const Icon(
+                          Icons.play_circle_fill_rounded,
+                          color: DuelColors.gold,
+                          size: 58,
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(t.matchInProgress, style: AppText.label(14, color: DuelColors.dim)),
+                          Text(
+                            t.matchInProgress,
+                            style: AppText.label(14, color: DuelColors.dim),
+                          ),
                           const SizedBox(height: 4),
-                          Text(t.rejoinMatch, style: AppText.label(22, color: DuelColors.gold, weight: FontWeight.w900)),
+                          Text(
+                            t.rejoinMatch,
+                            style: AppText.label(
+                              22,
+                              color: DuelColors.gold,
+                              weight: FontWeight.w900,
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -436,21 +585,40 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
                   Container(
                     width: DesignLayout.bottomStatusWidth,
                     height: DesignLayout.bottomStatusHeight,
-                    decoration: duelPanel(radius: DesignRadii.lg, rim: const Color(0xFF232A4A), fill: const Color(0x99C7CBDA).withValues(alpha: 0.16)),
+                    decoration: duelPanel(
+                      radius: DesignRadii.lg,
+                      rim: const Color(0xFF232A4A),
+                      fill: const Color(0x99C7CBDA).withValues(alpha: 0.16),
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.public_rounded, color: DuelColors.green, size: 28),
+                        const Icon(
+                          Icons.public_rounded,
+                          color: DuelColors.green,
+                          size: 28,
+                        ),
                         const SizedBox(width: 10),
                         Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(t.online, style: AppText.label(12, color: DuelColors.dim)),
+                            Text(
+                              t.online,
+                              style: AppText.label(12, color: DuelColors.dim),
+                            ),
                             const SizedBox(height: 2),
                             Text(
-                              lobby.hasError && data == null ? t.offline : (data == null ? '...' : formatCoins(data.online)),
-                              style: AppText.label(26, color: DuelColors.silver, weight: FontWeight.w900),
+                              lobby.hasError && data == null
+                                  ? t.offline
+                                  : (data == null
+                                        ? '...'
+                                        : formatCoins(data.online)),
+                              style: AppText.label(
+                                26,
+                                color: DuelColors.silver,
+                                weight: FontWeight.w900,
+                              ),
                             ),
                           ],
                         ),
@@ -470,7 +638,12 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
               ),
         bottomNav: Row(
           children: [
-            NavTile(icon: Icons.home_rounded, label: t.navHome, active: true, onTap: _reload),
+            NavTile(
+              icon: Icons.home_rounded,
+              label: t.navHome,
+              active: true,
+              onTap: _reload,
+            ),
             const SizedBox(width: DesignSpacing.navGap),
             NavTile(
               icon: Icons.storefront_rounded,
@@ -481,7 +654,11 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
               },
             ),
             const SizedBox(width: DesignSpacing.navGap),
-            NavTile(icon: Icons.leaderboard_rounded, label: t.navRankings, onTap: () => _open(const LeaderboardScreen())),
+            NavTile(
+              icon: Icons.leaderboard_rounded,
+              label: t.navRankings,
+              onTap: () => _open(const LeaderboardScreen()),
+            ),
             const SizedBox(width: DesignSpacing.navGap),
             NavTile(
               icon: Icons.backpack_rounded,
@@ -492,7 +669,11 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
               },
             ),
             const SizedBox(width: DesignSpacing.navGap),
-            NavTile(icon: Icons.groups_rounded, label: t.navFriends, onTap: _friends),
+            NavTile(
+              icon: Icons.groups_rounded,
+              label: t.navFriends,
+              onTap: _friends,
+            ),
             const SizedBox(width: DesignSpacing.navGap),
             NavTile(
               icon: Icons.sports_kabaddi_rounded,
@@ -544,7 +725,14 @@ class _SideTile extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (title.isNotEmpty) ...[
-          Text(title, style: AppText.label(14, color: titleColor, weight: FontWeight.w900)),
+          Text(
+            title,
+            style: AppText.label(
+              14,
+              color: titleColor,
+              weight: FontWeight.w900,
+            ),
+          ),
           const SizedBox(height: 6),
         ],
         IdleAttentionScale(active: attention, child: child),
@@ -557,7 +745,11 @@ class _SideTile extends StatelessWidget {
       child: Container(
         width: 158,
         height: height,
-        decoration: duelPanel(radius: 20, rim: const Color(0xFF232A4A), fill: const Color(0xCC0B0E1C)),
+        decoration: duelPanel(
+          radius: 20,
+          rim: const Color(0xFF232A4A),
+          fill: const Color(0xCC0B0E1C),
+        ),
         child: Stack(
           children: [
             Center(child: body),
@@ -566,7 +758,12 @@ class _SideTile extends StatelessWidget {
               Positioned(
                 right: 12,
                 top: 12,
-                child: PulseBadge(child: CircleAvatar(radius: 9, backgroundColor: DuelColors.red)),
+                child: PulseBadge(
+                  child: CircleAvatar(
+                    radius: 9,
+                    backgroundColor: DuelColors.red,
+                  ),
+                ),
               ),
           ],
         ),
@@ -587,7 +784,10 @@ class _Countdown extends StatefulWidget {
 }
 
 class _CountdownState extends State<_Countdown> {
-  late final Timer _timer = Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
+  late final Timer _timer = Timer.periodic(
+    const Duration(seconds: 1),
+    (_) => setState(() {}),
+  );
 
   @override
   void initState() {
@@ -603,21 +803,35 @@ class _CountdownState extends State<_Countdown> {
 
   @override
   Widget build(BuildContext context) {
-    final left = max(0, widget.seconds - DateTime.now().difference(widget.from).inSeconds);
+    final left = max(
+      0,
+      widget.seconds - DateTime.now().difference(widget.from).inSeconds,
+    );
     String two(int v) => v.toString().padLeft(2, '0');
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         const Icon(Icons.timer_outlined, color: DuelColors.dim, size: 18),
         const SizedBox(width: 4),
-        Text('${two(left ~/ 3600)}:${two(left % 3600 ~/ 60)}:${two(left % 60)}', style: AppText.label(14, color: DuelColors.dim)),
+        Text(
+          '${two(left ~/ 3600)}:${two(left % 3600 ~/ 60)}:${two(left % 60)}',
+          style: AppText.label(14, color: DuelColors.dim),
+        ),
       ],
     );
   }
 }
 
 class GameCard extends ConsumerWidget {
-  const GameCard({super.key, required this.width, required this.color, required this.title, required this.sub, required this.art, required this.onPlay});
+  const GameCard({
+    super.key,
+    required this.width,
+    required this.color,
+    required this.title,
+    required this.sub,
+    required this.art,
+    required this.onPlay,
+  });
 
   final double width;
   final Color color;
@@ -630,79 +844,136 @@ class GameCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
     return PressScale(
-        onTap: onPlay,
-        scale: 0.97,
-        child: Container(
-          width: width,
-          height: 448,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: color, width: 2.5),
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color.lerp(color, Colors.black, 0.55)!, Color.lerp(color, Colors.black, 0.9)!, const Color(0xFF05060C)],
-              stops: const [0, 0.55, 1],
-            ),
-            boxShadow: [
-              BoxShadow(color: color.withValues(alpha: 0.55), blurRadius: 34, spreadRadius: 1),
-              const BoxShadow(color: Color(0xBB000000), blurRadius: 18, offset: Offset(0, 12)),
+      onTap: onPlay,
+      scale: 0.97,
+      child: Container(
+        width: width,
+        height: 448,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: color, width: 2.5),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color.lerp(color, Colors.black, 0.55)!,
+              Color.lerp(color, Colors.black, 0.9)!,
+              const Color(0xFF05060C),
             ],
+            stops: const [0, 0.55, 1],
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: Stack(
-              children: [
-                Positioned(left: 0, right: 0, top: 0, height: 258, child: art),
-                // Fade the artwork into the caption.
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: 170,
-                  height: 100,
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.55),
+              blurRadius: 34,
+              spreadRadius: 1,
+            ),
+            const BoxShadow(
+              color: Color(0xBB000000),
+              blurRadius: 18,
+              offset: Offset(0, 12),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: Stack(
+            children: [
+              Positioned(left: 0, right: 0, top: 0, height: 258, child: art),
+              // Fade the artwork into the caption.
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 170,
+                height: 100,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        const Color(0x00000000),
+                        Color.lerp(color, Colors.black, 0.88)!,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 22,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style:
+                          AppText.label(
+                            40,
+                            color: Colors.white,
+                            weight: FontWeight.w900,
+                          ).copyWith(
+                            height: 1.0,
+                            letterSpacing: 1,
+                            shadows: [
+                              Shadow(
+                                color: color.withValues(alpha: 0.8),
+                                blurRadius: 16,
+                              ),
+                              const Shadow(
+                                color: Color(0xAA000000),
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                    ),
+                    if (sub != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        sub!,
+                        textAlign: TextAlign.center,
+                        style: AppText.label(
+                          15,
+                          color: Colors.white,
+                          weight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    DuelButton(
+                      label: t.playNow,
+                      color: color,
+                      width: width - 28,
+                      height: 54,
+                      fontSize: 22,
+                      onPressed: onPlay,
+                    ),
+                  ],
+                ),
+              ),
+              // Polished glass over the whole card and a light inner trim.
+              const DuelGloss(radius: 15, strength: 0.18, diagonal: true),
+              Positioned.fill(
+                child: IgnorePointer(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [const Color(0x00000000), Color.lerp(color, Colors.black, 0.88)!],
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.16),
+                        width: 1.2,
                       ),
                     ),
                   ),
                 ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 22,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(title,
-                          textAlign: TextAlign.center,
-                          style: AppText.label(40, color: Colors.white, weight: FontWeight.w900).copyWith(height: 1.0, letterSpacing: 1, shadows: [Shadow(color: color.withValues(alpha: 0.8), blurRadius: 16), const Shadow(color: Color(0xAA000000), blurRadius: 4, offset: Offset(0, 2))])),
-                      if (sub != null) ...[
-                        const SizedBox(height: 6),
-                        Text(sub!, textAlign: TextAlign.center, style: AppText.label(15, color: Colors.white, weight: FontWeight.w700)),
-                      ],
-                      const SizedBox(height: 14),
-                      DuelButton(label: t.playNow, color: color, width: width - 28, height: 54, fontSize: 22, onPressed: onPlay),
-                    ],
-                  ),
-                ),
-                // Polished glass over the whole card and a light inner trim.
-                const DuelGloss(radius: 15, strength: 0.18, diagonal: true),
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.white.withValues(alpha: 0.16), width: 1.2)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    );
   }
 }
 
@@ -711,7 +982,8 @@ class BilliardArt extends StatelessWidget {
   const BilliardArt({super.key});
 
   @override
-  Widget build(BuildContext context) => const CustomPaint(painter: _BilliardArtPainter());
+  Widget build(BuildContext context) =>
+      const CustomPaint(painter: _BilliardArtPainter());
 }
 
 class _BilliardArtPainter extends CustomPainter {
@@ -735,10 +1007,15 @@ class _BilliardArtPainter extends CustomPainter {
     canvas.translate(w * 0.5, h * 0.62);
     canvas.rotate(-0.12);
     canvas.drawRRect(
-        RRect.fromRectAndRadius(Rect.fromLTWH(-w * 0.7, -5, w * 1.4, 10), const Radius.circular(5)),
-        Paint()
-          ..shader = const LinearGradient(colors: [Color(0xFF6B3519), Color(0xFFE9C98F), Color(0xFFF7E3BD)])
-              .createShader(Rect.fromLTWH(-w * 0.7, -5, w * 1.4, 10)));
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(-w * 0.7, -5, w * 1.4, 10),
+        const Radius.circular(5),
+      ),
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFF6B3519), Color(0xFFE9C98F), Color(0xFFF7E3BD)],
+        ).createShader(Rect.fromLTWH(-w * 0.7, -5, w * 1.4, 10)),
+    );
     canvas.restore();
     paintBall(canvas, Offset(w * 0.13, h * 0.45), 24, 4);
     paintBall(canvas, Offset(w * 0.45, h * 0.18), 15, 1);
@@ -757,24 +1034,50 @@ class PokerArt extends StatelessWidget {
   const PokerArt({super.key});
 
   @override
-  Widget build(BuildContext context) => const CustomPaint(painter: _PokerArtPainter());
+  Widget build(BuildContext context) =>
+      const CustomPaint(painter: _PokerArtPainter());
 }
 
 class _PokerArtPainter extends CustomPainter {
   const _PokerArtPainter();
 
-  void _card(Canvas canvas, Offset c, double angle, String rank, String suit, bool red) {
+  void _card(
+    Canvas canvas,
+    Offset c,
+    double angle,
+    String rank,
+    String suit,
+    bool red,
+  ) {
     canvas.save();
     canvas.translate(c.dx, c.dy);
     canvas.rotate(angle);
     const size = Size(92, 128);
-    final r = RRect.fromRectAndRadius(Rect.fromCenter(center: Offset.zero, width: size.width, height: size.height), const Radius.circular(9));
-    canvas.drawRRect(r.shift(const Offset(3, 5)), Paint()..color = const Color(0x80000000));
+    final r = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: Offset.zero,
+        width: size.width,
+        height: size.height,
+      ),
+      const Radius.circular(9),
+    );
+    canvas.drawRRect(
+      r.shift(const Offset(3, 5)),
+      Paint()..color = const Color(0x80000000),
+    );
     canvas.drawRRect(r, Paint()..color = const Color(0xFFF6F3EA));
     final color = red ? const Color(0xFFD12B3C) : const Color(0xFF15171C);
     void text(String s, double fontSize, Offset at, {String? family}) {
       final tp = TextPainter(
-        text: TextSpan(text: s, style: TextStyle(fontFamily: family ?? AppText.card, fontSize: fontSize, color: color, height: 1)),
+        text: TextSpan(
+          text: s,
+          style: TextStyle(
+            fontFamily: family ?? AppText.card,
+            fontSize: fontSize,
+            color: color,
+            height: 1,
+          ),
+        ),
         textDirection: TextDirection.ltr,
       )..layout();
       tp.paint(canvas, at - Offset(tp.width / 2, tp.height / 2));
@@ -790,14 +1093,18 @@ class _PokerArtPainter extends CustomPainter {
     for (var i = 0; i < count; i++) {
       final c = base - Offset(0, i * 9.0);
       final oval = Rect.fromCenter(center: c, width: 74, height: 30);
-      canvas.drawOval(oval.shift(const Offset(0, 8)), Paint()..color = Color.lerp(color, Colors.black, 0.6)!);
+      canvas.drawOval(
+        oval.shift(const Offset(0, 8)),
+        Paint()..color = Color.lerp(color, Colors.black, 0.6)!,
+      );
       canvas.drawOval(oval, Paint()..color = color);
       canvas.drawOval(
-          oval.deflate(7),
-          Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2
-            ..color = Colors.white.withValues(alpha: 0.75));
+        oval.deflate(7),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..color = Colors.white.withValues(alpha: 0.75),
+      );
     }
   }
 
@@ -833,7 +1140,8 @@ class CarromArt extends StatelessWidget {
   const CarromArt({super.key});
 
   @override
-  Widget build(BuildContext context) => const CustomPaint(painter: _CarromArtPainter());
+  Widget build(BuildContext context) =>
+      const CustomPaint(painter: _CarromArtPainter());
 }
 
 class _CarromArtPainter extends CustomPainter {
@@ -842,34 +1150,99 @@ class _CarromArtPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    canvas.drawRect(rect, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF4A1414), Color(0xFF1A0808)]).createShader(rect));
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF4A1414), Color(0xFF1A0808)],
+        ).createShader(rect),
+    );
     final b = size.shortestSide * 0.82;
-    final left = (size.width - b) / 2, top = (size.height - b) / 2 + size.height * 0.04;
+    final left = (size.width - b) / 2,
+        top = (size.height - b) / 2 + size.height * 0.04;
     final board = Rect.fromLTWH(left, top, b, b);
-    canvas.drawRRect(RRect.fromRectAndRadius(board, Radius.circular(b * 0.05)), Paint()..color = const Color(0xFF5B3A2E));
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(board, Radius.circular(b * 0.05)),
+      Paint()..color = const Color(0xFF5B3A2E),
+    );
     final f = b * 0.06;
     final field = board.deflate(f);
     canvas.drawRect(field, Paint()..color = const Color(0xFFE8BF8E));
-    final line = Paint()..style = PaintingStyle.stroke..strokeWidth = 1.5..color = const Color(0xFFA2613B);
+    final line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..color = const Color(0xFFA2613B);
     final u = field.width;
     for (final s in const [0.16, 0.84]) {
-      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTRB(field.left + u * 0.19, field.top + u * (s - 0.03), field.left + u * 0.81, field.top + u * (s + 0.03)), Radius.circular(u * 0.03)), line);
-      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTRB(field.left + u * (s - 0.03), field.top + u * 0.19, field.left + u * (s + 0.03), field.top + u * 0.81), Radius.circular(u * 0.03)), line);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTRB(
+            field.left + u * 0.19,
+            field.top + u * (s - 0.03),
+            field.left + u * 0.81,
+            field.top + u * (s + 0.03),
+          ),
+          Radius.circular(u * 0.03),
+        ),
+        line,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTRB(
+            field.left + u * (s - 0.03),
+            field.top + u * 0.19,
+            field.left + u * (s + 0.03),
+            field.top + u * 0.81,
+          ),
+          Radius.circular(u * 0.03),
+        ),
+        line,
+      );
     }
     canvas.drawCircle(field.center, u * 0.17, line);
-    for (final c in [field.topLeft, field.topRight, field.bottomLeft, field.bottomRight]) {
-      canvas.drawCircle(c + Offset(c.dx < field.center.dx ? u * 0.04 : -u * 0.04, c.dy < field.center.dy ? u * 0.04 : -u * 0.04), u * 0.05, Paint()..color = const Color(0xFF111111));
+    for (final c in [
+      field.topLeft,
+      field.topRight,
+      field.bottomLeft,
+      field.bottomRight,
+    ]) {
+      canvas.drawCircle(
+        c +
+            Offset(
+              c.dx < field.center.dx ? u * 0.04 : -u * 0.04,
+              c.dy < field.center.dy ? u * 0.04 : -u * 0.04,
+            ),
+        u * 0.05,
+        Paint()..color = const Color(0xFF111111),
+      );
     }
     // A few pieces round the queen.
     final r = u * 0.03;
-    canvas.drawCircle(field.center, r, Paint()..color = const Color(0xFFE53935));
+    canvas.drawCircle(
+      field.center,
+      r,
+      Paint()..color = const Color(0xFFE53935),
+    );
     for (var k = 0; k < 6; k++) {
       final a = -3.14159 / 2 + k * 3.14159 / 3;
       final p = field.center + Offset(2.1 * r * cos(a), 2.1 * r * sin(a));
-      canvas.drawCircle(p, r, Paint()..color = k.isEven ? const Color(0xFF2C2F33) : const Color(0xFFEFE3D2));
+      canvas.drawCircle(
+        p,
+        r,
+        Paint()
+          ..color = k.isEven
+              ? const Color(0xFF2C2F33)
+              : const Color(0xFFEFE3D2),
+      );
     }
     // The striker on the near base line.
-    canvas.drawCircle(Offset(field.center.dx, field.top + u * 0.84), r * 1.35, Paint()..color = const Color(0xFFE53935));
+    canvas.drawCircle(
+      Offset(field.center.dx, field.top + u * 0.84),
+      r * 1.35,
+      Paint()..color = const Color(0xFFE53935),
+    );
   }
 
   @override
@@ -881,40 +1254,105 @@ class LudoArt extends StatelessWidget {
   const LudoArt({super.key});
 
   @override
-  Widget build(BuildContext context) => const CustomPaint(painter: _LudoArtPainter());
+  Widget build(BuildContext context) =>
+      const CustomPaint(painter: _LudoArtPainter());
 }
 
 class _LudoArtPainter extends CustomPainter {
   const _LudoArtPainter();
 
-  static const _cols = [Color(0xFFE0333B), Color(0xFF2FA84F), Color(0xFFE8B91C), Color(0xFF2F6BDC)];
+  static const _cols = [
+    Color(0xFFE0333B),
+    Color(0xFF2FA84F),
+    Color(0xFFE8B91C),
+    Color(0xFF2F6BDC),
+  ];
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    canvas.drawRect(rect, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF3A2606), Color(0xFF1A1206)]).createShader(rect));
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF3A2606), Color(0xFF1A1206)],
+        ).createShader(rect),
+    );
     // A board centred in the art area.
     final b = size.shortestSide * 0.82;
-    final left = (size.width - b) / 2, top = (size.height - b) / 2 + size.height * 0.04;
+    final left = (size.width - b) / 2,
+        top = (size.height - b) / 2 + size.height * 0.04;
     final s = b / 15;
-    Rect cell(double c, double r, double w) => Rect.fromLTWH(left + c * s, top + r * s, w * s, w * s);
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(left, top, b, b), Radius.circular(s)), Paint()..color = const Color(0xFFEFF2F8));
+    Rect cell(double c, double r, double w) =>
+        Rect.fromLTWH(left + c * s, top + r * s, w * s, w * s);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(left, top, b, b),
+        Radius.circular(s),
+      ),
+      Paint()..color = const Color(0xFFEFF2F8),
+    );
     // Four corner yards.
-    final yards = [[0.0, 9.0], [0.0, 0.0], [9.0, 0.0], [9.0, 9.0]];
+    final yards = [
+      [0.0, 9.0],
+      [0.0, 0.0],
+      [9.0, 0.0],
+      [9.0, 9.0],
+    ];
     for (var i = 0; i < 4; i++) {
-      canvas.drawRRect(RRect.fromRectAndRadius(cell(yards[i][0], yards[i][1], 6), Radius.circular(s)), Paint()..color = _cols[i]);
-      canvas.drawRRect(RRect.fromRectAndRadius(cell(yards[i][0] + 1, yards[i][1] + 1, 4), Radius.circular(s * 0.6)), Paint()..color = Colors.white);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          cell(yards[i][0], yards[i][1], 6),
+          Radius.circular(s),
+        ),
+        Paint()..color = _cols[i],
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          cell(yards[i][0] + 1, yards[i][1] + 1, 4),
+          Radius.circular(s * 0.6),
+        ),
+        Paint()..color = Colors.white,
+      );
       // a token dot
-      canvas.drawCircle(Offset(left + (yards[i][0] + 3) * s, top + (yards[i][1] + 3) * s), s * 1.1, Paint()..color = _cols[i]);
-      canvas.drawCircle(Offset(left + (yards[i][0] + 3) * s, top + (yards[i][1] + 3) * s), s * 1.1, Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = Colors.white);
+      canvas.drawCircle(
+        Offset(left + (yards[i][0] + 3) * s, top + (yards[i][1] + 3) * s),
+        s * 1.1,
+        Paint()..color = _cols[i],
+      );
+      canvas.drawCircle(
+        Offset(left + (yards[i][0] + 3) * s, top + (yards[i][1] + 3) * s),
+        s * 1.1,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..color = Colors.white,
+      );
     }
     // Centre.
     final mid = Offset(left + 7.5 * s, top + 7.5 * s);
     for (var i = 0; i < 4; i++) {
-      canvas.drawRect(Rect.fromCenter(center: mid, width: 3 * s, height: 3 * s), Paint()..color = const Color(0xFFDDE3EE));
+      canvas.drawRect(
+        Rect.fromCenter(center: mid, width: 3 * s, height: 3 * s),
+        Paint()..color = const Color(0xFFDDE3EE),
+      );
     }
-    final c = [Offset(left + 6 * s, top + 6 * s), Offset(left + 9 * s, top + 6 * s), Offset(left + 9 * s, top + 9 * s), Offset(left + 6 * s, top + 9 * s)];
-    void tri(Offset a, Offset b2, Color col) => canvas.drawPath(Path()..moveTo(mid.dx, mid.dy)..lineTo(a.dx, a.dy)..lineTo(b2.dx, b2.dy)..close(), Paint()..color = col);
+    final c = [
+      Offset(left + 6 * s, top + 6 * s),
+      Offset(left + 9 * s, top + 6 * s),
+      Offset(left + 9 * s, top + 9 * s),
+      Offset(left + 6 * s, top + 9 * s),
+    ];
+    void tri(Offset a, Offset b2, Color col) => canvas.drawPath(
+      Path()
+        ..moveTo(mid.dx, mid.dy)
+        ..lineTo(a.dx, a.dy)
+        ..lineTo(b2.dx, b2.dy)
+        ..close(),
+      Paint()..color = col,
+    );
     tri(c[0], c[1], _cols[2]);
     tri(c[1], c[2], _cols[3]);
     tri(c[2], c[3], _cols[0]);
@@ -926,7 +1364,16 @@ class _LudoArtPainter extends CustomPainter {
 }
 
 class HomeBanner extends StatelessWidget {
-  const HomeBanner({super.key, required this.title, required this.sub, required this.colors, required this.rim, required this.titleColor, required this.icon, required this.onTap});
+  const HomeBanner({
+    super.key,
+    required this.title,
+    required this.sub,
+    required this.colors,
+    required this.rim,
+    required this.titleColor,
+    required this.icon,
+    required this.onTap,
+  });
 
   final String title;
   final String sub;
@@ -938,44 +1385,81 @@ class HomeBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PressScale(
-        onTap: onTap,
-        scale: 0.97,
-        child: Container(
-          width: 366,
-          height: 160,
-          padding: const EdgeInsets.fromLTRB(22, 14, 14, 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: rim, width: 2),
-            gradient: LinearGradient(begin: Alignment.centerLeft, end: Alignment.centerRight, colors: colors),
-            boxShadow: [
-              const BoxShadow(color: Color(0xAA000000), blurRadius: 16, offset: Offset(0, 8)),
-              BoxShadow(color: rim.withValues(alpha: 0.35), blurRadius: 22),
-            ],
-          ),
-          child: Stack(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(title, style: AppText.label(26, color: titleColor, weight: FontWeight.w900).copyWith(height: 1.05, shadows: [Shadow(color: titleColor.withValues(alpha: 0.6), blurRadius: 14)])),
-                        const SizedBox(height: 8),
-                        Text(sub, style: AppText.label(12, color: Colors.white, weight: FontWeight.w700)),
-                      ],
-                    ),
-                  ),
-                  icon,
-                ],
-              ),
-              const Positioned(left: -22, right: -14, top: -14, bottom: -14, child: Stack(children: [DuelGloss(radius: 18, strength: 0.16)])),
-            ],
-          ),
+    onTap: onTap,
+    scale: 0.97,
+    child: Container(
+      width: 366,
+      height: 160,
+      padding: const EdgeInsets.fromLTRB(22, 14, 14, 14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: rim, width: 2),
+        gradient: LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: colors,
         ),
-      );
+        boxShadow: [
+          const BoxShadow(
+            color: Color(0xAA000000),
+            blurRadius: 16,
+            offset: Offset(0, 8),
+          ),
+          BoxShadow(color: rim.withValues(alpha: 0.35), blurRadius: 22),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style:
+                          AppText.label(
+                            26,
+                            color: titleColor,
+                            weight: FontWeight.w900,
+                          ).copyWith(
+                            height: 1.05,
+                            shadows: [
+                              Shadow(
+                                color: titleColor.withValues(alpha: 0.6),
+                                blurRadius: 14,
+                              ),
+                            ],
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      sub,
+                      style: AppText.label(
+                        12,
+                        color: Colors.white,
+                        weight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              icon,
+            ],
+          ),
+          const Positioned(
+            left: -22,
+            right: -14,
+            top: -14,
+            bottom: -14,
+            child: Stack(children: [DuelGloss(radius: 18, strength: 0.16)]),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Hexagonal rank medal with the division number.
@@ -1009,19 +1493,36 @@ class _RankBadgePainter extends CustomPainter {
     final r = size.width * 0.5;
     final metal = _metals[tier.clamp(0, _metals.length - 1)];
     final bounds = Rect.fromCircle(center: c, radius: r);
-    canvas.drawPath(_hex(c + const Offset(0, 4), r), Paint()..color = const Color(0x99000000));
-    canvas.drawPath(_hex(c, r),
-        Paint()..shader = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: metal).createShader(bounds));
-    canvas.drawPath(_hex(c, r * 0.76), Paint()..color = Color.lerp(metal[1], Colors.black, 0.35)!);
     canvas.drawPath(
-        _hex(c, r * 0.76),
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2
-          ..color = Colors.white.withValues(alpha: 0.5));
+      _hex(c + const Offset(0, 4), r),
+      Paint()..color = const Color(0x99000000),
+    );
+    canvas.drawPath(
+      _hex(c, r),
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: metal,
+        ).createShader(bounds),
+    );
+    canvas.drawPath(
+      _hex(c, r * 0.76),
+      Paint()..color = Color.lerp(metal[1], Colors.black, 0.35)!,
+    );
+    canvas.drawPath(
+      _hex(c, r * 0.76),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = Colors.white.withValues(alpha: 0.5),
+    );
     final division = name.split(' ').last.length; // I, II, III
     final tp = TextPainter(
-      text: TextSpan(text: '$division', style: AppText.label(r * 0.8, color: metal[0], weight: FontWeight.w900)),
+      text: TextSpan(
+        text: '$division',
+        style: AppText.label(r * 0.8, color: metal[0], weight: FontWeight.w900),
+      ),
       textDirection: TextDirection.ltr,
     )..layout();
     tp.paint(canvas, c - Offset(tp.width / 2, tp.height / 2));
@@ -1037,7 +1538,8 @@ class _RankBadgePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_RankBadgePainter old) => old.tier != tier || old.name != name;
+  bool shouldRepaint(_RankBadgePainter old) =>
+      old.tier != tier || old.name != name;
 }
 
 /// The bonus ladder: one reward a day, bigger each day in a row.
@@ -1065,7 +1567,8 @@ class _DailyBonusDialogState extends ConsumerState<_DailyBonusDialog> {
       setState(() {
         _available = false;
         _celebrate++;
-        _note = '+${formatPicoCoins(reward.coins)}${reward.gems > 0 ? '  +${reward.gems} GEMS' : ''}';
+        _note =
+            '+${formatPicoCoins(reward.coins)}${reward.gems > 0 ? '  +${reward.gems} GEMS' : ''}';
       });
     } on ApiException catch (e) {
       if (mounted) setState(() => _note = e.message.toUpperCase());
@@ -1084,13 +1587,27 @@ class _DailyBonusDialogState extends ConsumerState<_DailyBonusDialog> {
       child: Container(
         width: DesignAuth.dailyBonusDialogWidth,
         padding: const EdgeInsets.all(DesignSpacing.x5),
-        decoration: duelPanel(rim: DuelColors.gold, glow: true, radius: DesignRadii.dialog),
+        decoration: duelPanel(
+          rim: DuelColors.gold,
+          glow: true,
+          radius: DesignRadii.dialog,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(t.dailyBonus, style: AppText.label(22, color: DuelColors.gold, weight: FontWeight.w900)),
+            Text(
+              t.dailyBonus,
+              style: AppText.label(
+                22,
+                color: DuelColors.gold,
+                weight: FontWeight.w900,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text(t.dailyBonusGrow, style: AppText.label(10, color: DuelColors.dim)),
+            Text(
+              t.dailyBonusGrow,
+              style: AppText.label(10, color: DuelColors.dim),
+            ),
             const SizedBox(height: 14),
             PopCelebration(
               trigger: _celebrate,
@@ -1104,7 +1621,9 @@ class _DailyBonusDialogState extends ConsumerState<_DailyBonusDialog> {
                         day: i + 1,
                         coins: d.rewards[i].coins,
                         gems: d.rewards[i].gems,
-                        state: i < d.day || (i == d.day && !_available) ? 2 : (i == d.day ? 1 : 0),
+                        state: i < d.day || (i == d.day && !_available)
+                            ? 2
+                            : (i == d.day ? 1 : 0),
                       ),
                     ),
                 ],
@@ -1114,13 +1633,26 @@ class _DailyBonusDialogState extends ConsumerState<_DailyBonusDialog> {
             if (_note != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: Text(_note!, style: AppText.label(16, color: DuelColors.green, weight: FontWeight.w900)),
+                child: Text(
+                  _note!,
+                  style: AppText.label(
+                    16,
+                    color: DuelColors.green,
+                    weight: FontWeight.w900,
+                  ),
+                ),
               ),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (_available)
-                  DuelButton(label: _busy ? '...' : t.claim, width: 190, height: 44, fontSize: 18, onPressed: _busy ? null : _claim),
+                  DuelButton(
+                    label: _busy ? '...' : t.claim,
+                    width: 190,
+                    height: 44,
+                    fontSize: 18,
+                    onPressed: _busy ? null : _claim,
+                  ),
                 if (_available) const SizedBox(width: 12),
                 DuelButton(
                   label: t.close,
@@ -1140,7 +1672,12 @@ class _DailyBonusDialogState extends ConsumerState<_DailyBonusDialog> {
 }
 
 class _DayTile extends ConsumerWidget {
-  const _DayTile({required this.day, required this.coins, required this.gems, required this.state});
+  const _DayTile({
+    required this.day,
+    required this.coins,
+    required this.gems,
+    required this.state,
+  });
 
   final int day;
   final int coins;
@@ -1152,22 +1689,49 @@ class _DayTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
-    final rim = state == 1 ? DuelColors.gold : (state == 2 ? DuelColors.green : DuelColors.rim);
+    final rim = state == 1
+        ? DuelColors.gold
+        : (state == 2 ? DuelColors.green : DuelColors.rim);
     return Opacity(
       opacity: state == 0 ? 0.7 : 1,
       child: Container(
         width: 78,
         height: 104,
-        decoration: duelPanel(radius: 12, rim: rim, glow: state == 1, fill: const Color(0xFF0B0E1C)),
+        decoration: duelPanel(
+          radius: 12,
+          rim: rim,
+          glow: state == 1,
+          fill: const Color(0xFF0B0E1C),
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(t.dayLabel(day), style: AppText.label(9, color: DuelColors.dim)),
+            Text(
+              t.dayLabel(day),
+              style: AppText.label(9, color: DuelColors.dim),
+            ),
             const SizedBox(height: 4),
-            state == 2 ? const Icon(Icons.check_circle_rounded, color: DuelColors.green, size: 30) : const PikoCoinIcon(size: 30),
+            state == 2
+                ? const Icon(
+                    Icons.check_circle_rounded,
+                    color: DuelColors.green,
+                    size: 30,
+                  )
+                : const PikoCoinIcon(size: 30),
             const SizedBox(height: 4),
-            Text(formatCoins(coins), style: AppText.label(13, color: DuelColors.silver, weight: FontWeight.w900)),
-            if (gems > 0) Text(t.gemsBonus(gems), style: AppText.label(8, color: const Color(0xFFB79CFF))),
+            Text(
+              formatCoins(coins),
+              style: AppText.label(
+                13,
+                color: DuelColors.silver,
+                weight: FontWeight.w900,
+              ),
+            ),
+            if (gems > 0)
+              Text(
+                t.gemsBonus(gems),
+                style: AppText.label(8, color: const Color(0xFFB79CFF)),
+              ),
           ],
         ),
       ),

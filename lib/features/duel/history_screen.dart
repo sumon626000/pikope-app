@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
+import '../../core/design/design.dart';
 import '../../core/duel_ui.dart';
 import '../online/session.dart';
 import 'duel_chrome.dart';
@@ -26,7 +27,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     _feed = ref.read(sessionProvider.notifier).activity(limit: 80);
   }
 
-  void _reload() => setState(() => _feed = ref.read(sessionProvider.notifier).activity(limit: 80));
+  void _reload() => setState(
+    () => _feed = ref.read(sessionProvider.notifier).activity(limit: 80),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -34,25 +37,42 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     final t = ref.watch(stringsProvider);
     final session = ref.watch(sessionProvider);
     final rate = s.games == 0 ? 0 : (100 * s.wins / s.games).round();
+    final portrait = DesignBreakpoints.portraitLayout(context);
+    final stats = [
+      _Stat(t.statLevel, '${session.level}', expand: !portrait),
+      _Stat(t.statRank, session.rankName, expand: !portrait),
+      _Stat(t.statMatches, formatCoins(s.games), expand: !portrait),
+      _Stat(t.statWins, formatCoins(s.wins), expand: !portrait),
+      _Stat(t.statWinRate, '$rate%', expand: !portrait),
+    ];
     return DuelPage(
       title: t.matchDataTitle,
       sub: t.matchDataSub,
       child: Column(
         children: [
-          Row(
-            children: [
-              _Stat(t.statLevel, '${session.level}'),
-              _Stat(t.statRank, session.rankName),
-              _Stat(t.statMatches, formatCoins(s.games)),
-              _Stat(t.statWins, formatCoins(s.wins)),
-              _Stat(t.statWinRate, '$rate%'),
-            ],
-          ),
+          if (portrait)
+            SizedBox(
+              height: 72,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: stats,
+              ),
+            )
+          else
+            Row(children: stats),
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () => pushScreen(context, const ShopScreen(initialTab: 2)),
-              child: Text(t.openCoinWallet, style: AppText.label(14, color: DuelColors.gold, weight: FontWeight.w800)),
+              onPressed: () =>
+                  pushScreen(context, const ShopScreen(initialTab: 2)),
+              child: Text(
+                t.openCoinWallet,
+                style: AppText.label(
+                  14,
+                  color: DuelColors.gold,
+                  weight: FontWeight.w800,
+                ),
+              ),
             ),
           ),
           Expanded(
@@ -63,12 +83,27 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 future: _feed,
                 builder: (context, snap) {
                   if (snap.hasError) {
-                    return Center(child: Text(t.historyLoadFail, style: AppText.label(18, color: DuelColors.red)));
+                    return Center(
+                      child: Text(
+                        t.historyLoadFail,
+                        style: AppText.label(18, color: DuelColors.red),
+                      ),
+                    );
                   }
                   final rows = snap.data;
-                  if (rows == null) return const Center(child: CircularProgressIndicator(color: DuelColors.silver));
+                  if (rows == null)
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        color: DuelColors.silver,
+                      ),
+                    );
                   if (rows.isEmpty) {
-                    return Center(child: Text(t.historyEmpty, style: AppText.label(20, color: DuelColors.dim)));
+                    return Center(
+                      child: Text(
+                        t.historyEmpty,
+                        style: AppText.label(20, color: DuelColors.dim),
+                      ),
+                    );
                   }
                   return RefreshIndicator(
                     color: DuelColors.gold,
@@ -98,7 +133,8 @@ class _ActivityLine extends ConsumerWidget {
     final t = ref.watch(stringsProvider);
     final at = DateTime.fromMillisecondsSinceEpoch(item['at'] as int);
     String two(int v) => v.toString().padLeft(2, '0');
-    final time = '${two(at.day)}/${two(at.month)} ${two(at.hour)}:${two(at.minute)}';
+    final time =
+        '${two(at.day)}/${two(at.month)} ${two(at.hour)}:${two(at.minute)}';
     final kind = item['kind'] as String;
     String title;
     String sub;
@@ -126,8 +162,8 @@ class _ActivityLine extends ConsumerWidget {
         badgeColor = status == 'approved'
             ? DuelColors.green
             : status == 'rejected'
-                ? DuelColors.red
-                : DuelColors.gold;
+            ? DuelColors.red
+            : DuelColors.gold;
         title = '${t.badgeRedeem} ${item['walletProviderLabel']}';
         sub = '${item['bdt']} BDT · ${item['walletNumber']}';
         coins = -(item['coins'] as int);
@@ -137,8 +173,8 @@ class _ActivityLine extends ConsumerWidget {
         badgeColor = dStatus == 'approved'
             ? DuelColors.green
             : dStatus == 'rejected'
-                ? DuelColors.red
-                : DuelColors.gold;
+            ? DuelColors.red
+            : DuelColors.gold;
         title = '${t.badgeAdd} ${item['providerLabel']}';
         sub = '${item['bdt']} BDT · Trx ${item['trxId']}';
         coins = dStatus == 'approved' ? (item['coins'] as int) : 0;
@@ -159,21 +195,37 @@ class _ActivityLine extends ConsumerWidget {
               border: Border.all(color: badgeColor),
               color: badgeColor.withValues(alpha: 0.12),
             ),
-            child: Text(badge, style: AppText.label(12, color: badgeColor, weight: FontWeight.w900)),
+            child: Text(
+              badge,
+              style: AppText.label(
+                12,
+                color: badgeColor,
+                weight: FontWeight.w900,
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title.toUpperCase(), style: AppText.label(15, weight: FontWeight.w800)),
+                Text(
+                  title.toUpperCase(),
+                  style: AppText.label(15, weight: FontWeight.w800),
+                ),
                 Text(sub, style: AppText.label(12, color: DuelColors.dim)),
               ],
             ),
           ),
           if (coins != 0)
-            Text('${coins > 0 ? '+' : ''}${formatCoins(coins)}',
-                style: AppText.label(16, color: coins > 0 ? DuelColors.gold : DuelColors.red, weight: FontWeight.w900)),
+            Text(
+              '${coins > 0 ? '+' : ''}${formatCoins(coins)}',
+              style: AppText.label(
+                16,
+                color: coins > 0 ? DuelColors.gold : DuelColors.red,
+                weight: FontWeight.w900,
+              ),
+            ),
           const SizedBox(width: 10),
           Text(time, style: AppText.label(12, color: DuelColors.dim)),
         ],
@@ -183,25 +235,42 @@ class _ActivityLine extends ConsumerWidget {
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat(this.label, this.value);
+  const _Stat(this.label, this.value, {this.expand = true});
 
   final String label;
   final String value;
+  final bool expand;
 
   @override
-  Widget build(BuildContext context) => Expanded(
-        child: Container(
-          height: 96,
-          margin: const EdgeInsets.symmetric(horizontal: 6),
-          decoration: duelPanel(radius: 14),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(label, style: AppText.label(13, color: DuelColors.dim)),
-              const SizedBox(height: 6),
-              Text(value, style: AppText.label(26, color: Colors.white, weight: FontWeight.w900)),
-            ],
+  Widget build(BuildContext context) {
+    final box = Container(
+      width: expand ? null : 92,
+      height: expand ? 96 : 68,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: duelPanel(radius: 14),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppText.label(expand ? 13 : 10, color: DuelColors.dim),
           ),
-        ),
-      );
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppText.label(
+              expand ? 22 : 14,
+              color: Colors.white,
+              weight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+    return expand ? Expanded(child: box) : box;
+  }
 }

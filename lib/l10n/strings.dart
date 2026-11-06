@@ -51,8 +51,10 @@ class AppStrings {
   String get taglinePick => _t('PICK YOUR TABLE AND PLAY', 'টেবিল বেছে খেলুন');
   String get signUpOrLogin => _t('SIGN UP OR LOG IN', 'সাইন আপ বা লগ ইন');
   String get browseProfileTitle => _t('SIGN IN', 'লগ ইন');
-  String get browseProfileSub =>
-      _t('Profile & wallet need an account', 'প্রোফাইল ও ওয়ালেটের জন্য অ্যাকাউন্ট দরকার');
+  String get browseProfileSub => _t(
+    'Profile & wallet need an account',
+    'প্রোফাইল ও ওয়ালেটের জন্য অ্যাকাউন্ট দরকার',
+  );
   String loginSubtitle(bool hasBackend) => hasBackend
       ? _t(
           'Bangladesh mobile (+880) only. Sign up needs no OTP — only forgot password uses SMS OTP.',
@@ -442,12 +444,10 @@ class AppStrings {
   String get cashOutTitle => _t('CASH OUT PICO COIN', 'পিকো কয়েন ক্যাশ আউট');
   String get mainBalanceTitle =>
       _t('YOUR MAIN BALANCE', 'আপনার মেইন ব্যালেন্স');
-  String get mainBalanceShort =>
-      _t('MAIN BALANCE', 'মেইন ব্যালেন্স');
+  String get mainBalanceShort => _t('MAIN BALANCE', 'মেইন ব্যালেন্স');
   String get redeemAvailableTitle =>
       _t('YOUR REDEEM AVAILABLE BALANCE', 'রিডিমের জন্য উপলব্ধ ব্যালেন্স');
-  String get redeemAvailableShort =>
-      _t('REDEEM AVAILABLE', 'রিডিম উপলব্ধ');
+  String get redeemAvailableShort => _t('REDEEM AVAILABLE', 'রিডিম উপলব্ধ');
   String get redeemWinOnlyHint => _t(
     'Only win balance can be cashed out. Deposits and bonuses stay in your main balance for play.',
     'শুধু জয়ের ব্যালেন্স ক্যাশ আউট করা যায়। ডিপোজিট ও বোনাস মেইন ব্যালেন্সে থাকে — খেলার জন্য।',
@@ -464,10 +464,8 @@ class AppStrings {
   String youReceiveBdt(int bdt) =>
       _t('You receive: $bdt BDT', 'পাবেন: $bdt টাকা');
   String get walletType => _t('Wallet type', 'ওয়ালেট ধরন');
-  String get walletNumber => _t(
-    'Your personal wallet number',
-    'আপনার ব্যক্তিগত ওয়ালেট নম্বর',
-  );
+  String get walletNumber =>
+      _t('Your personal wallet number', 'আপনার ব্যক্তিগত ওয়ালেট নম্বর');
   String get submitRedeem => _t('SUBMIT REDEEM REQUEST', 'রিডিম অনুরোধ জমা');
   String get submitRedeemShort => _t('SUBMIT REDEEM', 'রিডিম জমা দিন');
   String redeemSentBody(int bdt) => _t(
@@ -762,8 +760,7 @@ class AppStrings {
   String get leftCol => _t('LEFT', 'বাকি');
   String get quickChat => _t('QUICK CHAT', 'দ্রুত চ্যাট');
   String get ludoChatTitle => _t('MATCH CHAT', 'ম্যাচ চ্যাট');
-  String get ludoChatHint =>
-      _t('Type your message…', 'আপনার বার্তা লিখুন…');
+  String get ludoChatHint => _t('Type your message…', 'আপনার বার্তা লিখুন…');
   String get ludoChatSend => _t('SEND', 'পাঠান');
   String get ludoChatPhrases => _t('Quick phrases', 'দ্রুত বার্তা');
   String get ludoChatEmojis => _t('Emojis', 'ইমোজি');
@@ -1053,12 +1050,12 @@ class AppStrings {
     'অভ্যাস / বন্ধুত্ব — কোনো পিকো কয়েন নেই',
   );
   String get webPlayLandscapeHint => _t(
-    'ROTATE YOUR PHONE OR WIDEN THE WINDOW FOR THE BEST PLAY VIEW',
-    'ভালো ভিউতে খেলতে ফোন ঘোরান বা উইন্ডো চওড়া করুন',
+    'PIKOPE PLAYS BEST IN PORTRAIT ON YOUR PHONE',
+    'ফোনে পোর্ট্রেট ভিউতে পিকোপে সবচেয়ে ভালো চলে',
   );
   String get webPortraitPlayHint => _t(
-    'Rotate your phone to landscape to play. PikoPe is built for sideways view.',
-    'খেলতে ফোন landscape-এ ঘোরান। PikoPe sideways ভিউয়ের জন্য বানানো।',
+    'Hold the phone upright. Pool, Ludo and Carrom use the full screen.',
+    'ফোন সোজা করে ধরুন। পুল, লুডো ও ক্যারম পুরো স্ক্রিন ব্যবহার করে।',
   );
   String get webFullscreenTap => _t(
     'Tap for full screen (hide browser bar)',

@@ -65,7 +65,8 @@ abstract final class DesignBreakpoints {
   }
 
   static bool tabletOrWider(BuildContext context) =>
-      MediaQuery.sizeOf(context).shortestSide >= DesignLayout.tabletMinShortSide;
+      MediaQuery.sizeOf(context).shortestSide >=
+      DesignLayout.tabletMinShortSide;
 
   static bool desktopWide(BuildContext context) =>
       MediaQuery.sizeOf(context).width >= DesignLayout.desktopMinWidth;
@@ -73,5 +74,12 @@ abstract final class DesignBreakpoints {
   static bool isLandscape(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     return size.width >= size.height * 0.98;
+  }
+
+  /// Phone / tablet held upright. Lobby and match chrome reflow for this;
+  /// wide landscape keeps the 1600×900 canvas.
+  static bool portraitLayout(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    return size.height > size.width;
   }
 }

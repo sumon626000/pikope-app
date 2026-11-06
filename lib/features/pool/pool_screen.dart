@@ -26,7 +26,12 @@ import 'pool_controller.dart';
 
 /// Match screen for 9-Ball, 8-Ball and 10-Ball (two players).
 class PoolScreen extends ConsumerStatefulWidget {
-  const PoolScreen({super.key, required this.config, this.driver, this.intro = false});
+  const PoolScreen({
+    super.key,
+    required this.config,
+    this.driver,
+    this.intro = false,
+  });
 
   /// Show the "which game was drawn" reveal first (a match that just started).
   final bool intro;
@@ -40,7 +45,8 @@ class PoolScreen extends ConsumerStatefulWidget {
   ConsumerState<PoolScreen> createState() => _PoolScreenState();
 }
 
-class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProviderStateMixin {
+class _PoolScreenState extends ConsumerState<PoolScreen>
+    with SingleTickerProviderStateMixin {
   late final AudioService _audio;
   late final PoolController _c;
   late final Ticker _ticker;
@@ -58,7 +64,8 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
     _audio = ref.read(audioProvider);
     _audio.playGameplayMusic();
     final driver = widget.driver;
-    _c = PoolController(widget.config, _audio, link: driver)..addListener(_onChanged);
+    _c = PoolController(widget.config, _audio, link: driver)
+      ..addListener(_onChanged);
     if (driver != null) {
       driver
         ..onState = _c.applyRemote
@@ -71,8 +78,7 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
       final dt = (elapsed - _last).inMicroseconds / 1e6;
       _last = elapsed;
       if (!_paused) _c.tick(dt);
-    })
-      ..start();
+    })..start();
   }
 
   void _onChanged() {
@@ -94,7 +100,9 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
     final won = !_c.players[_c.state.winner!].isBot;
     _reward = null;
     if (ref.read(sessionProvider).signedIn) {
-      final game = AppGame.values.firstWhere((g) => g.poolGame == _c.state.game);
+      final game = AppGame.values.firstWhere(
+        (g) => g.poolGame == _c.state.game,
+      );
       session.reportBotMatch(game, won: won).catchError((_) {});
     } else {
       ref.read(settingsProvider.notifier).recordPractice(won: won);
@@ -117,7 +125,6 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
     navigator.pop();
   }
 
-
   /// Online: a fresh room for the same players.
   Future<void> _playAgain() async {
     final driver = widget.driver!;
@@ -125,7 +132,9 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
     final messenger = ScaffoldMessenger.of(context);
     try {
       final room = await driver.api.post('/rooms/${driver.roomId}/rematch');
-      navigator.pushReplacement(MaterialPageRoute<void>(builder: (_) => RoomScreen(room: room)));
+      navigator.pushReplacement(
+        MaterialPageRoute<void>(builder: (_) => RoomScreen(room: room)),
+      );
     } on ApiException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     }
@@ -149,8 +158,16 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
     final c = _c;
     final s = c.state;
     final over = s.phase == PoolPhase.gameOver;
-    final live = !over && !c.presenting &&
-        (s.phase == PoolPhase.playerTurn || s.phase == PoolPhase.shooting || s.phase == PoolPhase.pushOutChoice);
+    final live =
+        !over &&
+        !c.presenting &&
+        (s.phase == PoolPhase.playerTurn ||
+            s.phase == PoolPhase.shooting ||
+            s.phase == PoolPhase.pushOutChoice);
+
+    if (DesignBreakpoints.portraitLayout(context)) {
+      return _portraitMatch(t, settings, c, s, over, live);
+    }
 
     return PopScope(
       canPop: false,
@@ -164,11 +181,22 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
             clipBehavior: Clip.none,
             children: [
               // --- top bar: menu, both players, coins, spin
-              Positioned(left: 24, top: 8, child: MenuTile(onTap: () => setState(() => _paused = true))),
+              Positioned(
+                left: 24,
+                top: 8,
+                child: MenuTile(onTap: () => setState(() => _paused = true)),
+              ),
               Positioned(
                 left: 126,
                 top: 28,
-                child: Text(s.game.title, style: AppText.label(28, color: AppColors.gold, weight: FontWeight.w900)),
+                child: Text(
+                  s.game.title,
+                  style: AppText.label(
+                    28,
+                    color: AppColors.gold,
+                    weight: FontWeight.w900,
+                  ),
+                ),
               ),
               Positioned(
                 left: 933,
@@ -194,7 +222,9 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
                     shotSeconds: c.config.shotSeconds,
                     size: 84,
                     nameSide: NameSide.hidden,
-                    turnMisses: widget.driver != null ? c.players[i].missed : null,
+                    turnMisses: widget.driver != null
+                        ? c.players[i].missed
+                        : null,
                   ),
                 ),
                 AnimatedPositioned(
@@ -204,17 +234,32 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
                   left: _onLeft(i) ? 400 : 1140,
                   top: 8,
                   width: 420,
-                  child: _PlayerTray(controller: c, index: i, alignEnd: _onLeft(i)),
+                  child: _PlayerTray(
+                    controller: c,
+                    index: i,
+                    alignEnd: _onLeft(i),
+                  ),
                 ),
               ],
-              Positioned(left: 575, top: 98, width: 800, height: 46, child: StatusPill(c.statusText)),
+              Positioned(
+                left: 575,
+                top: 98,
+                width: 800,
+                height: 46,
+                child: StatusPill(c.statusText),
+              ),
               // --- controls
               Positioned(
                 left: 150 - PowerBar.touchPad.left,
                 top: 250 - PowerBar.touchPad.top,
                 child: PowerBar(controller: c),
               ),
-              if (c.canShoot) const Positioned(left: 138, top: 738, child: IgnorePointer(child: ShootHint())),
+              if (c.canShoot)
+                const Positioned(
+                  left: 138,
+                  top: 738,
+                  child: IgnorePointer(child: ShootHint()),
+                ),
               // --- table
               Positioned.fromRect(
                 rect: _tableRect.deflate(18),
@@ -222,18 +267,35 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.all(Radius.circular(40)),
                     boxShadow: [
-                      BoxShadow(color: Color(0xCC000000), blurRadius: 50, spreadRadius: 8, offset: Offset(0, 22)),
-                      BoxShadow(color: Color(0x22FFFFFF), blurRadius: 70, spreadRadius: 4),
+                      BoxShadow(
+                        color: Color(0xCC000000),
+                        blurRadius: 50,
+                        spreadRadius: 8,
+                        offset: Offset(0, 22),
+                      ),
+                      BoxShadow(
+                        color: Color(0x22FFFFFF),
+                        blurRadius: 70,
+                        spreadRadius: 4,
+                      ),
                     ],
                   ),
                 ),
               ),
               Positioned.fromRect(
                 rect: _tableRect,
-                child: TableView(controller: c, skin: DemoData.skin(settings.tableSkin)),
+                child: TableView(
+                  controller: c,
+                  skin: DemoData.skin(settings.tableSkin),
+                ),
               ),
               if (s.game.isRotation)
-                Positioned(left: 1634, top: 430, width: 296, child: _RackStrip(controller: c)),
+                Positioned(
+                  left: 1634,
+                  top: 430,
+                  width: 296,
+                  child: _RackStrip(controller: c),
+                ),
               if (c.canPushOut)
                 Positioned(
                   left: 1636,
@@ -279,12 +341,21 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
                 Positioned.fromRect(
                   rect: _tableRect,
                   child: IgnorePointer(
-                    child: Center(child: BannerView(key: ValueKey(c.bannerId), banner: c.banner!)),
+                    child: Center(
+                      child: BannerView(
+                        key: ValueKey(c.bannerId),
+                        banner: c.banner!,
+                      ),
+                    ),
                   ),
                 ),
               if (_intro)
                 GameRevealOverlay(
-                  ball: switch (s.game) { PoolGame.eightBall => 8, PoolGame.nineBall => 9, PoolGame.tenBall => 10 },
+                  ball: switch (s.game) {
+                    PoolGame.eightBall => 8,
+                    PoolGame.nineBall => 9,
+                    PoolGame.tenBall => 10,
+                  },
                   onDone: () => setState(() => _intro = false),
                 ),
               if (over && widget.driver != null)
@@ -299,7 +370,9 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
                       ),
                   ],
                   bet: widget.config.bet,
-                  reason: ref.read(stringsProvider).formatMatchWinReason(s.winReason),
+                  reason: ref
+                      .read(stringsProvider)
+                      .formatMatchWinReason(s.winReason),
                   onBack: () => Navigator.of(context).pop(),
                 )
               else if (over)
@@ -335,8 +408,11 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
                   onToggleSound: () => ref
                       .read(settingsProvider.notifier)
                       .update((s) => s.copyWith(soundOn: !s.soundOn)),
-                  onRules: () => Navigator.of(context)
-                      .push(MaterialPageRoute<void>(builder: (_) => const HowToPlayScreen())),
+                  onRules: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const HowToPlayScreen(),
+                    ),
+                  ),
                   onQuit: _quit,
                 ),
             ],
@@ -348,12 +424,289 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
 
   /// The viewer's panel is on the left of the bar, the opponent's on the right.
   bool _onLeft(int player) => player == _c.viewerIndex;
+
+  Widget _portraitMatch(
+    AppStrings t,
+    AppSettings settings,
+    PoolController c,
+    PoolState s,
+    bool over,
+    bool live,
+  ) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) setState(() => _paused = !_paused);
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF070A18),
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  SizedBox(
+                    height: 44,
+                    child: Row(
+                      children: [
+                        MenuTile(
+                          size: 40,
+                          onTap: () => setState(() => _paused = true),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            s.game.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.label(
+                              14,
+                              color: AppColors.gold,
+                              weight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: FittedBox(
+                            child: widget.config.bet.staked
+                                ? MatchPrizeTile(prize: widget.config.bet.prize)
+                                : CoinsTile(coins: settings.coins, size: 84),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: FittedBox(child: SpinControl(controller: c)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    height: 58,
+                    child: Row(
+                      children: [
+                        for (var i = 0; i < 2; i++)
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
+                              child: Row(
+                                children: [
+                                  AvatarSeat(
+                                    name: c.players[i].name,
+                                    avatar: c.players[i].avatar,
+                                    isCurrent: live && s.turn == i,
+                                    isWinner: s.winner == i,
+                                    clock: c.clock,
+                                    shotSeconds: c.config.shotSeconds,
+                                    size: 36,
+                                    nameSide: NameSide.hidden,
+                                    turnMisses: widget.driver != null
+                                        ? c.players[i].missed
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Expanded(
+                                    child: Text(
+                                      c.players[i].name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppText.label(
+                                        11,
+                                        weight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+                    child: StatusPill(c.statusText),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          const aspect = 600 / 351;
+                          var w = constraints.maxWidth;
+                          var h = w / aspect;
+                          if (h > constraints.maxHeight) {
+                            h = constraints.maxHeight;
+                            w = h * aspect;
+                          }
+                          return Center(
+                            child: SizedBox(
+                              width: w,
+                              height: h,
+                              child: TableView(
+                                controller: c,
+                                skin: DemoData.skin(settings.tableSkin),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  if (s.game.isRotation)
+                    SizedBox(
+                      height: 64,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: _RackStrip(controller: c),
+                      ),
+                    ),
+                  if (c.canPushOut)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: GameButton(
+                        label: s.pushOutDeclared ? 'PUSH OUT: ON' : 'PUSH OUT',
+                        icon: Icons.open_with_rounded,
+                        width: 180,
+                        height: 40,
+                        fontSize: 13,
+                        color: s.pushOutDeclared
+                            ? AppColors.gold
+                            : AppColors.frame,
+                        onPressed: c.togglePushOut,
+                      ),
+                    ),
+                  if (c.canShoot)
+                    SizedBox(
+                      height: 150,
+                      child: FittedBox(
+                        fit: BoxFit.contain,
+                        child: PowerBar(controller: c),
+                      ),
+                    ),
+                ],
+              ),
+              if (c.choosingPushOut)
+                Positioned.fill(
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GameButton(
+                          label: 'SHOOT',
+                          width: 120,
+                          height: 44,
+                          fontSize: 14,
+                          onPressed: () => c.answerPushOut(shoot: true),
+                        ),
+                        const SizedBox(width: 8),
+                        GameButton(
+                          label: 'PASS',
+                          width: 120,
+                          height: 44,
+                          fontSize: 14,
+                          color: AppColors.gold,
+                          onPressed: () => c.answerPushOut(shoot: false),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              if (c.banner != null)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Center(
+                      child: BannerView(
+                        key: ValueKey(c.bannerId),
+                        banner: c.banner!,
+                      ),
+                    ),
+                  ),
+                ),
+              if (_intro)
+                GameRevealOverlay(
+                  ball: switch (s.game) {
+                    PoolGame.eightBall => 8,
+                    PoolGame.nineBall => 9,
+                    PoolGame.tenBall => 10,
+                  },
+                  onDone: () => setState(() => _intro = false),
+                ),
+              if (over && widget.driver != null)
+                DuelResultOverlay(
+                  players: [
+                    for (var i = 0; i < c.players.length; i++)
+                      ResultPlayer(
+                        name: c.players[i].name,
+                        avatar: widget.config.seats[i].avatar,
+                        won: i == s.winner,
+                        me: i == widget.driver!.seat,
+                      ),
+                  ],
+                  bet: widget.config.bet,
+                  reason: t.formatMatchWinReason(s.winReason),
+                  onBack: () => Navigator.of(context).pop(),
+                )
+              else if (over)
+                _PoolGameOver(
+                  controller: c,
+                  reward: _reward,
+                  rematchLabel: widget.driver == null ? t.rematch : t.playAgain,
+                  onRematch: widget.driver != null
+                      ? _playAgain
+                      : () {
+                          _resultBooked = false;
+                          _reward = null;
+                          c.rematch();
+                        },
+                  onHome: () => Navigator.of(context).pop(),
+                ),
+              if (widget.driver != null) ...[
+                OpponentDisconnectBanner(
+                  presence: _c.opponentPresence,
+                  serverOffsetMs: _c.serverOffsetMs,
+                  opponentName: _c.players[1 - widget.driver!.seat].name,
+                ),
+                ConnectionStatusLayer(
+                  offline: widget.driver!.offline,
+                  onLeave: () => Navigator.of(context).pop(),
+                ),
+              ],
+              if (_paused)
+                PauseOverlay(
+                  soundOn: settings.soundOn,
+                  onResume: () => setState(() => _paused = false),
+                  onToggleSound: () => ref
+                      .read(settingsProvider.notifier)
+                      .update((s) => s.copyWith(soundOn: !s.soundOn)),
+                  onRules: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const HowToPlayScreen(),
+                    ),
+                  ),
+                  onQuit: _quit,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// What a player still has to do: their group in 8-ball, their record in the
 /// rotation games.
 class _PlayerTray extends StatelessWidget {
-  const _PlayerTray({required this.controller, required this.index, required this.alignEnd});
+  const _PlayerTray({
+    required this.controller,
+    required this.index,
+    required this.alignEnd,
+  });
 
   final PoolController controller;
   final int index;
@@ -375,9 +728,14 @@ class _PlayerTray extends StatelessWidget {
         label = 'OPEN TABLE';
         balls = const [];
       } else {
-        final mine = [for (var b = 1; b <= 15; b++) if (PoolRules.groupOf(b) == group) b];
+        final mine = [
+          for (var b = 1; b <= 15; b++)
+            if (PoolRules.groupOf(b) == group) b,
+        ];
         final left = mine.where(onTable.contains).length;
-        label = left == 0 ? '${group.label} CLEARED - ON THE 8' : '${group.label}  $left LEFT';
+        label = left == 0
+            ? '${group.label} CLEARED - ON THE 8'
+            : '${group.label}  $left LEFT';
         balls = [
           for (final b in mine) _TrayBall(b, gone: !onTable.contains(b)),
           const SizedBox(width: 10),
@@ -385,21 +743,31 @@ class _PlayerTray extends StatelessWidget {
         ];
       }
     } else {
-      label = 'POCKETED ${p.ballsPocketed}   FOULS ${p.fouls}'
+      label =
+          'POCKETED ${p.ballsPocketed}   FOULS ${p.fouls}'
           '${game == PoolGame.nineBall ? '   IN A ROW ${p.consecutiveFouls}/3' : ''}';
       balls = const [];
     }
     final side = alignEnd ? Alignment.centerRight : Alignment.centerLeft;
     return Column(
-      crossAxisAlignment: alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: alignEnd
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(p.name.toUpperCase(), maxLines: 1, style: AppText.label(19, weight: FontWeight.w900)),
+        Text(
+          p.name.toUpperCase(),
+          maxLines: 1,
+          style: AppText.label(19, weight: FontWeight.w900),
+        ),
         const SizedBox(height: 2),
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: side,
-          child: Text(label, style: AppText.label(13, color: AppColors.textDim)),
+          child: Text(
+            label,
+            style: AppText.label(13, color: AppColors.textDim),
+          ),
         ),
         if (balls.isNotEmpty) ...[
           const SizedBox(height: 3),
@@ -428,13 +796,17 @@ class _TrayBall extends StatelessWidget {
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: ring ? AppColors.gold : Colors.transparent, width: 3),
+        border: Border.all(
+          color: ring ? AppColors.gold : Colors.transparent,
+          width: 3,
+        ),
       ),
       child: Stack(
         alignment: Alignment.center,
         children: [
           BallIcon(number, size: 32, opacity: gone ? 0.3 : 1),
-          if (gone) const Icon(Icons.check_rounded, color: AppColors.active, size: 24),
+          if (gone)
+            const Icon(Icons.check_rounded, color: AppColors.active, size: 24),
         ],
       ),
     );
@@ -453,7 +825,9 @@ class _RackStrip extends ConsumerWidget {
     final c = controller;
     final game = c.state.game;
     final onTable = c.onTable;
-    final lowest = onTable.isEmpty ? null : onTable.reduce((a, b) => a < b ? a : b);
+    final lowest = onTable.isEmpty
+        ? null
+        : onTable.reduce((a, b) => a < b ? a : b);
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
       decoration: panelDecoration(),
@@ -461,7 +835,10 @@ class _RackStrip extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(t.lowestFirstWins(game.moneyBall), style: AppText.label(13, color: AppColors.textDim)),
+          Text(
+            t.lowestFirstWins(game.moneyBall),
+            style: AppText.label(13, color: AppColors.textDim),
+          ),
           const SizedBox(height: 6),
           Wrap(
             spacing: 4,
@@ -472,9 +849,16 @@ class _RackStrip extends ConsumerWidget {
                   padding: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: b == lowest ? AppColors.gold : Colors.transparent, width: 3),
+                    border: Border.all(
+                      color: b == lowest ? AppColors.gold : Colors.transparent,
+                      width: 3,
+                    ),
                   ),
-                  child: BallIcon(b, size: 40, opacity: onTable.contains(b) ? 1 : 0.25),
+                  child: BallIcon(
+                    b,
+                    size: 40,
+                    opacity: onTable.contains(b) ? 1 : 0.25,
+                  ),
                 ),
             ],
           ),
@@ -518,14 +902,21 @@ class _PoolGameOver extends ConsumerWidget {
       PoolGame.tenBall => t.tenBallTitle,
     };
     final winner = c.players[c.state.winner!];
-    Widget cell(String text, {int flex = 10, Color color = AppColors.text, bool left = false}) => Expanded(
-          flex: flex,
-          child: Text(text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: left ? TextAlign.left : TextAlign.center,
-              style: AppText.label(18, color: color)),
-        );
+    Widget cell(
+      String text, {
+      int flex = 10,
+      Color color = AppColors.text,
+      bool left = false,
+    }) => Expanded(
+      flex: flex,
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: left ? TextAlign.left : TextAlign.center,
+        style: AppText.label(18, color: color),
+      ),
+    );
     return Scrim(
       confetti: true,
       child: OverlayPanel(
@@ -547,47 +938,87 @@ class _PoolGameOver extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(Icons.emoji_events_rounded, color: AppColors.gold, size: 44),
-                        const SizedBox(width: 10),
-                        Text(t.winnerGame(gameTitle), style: AppText.label(24, color: AppColors.gold)),
-                      ]),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.emoji_events_rounded,
+                            color: AppColors.gold,
+                            size: 44,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            t.winnerGame(gameTitle),
+                            style: AppText.label(24, color: AppColors.gold),
+                          ),
+                        ],
+                      ),
                       FittedBox(
                         fit: BoxFit.scaleDown,
-                        child: Text(winner.name.toUpperCase(), style: AppText.label(46, weight: FontWeight.w900)),
+                        child: Text(
+                          winner.name.toUpperCase(),
+                          style: AppText.label(46, weight: FontWeight.w900),
+                        ),
                       ),
-                      Text(_reason(c), style: AppText.label(17, color: AppColors.textDim)),
-                      if (reward != null && reward! > 0) Text('+${formatPicoCoins(reward!)}', style: AppText.label(20, color: AppColors.gold)),
+                      Text(
+                        _reason(c),
+                        style: AppText.label(17, color: AppColors.textDim),
+                      ),
+                      if (reward != null && reward! > 0)
+                        Text(
+                          '+${formatPicoCoins(reward!)}',
+                          style: AppText.label(20, color: AppColors.gold),
+                        ),
                     ],
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 22),
-            Row(children: [
-              cell(t.playerCol, flex: 22, color: AppColors.textDim, left: true),
-              cell(t.shotsCol, color: AppColors.textDim),
-              cell(t.ballsCol, color: AppColors.textDim),
-              cell(t.foulsCol, color: AppColors.textDim),
-            ]),
+            Row(
+              children: [
+                cell(
+                  t.playerCol,
+                  flex: 22,
+                  color: AppColors.textDim,
+                  left: true,
+                ),
+                cell(t.shotsCol, color: AppColors.textDim),
+                cell(t.ballsCol, color: AppColors.textDim),
+                cell(t.foulsCol, color: AppColors.textDim),
+              ],
+            ),
             const Divider(color: AppColors.frame, height: 18),
             for (var i = 0; i < 2; i++)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 5),
-                child: Row(children: [
-                  cell(c.players[i].name.toUpperCase(),
-                      flex: 22, left: true, color: i == c.state.winner ? AppColors.gold : AppColors.text),
-                  cell('${c.players[i].shots}'),
-                  cell('${c.players[i].ballsPocketed}'),
-                  cell('${c.players[i].fouls}'),
-                ]),
+                child: Row(
+                  children: [
+                    cell(
+                      c.players[i].name.toUpperCase(),
+                      flex: 22,
+                      left: true,
+                      color: i == c.state.winner
+                          ? AppColors.gold
+                          : AppColors.text,
+                    ),
+                    cell('${c.players[i].shots}'),
+                    cell('${c.players[i].ballsPocketed}'),
+                    cell('${c.players[i].fouls}'),
+                  ],
+                ),
               ),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (onRematch != null) ...[
-                  GameButton(label: rematchLabel ?? t.rematch, icon: Icons.replay_rounded, width: 300, onPressed: onRematch),
+                  GameButton(
+                    label: rematchLabel ?? t.rematch,
+                    icon: Icons.replay_rounded,
+                    width: 300,
+                    onPressed: onRematch,
+                  ),
                   const SizedBox(width: 24),
                 ],
                 GameButton(

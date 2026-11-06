@@ -23,12 +23,7 @@ bool _phoneLikeViewport(BuildContext context) {
   return size.shortestSide < 720 || size.width < 640;
 }
 
-bool _landscapeViewport(BuildContext context) {
-  final size = MediaQuery.sizeOf(context);
-  return size.width >= size.height * 0.98;
-}
-
-/// Mobile web: landscape-only play (1600×900 canvas); portrait shows rotate gate.
+/// Mobile web plays in portrait. A fullscreen hint is offered on phone-sized viewports.
 class WebLandscapeGate extends ConsumerStatefulWidget {
   const WebLandscapeGate({super.key, required this.child});
 
@@ -38,7 +33,8 @@ class WebLandscapeGate extends ConsumerStatefulWidget {
   ConsumerState<WebLandscapeGate> createState() => _WebLandscapeGateState();
 }
 
-class _WebLandscapeGateState extends ConsumerState<WebLandscapeGate> with WidgetsBindingObserver {
+class _WebLandscapeGateState extends ConsumerState<WebLandscapeGate>
+    with WidgetsBindingObserver {
   bool _fullscreenHintDismissed = false;
 
   @override
@@ -58,10 +54,8 @@ class _WebLandscapeGateState extends ConsumerState<WebLandscapeGate> with Widget
     if (!kIsWeb || !mounted) return;
     final ctx = context;
     if (!_phoneLikeViewport(ctx)) return;
-    if (_landscapeViewport(ctx)) {
-      webTryHideMobileBrowserChrome();
-      setState(() {});
-    }
+    webTryHideMobileBrowserChrome();
+    setState(() {});
   }
 
   Future<void> _onUserGestureForFullscreen() async {
@@ -76,40 +70,7 @@ class _WebLandscapeGateState extends ConsumerState<WebLandscapeGate> with Widget
   Widget build(BuildContext context) {
     if (!kIsWeb) return widget.child;
 
-    final landscape = _landscapeViewport(context);
     final t = ref.watch(stringsProvider);
-
-    if (!landscape) {
-      return ColoredBox(
-        color: DuelColors.ink,
-        child: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.screen_rotation_rounded, color: DuelColors.gold, size: 56),
-                  const SizedBox(height: 20),
-                  Text(
-                    t.webPlayLandscapeHint,
-                    textAlign: TextAlign.center,
-                    style: AppText.label(18, color: Colors.white, weight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    t.webPortraitPlayHint,
-                    textAlign: TextAlign.center,
-                    style: AppText.label(14, color: DuelColors.silver, weight: FontWeight.w600),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
     final phone = _phoneLikeViewport(context);
     final inFullscreen = webIsDomFullscreen();
 
@@ -133,7 +94,7 @@ class _WebLandscapeGateState extends ConsumerState<WebLandscapeGate> with Widget
       fit: StackFit.expand,
       children: [
         content,
-        if (landscape && !inFullscreen && !_fullscreenHintDismissed)
+        if (!inFullscreen && !_fullscreenHintDismissed)
           Positioned(
             left: 16,
             right: 16,
@@ -143,25 +104,44 @@ class _WebLandscapeGateState extends ConsumerState<WebLandscapeGate> with Widget
               child: GestureDetector(
                 onTap: _onUserGestureForFullscreen,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   decoration: duelPanel(radius: 12, rim: DuelColors.gold),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.fullscreen_rounded, color: DuelColors.gold, size: 22),
+                      const Icon(
+                        Icons.fullscreen_rounded,
+                        color: DuelColors.gold,
+                        size: 22,
+                      ),
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
                           t.webFullscreenTap,
                           textAlign: TextAlign.center,
-                          style: AppText.label(13, color: Colors.white, weight: FontWeight.w800),
+                          style: AppText.label(
+                            13,
+                            color: Colors.white,
+                            weight: FontWeight.w800,
+                          ),
                         ),
                       ),
                       IconButton(
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        icon: const Icon(Icons.close_rounded, color: DuelColors.dim, size: 18),
-                        onPressed: () => setState(() => _fullscreenHintDismissed = true),
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: DuelColors.dim,
+                          size: 18,
+                        ),
+                        onPressed: () =>
+                            setState(() => _fullscreenHintDismissed = true),
                       ),
                     ],
                   ),

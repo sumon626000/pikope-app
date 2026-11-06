@@ -6,7 +6,7 @@
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
     "description": "Pool, Ludo and Carrom with online coin play.",
-    "orientation": "landscape",
+    "orientation": "portrait",
     "prefer_related_applications": false,
     "icons": [
         {
