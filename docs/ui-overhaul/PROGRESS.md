@@ -117,3 +117,17 @@ Verification levels: L1 analyze | L2 test | L3 multi-size | L4 device | L5 web r
 | 6 Remaining screens | ✅ |
 | 7 Responsive testing | ✅ |
 | 8 Final audit | ✅ |
+
+## Portrait-first pass (2026-11-06)
+
+Phone layout is portrait (9:16). Wide screens (width ≥ height) keep the 1600×900 lobby canvas.
+
+| Area | Status | Verification |
+|------|--------|--------------|
+| Orientation lock, web rotate gate removed | Done | L1 |
+| Home, pool hub, ludo/carrom lobbies, login, stakes, matchmaking | Portrait layouts | L3 `test/ui_portrait_responsive_test.dart` (360×640, 390×844, 412×915, 768×1024) |
+| DuelPage secondary screens (history, cues, challenge, notices, items, boards) | Real-pixel column | L1 |
+| Shop, settings, refer | Existing phone shells (already viewport-based) | Prior L3 landscape tests still pass |
+| Pool, Ludo, Carrom, billiard-poker match HUD | Portrait column (board + controls). Mechanics unchanged | L1 only — no device screenshots |
+
+NOT VERIFIED: emulator/device screenshots, `flutter run`, release APK/web build. Landscape widget tests still pass.

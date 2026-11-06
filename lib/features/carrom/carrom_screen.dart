@@ -40,7 +40,8 @@ class CarromScreen extends ConsumerStatefulWidget {
   ConsumerState<CarromScreen> createState() => _CarromScreenState();
 }
 
-class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerProviderStateMixin {
+class _CarromScreenState extends ConsumerState<CarromScreen>
+    with SingleTickerProviderStateMixin {
   late final CarromController _c;
   late final Ticker _ticker;
   Duration _last = Duration.zero;
@@ -60,7 +61,11 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
   void initState() {
     super.initState();
     ref.read(audioProvider).playGameplayMusic();
-    _c = CarromController(widget.config, ref.read(audioProvider), link: widget.driver)..addListener(_onChanged);
+    _c = CarromController(
+      widget.config,
+      ref.read(audioProvider),
+      link: widget.driver,
+    )..addListener(_onChanged);
     final driver = widget.driver;
     if (driver != null) {
       driver
@@ -77,8 +82,7 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
       _last = elapsed;
       // Offline play stops while the pause menu is open; online the server runs on.
       if (!_paused || _c.online) _c.tick(min(dt, 0.1));
-    })
-      ..start();
+    })..start();
   }
 
   void _onChanged() {
@@ -90,10 +94,14 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
         // Practice: a little experience, no coins (the server cannot verify it).
         final api = ref.read(apiProvider);
         final won = _c.state.winner == 0;
-        api?.post('/matches/bot', {'game': 'carrom', 'won': won}).then((j) {
-          final u = j['user'];
-          if (u is Map<String, dynamic>) ref.read(sessionProvider.notifier).adopt(u);
-        }).catchError((_) {});
+        api
+            ?.post('/matches/bot', {'game': 'carrom', 'won': won})
+            .then((j) {
+              final u = j['user'];
+              if (u is Map<String, dynamic>)
+                ref.read(sessionProvider.notifier).adopt(u);
+            })
+            .catchError((_) {});
       }
     }
     if (mounted) setState(() {});
@@ -146,16 +154,23 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
 
   // ---- striker slider --------------------------------------------------------
 
-  void _slideTo(double localX) {
+  void _slideTo(double localX, double width) {
     if (!_c.canAim) return;
-    final k = (localX / _sliderW).clamp(0.0, 1.0);
-    final x = CarromWorld.baseMinX + (CarromWorld.baseMaxX - CarromWorld.baseMinX) * (_c.viewRotated ? 1 - k : k);
+    final span = width <= 0 ? _sliderW : width;
+    final k = (localX / span).clamp(0.0, 1.0);
+    final x =
+        CarromWorld.baseMinX +
+        (CarromWorld.baseMaxX - CarromWorld.baseMinX) *
+            (_c.viewRotated ? 1 - k : k);
     _c.setStrikerX(x);
   }
 
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
+    if (DesignBreakpoints.portraitLayout(context)) {
+      return _portraitMatch(settings);
+    }
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -169,92 +184,314 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                Positioned(left: DesignGameplay.menuTabLeft, top: 0, child: _MenuTab(onTap: () => setState(() => _paused = true))),
+                Positioned(
+                  left: DesignGameplay.menuTabLeft,
+                  top: 0,
+                  child: _MenuTab(onTap: () => setState(() => _paused = true)),
+                ),
                 if (widget.config.bet.staked)
                   Positioned(
                     left: DesignGameplay.prizeTileLeft,
                     top: DesignGameplay.prizeTileTop,
                     child: MatchPrizeTile(prize: widget.config.bet.prize),
                   ),
-                      // The board.
-                      Positioned(
-                        left: _boardLeft,
-                        top: _boardTop,
-                        width: _boardSize,
-                        height: _boardSize,
-                        child: RepaintBoundary(
-                          child: CarromBoard(controller: _c, onPanStart: _panStart, onPanUpdate: _panUpdate, onPanEnd: _panEnd),
-                        ),
-                      ),
-                      // Striker slider under the board.
-                      Positioned(
-                        left: _sliderLeft,
-                        top: _sliderTop,
-                        width: _sliderW,
-                        height: _sliderH,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTapDown: (d) => _slideTo(d.localPosition.dx),
-                          onHorizontalDragStart: (d) => _slideTo(d.localPosition.dx),
-                          onHorizontalDragUpdate: (d) => _slideTo(d.localPosition.dx),
-                          child: _StrikerSlider(controller: _c),
-                        ),
-                      ),
-                      ..._seatPanels(),
-                      Positioned(left: 232, top: 560, child: _ChatButton(onTap: _openChat)),
-                      // What to do now.
-                      Positioned(
-                        left: 40,
-                        width: _boardLeft - 60,
-                        top: 650,
-                        child: Text(
-                          _c.hint,
-                          textAlign: TextAlign.center,
-                          style: AppText.label(20, color: _c.canAim ? DesignGameplay.hintActive : DesignGameplay.hintIdle, weight: FontWeight.w900)
-                              .copyWith(shadows: const [Shadow(color: Color(0xCC000000), blurRadius: 4, offset: Offset(0, 2))]),
-                        ),
-                      ),
-                      // Messages over the board.
-                      Positioned(
-                        left: _boardLeft,
-                        width: _boardSize,
-                        top: _boardTop + _boardSize / 2 - 60,
-                        child: IgnorePointer(
-                          child: Center(
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 180),
-                              child: _c.toast == null
-                                  ? const SizedBox.shrink()
-                                  : GameplayToastBanner(key: ValueKey(_c.toast), lines: _c.toast!.lines, good: _c.toast!.good),
+                // The board.
+                Positioned(
+                  left: _boardLeft,
+                  top: _boardTop,
+                  width: _boardSize,
+                  height: _boardSize,
+                  child: RepaintBoundary(
+                    child: CarromBoard(
+                      controller: _c,
+                      onPanStart: _panStart,
+                      onPanUpdate: _panUpdate,
+                      onPanEnd: _panEnd,
+                    ),
+                  ),
+                ),
+                // Striker slider under the board.
+                Positioned(
+                  left: _sliderLeft,
+                  top: _sliderTop,
+                  width: _sliderW,
+                  height: _sliderH,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapDown: (d) => _slideTo(d.localPosition.dx, _sliderW),
+                    onHorizontalDragStart: (d) =>
+                        _slideTo(d.localPosition.dx, _sliderW),
+                    onHorizontalDragUpdate: (d) =>
+                        _slideTo(d.localPosition.dx, _sliderW),
+                    child: _StrikerSlider(controller: _c),
+                  ),
+                ),
+                ..._seatPanels(),
+                Positioned(
+                  left: 232,
+                  top: 560,
+                  child: _ChatButton(onTap: _openChat),
+                ),
+                // What to do now.
+                Positioned(
+                  left: 40,
+                  width: _boardLeft - 60,
+                  top: 650,
+                  child: Text(
+                    _c.hint,
+                    textAlign: TextAlign.center,
+                    style:
+                        AppText.label(
+                          20,
+                          color: _c.canAim
+                              ? DesignGameplay.hintActive
+                              : DesignGameplay.hintIdle,
+                          weight: FontWeight.w900,
+                        ).copyWith(
+                          shadows: const [
+                            Shadow(
+                              color: Color(0xCC000000),
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
                             ),
-                          ),
+                          ],
                         ),
+                  ),
+                ),
+                // Messages over the board.
+                Positioned(
+                  left: _boardLeft,
+                  width: _boardSize,
+                  top: _boardTop + _boardSize / 2 - 60,
+                  child: IgnorePointer(
+                    child: Center(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 180),
+                        child: _c.toast == null
+                            ? const SizedBox.shrink()
+                            : GameplayToastBanner(
+                                key: ValueKey(_c.toast),
+                                lines: _c.toast!.lines,
+                                good: _c.toast!.good,
+                              ),
                       ),
-                      if (widget.driver != null) ...[
-                        OpponentDisconnectBanner(
-                          presence: _c.opponentPresence,
-                          serverOffsetMs: _c.serverOffsetMs,
-                          opponentName: widget.config.seats[1 - widget.driver!.seat].name,
-                        ),
-                        ConnectionStatusLayer(
-                          offline: widget.driver!.offline,
-                          onLeave: () => Navigator.of(context).pop(),
-                        ),
-                      ],
-                      if (_c.over) _result(),
-                      if (_paused)
-                        PauseOverlay(
-                          soundOn: settings.soundOn,
-                          onResume: () => setState(() => _paused = false),
-                          onToggleSound: () => ref.read(settingsProvider.notifier).update((s) => s.copyWith(soundOn: !s.soundOn)),
-                          onRules: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const HowToPlayScreen())),
-                          onQuit: _quit,
-                        ),
+                    ),
+                  ),
+                ),
+                if (widget.driver != null) ...[
+                  OpponentDisconnectBanner(
+                    presence: _c.opponentPresence,
+                    serverOffsetMs: _c.serverOffsetMs,
+                    opponentName:
+                        widget.config.seats[1 - widget.driver!.seat].name,
+                  ),
+                  ConnectionStatusLayer(
+                    offline: widget.driver!.offline,
+                    onLeave: () => Navigator.of(context).pop(),
+                  ),
+                ],
+                if (_c.over) _result(),
+                if (_paused)
+                  PauseOverlay(
+                    soundOn: settings.soundOn,
+                    onResume: () => setState(() => _paused = false),
+                    onToggleSound: () => ref
+                        .read(settingsProvider.notifier)
+                        .update((s) => s.copyWith(soundOn: !s.soundOn)),
+                    onRules: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const HowToPlayScreen(),
+                      ),
+                    ),
+                    onQuit: _quit,
+                  ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _portraitMatch(AppSettings settings) {
+    final state = _c.state;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) setState(() => _paused = !_paused);
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF2B0B0B),
+        body: _CarromBackground(
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Column(
+                  children: [
+                    SizedBox(
+                      height: 40,
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 64,
+                            height: 36,
+                            child: FittedBox(
+                              child: _MenuTab(
+                                onTap: () => setState(() => _paused = true),
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          if (widget.config.bet.staked)
+                            SizedBox(
+                              width: 36,
+                              height: 36,
+                              child: FittedBox(
+                                child: MatchPrizeTile(
+                                  prize: widget.config.bet.prize,
+                                ),
+                              ),
+                            ),
+                          SizedBox(
+                            width: 44,
+                            height: 36,
+                            child: FittedBox(
+                              child: _ChatButton(onTap: _openChat),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      height: 88,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: FittedBox(
+                              fit: BoxFit.contain,
+                              child: _portraitSeat(0),
+                            ),
+                          ),
+                          Expanded(
+                            child: FittedBox(
+                              fit: BoxFit.contain,
+                              child: _portraitSeat(1),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Center(
+                          child: AspectRatio(
+                            aspectRatio: 1,
+                            child: CarromBoard(
+                              controller: _c,
+                              onPanStart: _panStart,
+                              onPanUpdate: _panUpdate,
+                              onPanEnd: _panEnd,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: SizedBox(
+                        height: 46,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final w = constraints.maxWidth;
+                            return GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTapDown: (d) => _slideTo(d.localPosition.dx, w),
+                              onHorizontalDragStart: (d) =>
+                                  _slideTo(d.localPosition.dx, w),
+                              onHorizontalDragUpdate: (d) =>
+                                  _slideTo(d.localPosition.dx, w),
+                              child: _StrikerSlider(controller: _c),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
+                      child: Text(
+                        _c.hint,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.label(
+                          12,
+                          color: _c.canAim
+                              ? DesignGameplay.hintActive
+                              : DesignGameplay.hintIdle,
+                          weight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (widget.driver != null) ...[
+                  OpponentDisconnectBanner(
+                    presence: _c.opponentPresence,
+                    serverOffsetMs: _c.serverOffsetMs,
+                    opponentName: state.players[1 - _c.mySeat].name,
+                  ),
+                  ConnectionStatusLayer(
+                    offline: widget.driver!.offline,
+                    onLeave: () => Navigator.of(context).pop(),
+                  ),
+                ],
+                if (_c.over) _result(),
+                if (_paused)
+                  PauseOverlay(
+                    soundOn: settings.soundOn,
+                    onResume: () => setState(() => _paused = false),
+                    onToggleSound: () => ref
+                        .read(settingsProvider.notifier)
+                        .update((s) => s.copyWith(soundOn: !s.soundOn)),
+                    onRules: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const HowToPlayScreen(),
+                      ),
+                    ),
+                    onQuit: _quit,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _portraitSeat(int seat) {
+    final state = _c.state;
+    final session = ref.watch(sessionProvider);
+    final myCoins = ref.watch(settingsProvider).coins;
+    final p = state.players[seat];
+    final you = seat == _c.mySeat;
+    return _SeatPanel(
+      name: p.name,
+      avatar: p.avatar,
+      colour: p.colour,
+      pocketed: p.pocketed,
+      hasQueen: p.hasQueen,
+      active: _c.turn == seat && !_c.over,
+      out: p.out,
+      you: you,
+      coins: you ? myCoins : null,
+      level: you ? session.level : null,
+      right: !you,
+      clock: _c.clock,
+      shotSeconds: state.shotSeconds,
+      pieces: _c.pieceSkin,
+      chat: _c.chatTextOf(seat),
+      missed: widget.driver != null ? p.missed : null,
     );
   }
 
@@ -264,32 +501,36 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
     final myCoins = ref.watch(settingsProvider).coins;
     return [
       for (var seat = 0; seat < 2; seat++)
-        Builder(builder: (context) {
-          final p = state.players[seat];
-          final you = seat == _c.mySeat;
-          return Positioned(
-            left: you ? 300 - _SeatPanel.width / 2 : _canvasW - 300 - _SeatPanel.width / 2,
-            top: 150,
-            child: _SeatPanel(
-              name: p.name,
-              avatar: p.avatar,
-              colour: p.colour,
-              pocketed: p.pocketed,
-              hasQueen: p.hasQueen,
-              active: _c.turn == seat && !_c.over,
-              out: p.out,
-              you: you,
-              coins: you ? myCoins : null,
-              level: you ? session.level : null,
-              right: !you,
-              clock: _c.clock,
-              shotSeconds: state.shotSeconds,
-              pieces: _c.pieceSkin,
-              chat: _c.chatTextOf(seat),
-              missed: widget.driver != null ? p.missed : null,
-            ),
-          );
-        }),
+        Builder(
+          builder: (context) {
+            final p = state.players[seat];
+            final you = seat == _c.mySeat;
+            return Positioned(
+              left: you
+                  ? 300 - _SeatPanel.width / 2
+                  : _canvasW - 300 - _SeatPanel.width / 2,
+              top: 150,
+              child: _SeatPanel(
+                name: p.name,
+                avatar: p.avatar,
+                colour: p.colour,
+                pocketed: p.pocketed,
+                hasQueen: p.hasQueen,
+                active: _c.turn == seat && !_c.over,
+                out: p.out,
+                you: you,
+                coins: you ? myCoins : null,
+                level: you ? session.level : null,
+                right: !you,
+                clock: _c.clock,
+                shotSeconds: state.shotSeconds,
+                pieces: _c.pieceSkin,
+                chat: _c.chatTextOf(seat),
+                missed: widget.driver != null ? p.missed : null,
+              ),
+            );
+          },
+        ),
     ];
   }
 
@@ -312,7 +553,12 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
     return DuelResultOverlay(
       players: [
         for (var i = 0; i < 2; i++)
-          ResultPlayer(name: state.players[i].name, avatar: state.players[i].avatar, won: i == w, me: i == _c.mySeat),
+          ResultPlayer(
+            name: state.players[i].name,
+            avatar: state.players[i].avatar,
+            won: i == w,
+            me: i == _c.mySeat,
+          ),
       ],
       bet: widget.config.bet,
       reason: ref.read(stringsProvider).formatMatchWinReason(state.winReason),
@@ -364,11 +610,15 @@ class _SeatPanel extends StatelessWidget {
   final int? missed;
   final String? chat;
 
-  static const _shadow = [Shadow(color: Color(0xCC000000), blurRadius: 3, offset: Offset(0, 1.5))];
+  static const _shadow = [
+    Shadow(color: Color(0xCC000000), blurRadius: 3, offset: Offset(0, 1.5)),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final frameColor = right ? const Color(0xFFF2821A) : const Color(0xFF2E8BE8);
+    final frameColor = right
+        ? const Color(0xFFF2821A)
+        : const Color(0xFF2E8BE8);
     return Opacity(
       opacity: out ? 0.5 : 1,
       child: SizedBox(
@@ -392,7 +642,11 @@ class _SeatPanel extends StatelessWidget {
                         valueListenable: clock,
                         builder: (_, left, _) => CustomPaint(
                           size: const Size(_box + 20, _box + 20),
-                          painter: _TurnRingPainter(shotSeconds <= 0 ? 1 : (left / shotSeconds).clamp(0.0, 1.0)),
+                          painter: _TurnRingPainter(
+                            shotSeconds <= 0
+                                ? 1
+                                : (left / shotSeconds).clamp(0.0, 1.0),
+                          ),
                         ),
                       ),
                     Container(
@@ -400,16 +654,35 @@ class _SeatPanel extends StatelessWidget {
                       height: _box,
                       padding: const EdgeInsets.all(5),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color.lerp(frameColor, Colors.white, 0.35)!, frameColor]),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Color.lerp(frameColor, Colors.white, 0.35)!,
+                            frameColor,
+                          ],
+                        ),
                         borderRadius: BorderRadius.circular(14),
                         boxShadow: [
-                          if (active) BoxShadow(color: frameColor.withValues(alpha: 0.7), blurRadius: 18, spreadRadius: 1),
-                          const BoxShadow(color: Color(0x66000000), blurRadius: 6, offset: Offset(0, 3)),
+                          if (active)
+                            BoxShadow(
+                              color: frameColor.withValues(alpha: 0.7),
+                              blurRadius: 18,
+                              spreadRadius: 1,
+                            ),
+                          const BoxShadow(
+                            color: Color(0x66000000),
+                            blurRadius: 6,
+                            offset: Offset(0, 3),
+                          ),
                         ],
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(9),
-                        child: FittedBox(fit: BoxFit.cover, child: AvatarImage(avatar, size: 140)),
+                        child: FittedBox(
+                          fit: BoxFit.cover,
+                          child: AvatarImage(avatar, size: 140),
+                        ),
                       ),
                     ),
                   ],
@@ -432,7 +705,11 @@ class _SeatPanel extends StatelessWidget {
                   maxLines: 1,
                   textAlign: TextAlign.center,
                   overflow: TextOverflow.ellipsis,
-                  style: AppText.label(30, color: Colors.white, weight: FontWeight.w900).copyWith(shadows: _shadow),
+                  style: AppText.label(
+                    30,
+                    color: Colors.white,
+                    weight: FontWeight.w900,
+                  ).copyWith(shadows: _shadow),
                 ),
               ),
             ),
@@ -443,14 +720,40 @@ class _SeatPanel extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (!right) ...[
-                    Text('$pocketed', style: AppText.label(40, color: Colors.white, weight: FontWeight.w900).copyWith(shadows: _shadow)),
+                    Text(
+                      '$pocketed',
+                      style: AppText.label(
+                        40,
+                        color: Colors.white,
+                        weight: FontWeight.w900,
+                      ).copyWith(shadows: _shadow),
+                    ),
                     const SizedBox(width: 10),
                   ],
-                  CustomPaint(size: const Size(42, 42), painter: _PieceIconPainter(colour == 0 ? DiscKind.light : DiscKind.dark, pieces)),
-                  if (hasQueen) ...[const SizedBox(width: 6), CustomPaint(size: const Size(30, 30), painter: _PieceIconPainter(DiscKind.queen, pieces))],
+                  CustomPaint(
+                    size: const Size(42, 42),
+                    painter: _PieceIconPainter(
+                      colour == 0 ? DiscKind.light : DiscKind.dark,
+                      pieces,
+                    ),
+                  ),
+                  if (hasQueen) ...[
+                    const SizedBox(width: 6),
+                    CustomPaint(
+                      size: const Size(30, 30),
+                      painter: _PieceIconPainter(DiscKind.queen, pieces),
+                    ),
+                  ],
                   if (right) ...[
                     const SizedBox(width: 10),
-                    Text('$pocketed', style: AppText.label(40, color: Colors.white, weight: FontWeight.w900).copyWith(shadows: _shadow)),
+                    Text(
+                      '$pocketed',
+                      style: AppText.label(
+                        40,
+                        color: Colors.white,
+                        weight: FontWeight.w900,
+                      ).copyWith(shadows: _shadow),
+                    ),
                   ],
                 ],
               ),
@@ -461,24 +764,41 @@ class _SeatPanel extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const CustomPaint(size: Size(34, 28), painter: _CoinStackPainter()),
+                    const CustomPaint(
+                      size: Size(34, 28),
+                      painter: _CoinStackPainter(),
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       formatCoins(coins!),
-                      style: AppText.label(22, color: Colors.white, weight: FontWeight.w900).copyWith(shadows: _shadow),
+                      style: AppText.label(
+                        22,
+                        color: Colors.white,
+                        weight: FontWeight.w900,
+                      ).copyWith(shadows: _shadow),
                     ),
                     if (level != null) ...[
                       const SizedBox(width: 16),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xAA000000),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFF2C230), width: 2),
+                          border: Border.all(
+                            color: const Color(0xFFF2C230),
+                            width: 2,
+                          ),
                         ),
                         child: Text(
                           'LVL $level',
-                          style: AppText.label(16, color: const Color(0xFFFFE27A), weight: FontWeight.w900),
+                          style: AppText.label(
+                            16,
+                            color: const Color(0xFFFFE27A),
+                            weight: FontWeight.w900,
+                          ),
                         ),
                       ),
                     ],
@@ -489,8 +809,17 @@ class _SeatPanel extends StatelessWidget {
               Positioned(
                 top: -58,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 6)]),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: const [
+                      BoxShadow(color: Color(0x66000000), blurRadius: 6),
+                    ],
+                  ),
                   child: Text(
                     chat!,
                     style: TextStyle(
@@ -517,10 +846,21 @@ class _TurnRingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rr = RRect.fromRectAndRadius((Offset.zero & size).deflate(3), const Radius.circular(18));
-    canvas.drawRRect(rr, Paint()..style = PaintingStyle.stroke..strokeWidth = 6..color = const Color(0x66000000));
+    final rr = RRect.fromRectAndRadius(
+      (Offset.zero & size).deflate(3),
+      const Radius.circular(18),
+    );
+    canvas.drawRRect(
+      rr,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 6
+        ..color = const Color(0x66000000),
+    );
     final metric = (Path()..addRRect(rr)).computeMetrics().first;
-    final colour = left > 0.5 ? const Color(0xFF3BE34F) : (left > 0.25 ? const Color(0xFFFFC02E) : const Color(0xFFFF4A3D));
+    final colour = left > 0.5
+        ? const Color(0xFF3BE34F)
+        : (left > 0.25 ? const Color(0xFFFFC02E) : const Color(0xFFFF4A3D));
     canvas.drawPath(
       metric.extractPath(0, metric.length * left),
       Paint()
@@ -545,11 +885,19 @@ class _PieceIconPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final r = size.width / 2;
-    paintCarromDisc(canvas, Offset(r, r), r * 0.92, kind, striker: strikerSkins.first, pieces: pieces);
+    paintCarromDisc(
+      canvas,
+      Offset(r, r),
+      r * 0.92,
+      kind,
+      striker: strikerSkins.first,
+      pieces: pieces,
+    );
   }
 
   @override
-  bool shouldRepaint(_PieceIconPainter old) => old.kind != kind || old.pieces != pieces;
+  bool shouldRepaint(_PieceIconPainter old) =>
+      old.kind != kind || old.pieces != pieces;
 }
 
 /// The bar under the board the striker slides along; the knob mirrors where
@@ -560,7 +908,8 @@ class _StrikerSlider extends StatelessWidget {
   final CarromController controller;
 
   @override
-  Widget build(BuildContext context) => CustomPaint(painter: _SliderPainter(controller));
+  Widget build(BuildContext context) =>
+      CustomPaint(painter: _SliderPainter(controller));
 }
 
 class _SliderPainter extends CustomPainter {
@@ -570,20 +919,61 @@ class _SliderPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rr = RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(size.height / 2));
-    canvas.drawRRect(rr.shift(const Offset(0, 4)), Paint()..color = const Color(0x66000000));
-    canvas.drawRRect(rr, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF8C5A3C), Color(0xFF5B3A2E)]).createShader(Offset.zero & size));
-    canvas.drawRRect(rr.deflate(4), Paint()..style = PaintingStyle.stroke..strokeWidth = 3..color = const Color(0xFFB07A52));
-    canvas.drawRRect(rr, Paint()..style = PaintingStyle.stroke..strokeWidth = 3..color = const Color(0xFF3F271F));
+    final rr = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      Radius.circular(size.height / 2),
+    );
+    canvas.drawRRect(
+      rr.shift(const Offset(0, 4)),
+      Paint()..color = const Color(0x66000000),
+    );
+    canvas.drawRRect(
+      rr,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF8C5A3C), Color(0xFF5B3A2E)],
+        ).createShader(Offset.zero & size),
+    );
+    canvas.drawRRect(
+      rr.deflate(4),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..color = const Color(0xFFB07A52),
+    );
+    canvas.drawRRect(
+      rr,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..color = const Color(0xFF3F271F),
+    );
     final enabled = c.canAim;
-    var k = (c.strikerX - CarromWorld.baseMinX) / (CarromWorld.baseMaxX - CarromWorld.baseMinX);
+    var k =
+        (c.strikerX - CarromWorld.baseMinX) /
+        (CarromWorld.baseMaxX - CarromWorld.baseMinX);
     if (c.viewRotated) k = 1 - k;
     final knob = Offset(size.width * (0.06 + 0.88 * k), size.height / 2);
     final r = size.height * 0.46;
     if (enabled) {
-      canvas.drawCircle(knob, r * 1.4, Paint()..color = const Color(0x55FFD54A)..maskFilter = MaskFilter.blur(BlurStyle.normal, 8));
+      canvas.drawCircle(
+        knob,
+        r * 1.4,
+        Paint()
+          ..color = const Color(0x55FFD54A)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 8),
+      );
     }
-    paintCarromDisc(canvas, knob, r, DiscKind.striker, striker: c.strikerSkin, pieces: c.pieceSkin);
+    paintCarromDisc(
+      canvas,
+      knob,
+      r,
+      DiscKind.striker,
+      striker: c.strikerSkin,
+      pieces: c.pieceSkin,
+    );
   }
 
   @override
@@ -597,20 +987,26 @@ class _ChatButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          AudioService.tap();
-          onTap();
-        },
-        child: CustomPaint(size: const Size(78, 66), painter: _BubblePainter()),
-      );
+    behavior: HitTestBehavior.opaque,
+    onTap: () {
+      AudioService.tap();
+      onTap();
+    },
+    child: CustomPaint(size: const Size(78, 66), painter: _BubblePainter()),
+  );
 }
 
 class _BubblePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final r = RRect.fromRectAndRadius(Rect.fromLTWH(0, 0, size.width, size.height * 0.78), Radius.circular(size.height * 0.26));
-    canvas.drawRRect(r.shift(const Offset(0, 4)), Paint()..color = const Color(0x55000000));
+    final r = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, size.width, size.height * 0.78),
+      Radius.circular(size.height * 0.26),
+    );
+    canvas.drawRRect(
+      r.shift(const Offset(0, 4)),
+      Paint()..color = const Color(0x55000000),
+    );
     canvas.drawRRect(r, Paint()..color = Colors.white);
     final tail = Path()
       ..moveTo(size.width * 0.28, size.height * 0.74)
@@ -618,9 +1014,19 @@ class _BubblePainter extends CustomPainter {
       ..lineTo(size.width * 0.46, size.height * 0.74)
       ..close();
     canvas.drawPath(tail, Paint()..color = Colors.white);
-    canvas.drawRRect(r, Paint()..style = PaintingStyle.stroke..strokeWidth = 3..color = const Color(0xFF1B1F2A));
+    canvas.drawRRect(
+      r,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..color = const Color(0xFF1B1F2A),
+    );
     for (var i = 0; i < 3; i++) {
-      canvas.drawCircle(Offset(size.width * (0.3 + i * 0.2), size.height * 0.38), size.height * 0.072, Paint()..color = const Color(0xFF2A3350));
+      canvas.drawCircle(
+        Offset(size.width * (0.3 + i * 0.2), size.height * 0.38),
+        size.height * 0.072,
+        Paint()..color = const Color(0xFF2A3350),
+      );
     }
   }
 
@@ -635,13 +1041,13 @@ class _MenuTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          AudioService.tap();
-          onTap();
-        },
-        child: const CustomPaint(size: Size(96, 46), painter: _MenuTabPainter()),
-      );
+    behavior: HitTestBehavior.opaque,
+    onTap: () {
+      AudioService.tap();
+      onTap();
+    },
+    child: const CustomPaint(size: Size(96, 46), painter: _MenuTabPainter()),
+  );
 }
 
 class _MenuTabPainter extends CustomPainter {
@@ -658,13 +1064,26 @@ class _MenuTabPainter extends CustomPainter {
       ..lineTo(w * 0.32, h)
       ..quadraticBezierTo(w * 0.23, h, w * 0.2, h * 0.82)
       ..close();
-    canvas.drawPath(tab.shift(const Offset(0, 3)), Paint()..color = const Color(0x66000000));
+    canvas.drawPath(
+      tab.shift(const Offset(0, 3)),
+      Paint()..color = const Color(0x66000000),
+    );
     canvas.drawPath(
       tab,
       Paint()
-        ..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFFFE27A), Color(0xFFE9A920)]).createShader(Offset.zero & size),
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFFFE27A), Color(0xFFE9A920)],
+        ).createShader(Offset.zero & size),
     );
-    canvas.drawPath(tab, Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = const Color(0xFF8A5A00));
+    canvas.drawPath(
+      tab,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = const Color(0xFF8A5A00),
+    );
     final line = Paint()
       ..strokeWidth = 3.5
       ..strokeCap = StrokeCap.round
@@ -687,10 +1106,29 @@ class _CoinStackPainter extends CustomPainter {
     final w = size.width, h = size.height;
     for (var i = 2; i >= 0; i--) {
       final y = h * 0.62 - i * h * 0.2;
-      final rect = Rect.fromCenter(center: Offset(w / 2, y), width: w, height: h * 0.4);
-      canvas.drawOval(rect.shift(Offset(0, h * 0.1)), Paint()..color = const Color(0xFF8A5A00));
-      canvas.drawOval(rect, Paint()..shader = const LinearGradient(colors: [Color(0xFFFFE27A), Color(0xFFE9A920)]).createShader(rect));
-      canvas.drawOval(rect, Paint()..style = PaintingStyle.stroke..strokeWidth = 1.2..color = const Color(0xFF8A5A00));
+      final rect = Rect.fromCenter(
+        center: Offset(w / 2, y),
+        width: w,
+        height: h * 0.4,
+      );
+      canvas.drawOval(
+        rect.shift(Offset(0, h * 0.1)),
+        Paint()..color = const Color(0xFF8A5A00),
+      );
+      canvas.drawOval(
+        rect,
+        Paint()
+          ..shader = const LinearGradient(
+            colors: [Color(0xFFFFE27A), Color(0xFFE9A920)],
+          ).createShader(rect),
+      );
+      canvas.drawOval(
+        rect,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2
+          ..color = const Color(0xFF8A5A00),
+      );
     }
   }
 
@@ -706,12 +1144,12 @@ class _CarromBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Stack(
-        fit: StackFit.expand,
-        children: [
-          const RepaintBoundary(child: CustomPaint(painter: _BgPainter())),
-          child,
-        ],
-      );
+    fit: StackFit.expand,
+    children: [
+      const RepaintBoundary(child: CustomPaint(painter: _BgPainter())),
+      child,
+    ],
+  );
 }
 
 class _BgPainter extends CustomPainter {
@@ -720,11 +1158,26 @@ class _BgPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    canvas.drawRect(rect, Paint()..shader = const RadialGradient(center: Alignment(0, 0.1), radius: 0.9, colors: [Color(0xFF8E1E1E), Color(0xFF4A0F0F), Color(0xFF240707)], stops: [0, 0.55, 1]).createShader(rect));
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = const RadialGradient(
+          center: Alignment(0, 0.1),
+          radius: 0.9,
+          colors: [Color(0xFF8E1E1E), Color(0xFF4A0F0F), Color(0xFF240707)],
+          stops: [0, 0.55, 1],
+        ).createShader(rect),
+    );
     // Faint diagonal weave.
-    final weave = Paint()..color = Colors.white.withValues(alpha: 0.025)..strokeWidth = 2;
+    final weave = Paint()
+      ..color = Colors.white.withValues(alpha: 0.025)
+      ..strokeWidth = 2;
     for (var x = -size.height; x < size.width; x += 18) {
-      canvas.drawLine(Offset(x, 0), Offset(x + size.height, size.height), weave);
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x + size.height, size.height),
+        weave,
+      );
     }
   }
 

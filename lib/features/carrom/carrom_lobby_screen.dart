@@ -23,10 +23,125 @@ class CarromLobbyScreen extends ConsumerWidget {
     final settings = ref.watch(settingsProvider);
     final striker = strikerSkinOf(settings.carromStriker);
     final pieces = pieceSkinOf(settings.carromPieces);
+    if (DesignBreakpoints.portraitLayout(context)) {
+      return DuelCanvas(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const DuelTopBar(showProfile: false, showShortcuts: false),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Column(
+                children: [
+                  Text(
+                    t.carromTitle,
+                    textAlign: TextAlign.center,
+                    style: AppText.label(22, weight: FontWeight.w900),
+                  ),
+                  Text(
+                    t.carromLobbySub,
+                    textAlign: TextAlign.center,
+                    style: AppText.label(12, color: DuelColors.dim),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                children: [
+                  _Picker(
+                    title: t.yourStriker,
+                    selectedName: striker.name,
+                    children: [
+                      for (final sk in strikerSkins)
+                        _Swatch(
+                          selected: sk.id == settings.carromStriker,
+                          onTap: () => ref
+                              .read(settingsProvider.notifier)
+                              .update((s) => s.copyWith(carromStriker: sk.id)),
+                          child: CustomPaint(
+                            size: const Size(52, 52),
+                            painter: _DiscPreview(
+                              const [DiscKind.striker],
+                              sk,
+                              pieces,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _Picker(
+                    title: t.yourPieces,
+                    selectedName: pieces.name,
+                    children: [
+                      for (final pk in pieceSkins)
+                        _Swatch(
+                          selected: pk.id == settings.carromPieces,
+                          onTap: () => ref
+                              .read(settingsProvider.notifier)
+                              .update((s) => s.copyWith(carromPieces: pk.id)),
+                          child: CustomPaint(
+                            size: const Size(120, 52),
+                            painter: _DiscPreview(
+                              const [
+                                DiscKind.light,
+                                DiscKind.queen,
+                                DiscKind.dark,
+                              ],
+                              striker,
+                              pk,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Center(
+                    child: DuelButton(
+                      label: t.playForCoin,
+                      width: 240,
+                      height: 48,
+                      fontSize: 16,
+                      color: DuelColors.gold,
+                      onPressed: () async {
+                        if (!await requireRegisteredAccount(context, ref))
+                          return;
+                        if (!context.mounted) return;
+                        await Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                const BetLevelScreen(mode: DuelMode.carrom),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: NavTile(
+                  icon: Icons.reply_rounded,
+                  label: t.back,
+                  onTap: () => Navigator.of(context).pop(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return DuelCanvas(
       child: LobbyScaffold(
         topBar: const DuelTopBar(showProfile: false, showShortcuts: false),
-        title: Center(child: DuelTitle(t.carromTitle, size: 48, sub: t.carromLobbySub)),
+        title: Center(
+          child: DuelTitle(t.carromTitle, size: 48, sub: t.carromLobbySub),
+        ),
         centerPadding: EdgeInsets.zero,
         center: Column(
           children: [
@@ -38,8 +153,17 @@ class CarromLobbyScreen extends ConsumerWidget {
                 for (final sk in strikerSkins)
                   _Swatch(
                     selected: sk.id == settings.carromStriker,
-                    onTap: () => ref.read(settingsProvider.notifier).update((s) => s.copyWith(carromStriker: sk.id)),
-                    child: CustomPaint(size: const Size(64, 64), painter: _DiscPreview(const [DiscKind.striker], sk, pieces)),
+                    onTap: () => ref
+                        .read(settingsProvider.notifier)
+                        .update((s) => s.copyWith(carromStriker: sk.id)),
+                    child: CustomPaint(
+                      size: const Size(64, 64),
+                      painter: _DiscPreview(
+                        const [DiscKind.striker],
+                        sk,
+                        pieces,
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -51,8 +175,17 @@ class CarromLobbyScreen extends ConsumerWidget {
                 for (final pk in pieceSkins)
                   _Swatch(
                     selected: pk.id == settings.carromPieces,
-                    onTap: () => ref.read(settingsProvider.notifier).update((s) => s.copyWith(carromPieces: pk.id)),
-                    child: CustomPaint(size: const Size(150, 64), painter: _DiscPreview(const [DiscKind.light, DiscKind.queen, DiscKind.dark], striker, pk)),
+                    onTap: () => ref
+                        .read(settingsProvider.notifier)
+                        .update((s) => s.copyWith(carromPieces: pk.id)),
+                    child: CustomPaint(
+                      size: const Size(150, 64),
+                      painter: _DiscPreview(
+                        const [DiscKind.light, DiscKind.queen, DiscKind.dark],
+                        striker,
+                        pk,
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -66,21 +199,30 @@ class CarromLobbyScreen extends ConsumerWidget {
                 if (!await requireRegisteredAccount(context, ref)) return;
                 if (!context.mounted) return;
                 await Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const BetLevelScreen(mode: DuelMode.carrom)),
+                  MaterialPageRoute<void>(
+                    builder: (_) => const BetLevelScreen(mode: DuelMode.carrom),
+                  ),
                 );
               },
             ),
             const SizedBox(height: DesignSpacing.x8),
           ],
         ),
-        bottomLeading: LobbyBackNav(label: t.back, onTap: () => Navigator.of(context).pop()),
+        bottomLeading: LobbyBackNav(
+          label: t.back,
+          onTap: () => Navigator.of(context).pop(),
+        ),
       ),
     );
   }
 }
 
 class _Picker extends StatelessWidget {
-  const _Picker({required this.title, required this.selectedName, required this.children});
+  const _Picker({
+    required this.title,
+    required this.selectedName,
+    required this.children,
+  });
 
   final String title;
   final String selectedName;
@@ -88,24 +230,47 @@ class _Picker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(title, style: AppText.label(16, color: DuelColors.dim, weight: FontWeight.w800)),
-              const SizedBox(width: DesignSpacing.x3),
-              Text(selectedName, style: AppText.label(16, color: DuelColors.gold, weight: FontWeight.w900)),
-            ],
+          Text(
+            title,
+            style: AppText.label(
+              16,
+              color: DuelColors.dim,
+              weight: FontWeight.w800,
+            ),
           ),
-          const SizedBox(height: 10),
-          Row(mainAxisSize: MainAxisSize.min, children: children),
+          const SizedBox(width: DesignSpacing.x3),
+          Text(
+            selectedName,
+            style: AppText.label(
+              16,
+              color: DuelColors.gold,
+              weight: FontWeight.w900,
+            ),
+          ),
         ],
-      );
+      ),
+      const SizedBox(height: 10),
+      Center(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(mainAxisSize: MainAxisSize.min, children: children),
+        ),
+      ),
+    ],
+  );
 }
 
 class _Swatch extends StatelessWidget {
-  const _Swatch({required this.selected, required this.onTap, required this.child});
+  const _Swatch({
+    required this.selected,
+    required this.onTap,
+    required this.child,
+  });
 
   final bool selected;
   final VoidCallback onTap;
@@ -113,17 +278,22 @@ class _Swatch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: () {
-          AudioService.tap();
-          onTap();
-        },
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 7),
-          padding: const EdgeInsets.all(10),
-          decoration: duelPanel(radius: DesignRadii.md, rim: selected ? DuelColors.green : DuelColors.rim, glow: selected, fill: selected ? const Color(0xE60C2414) : const Color(0xCC0B0E1C)),
-          child: child,
-        ),
-      );
+    onTap: () {
+      AudioService.tap();
+      onTap();
+    },
+    child: Container(
+      margin: const EdgeInsets.symmetric(horizontal: 7),
+      padding: const EdgeInsets.all(10),
+      decoration: duelPanel(
+        radius: DesignRadii.md,
+        rim: selected ? DuelColors.green : DuelColors.rim,
+        glow: selected,
+        fill: selected ? const Color(0xE60C2414) : const Color(0xCC0B0E1C),
+      ),
+      child: child,
+    ),
+  );
 }
 
 class _DiscPreview extends CustomPainter {
@@ -136,12 +306,22 @@ class _DiscPreview extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final r = size.height * 0.42;
-    final gap = kinds.length == 1 ? 0.0 : (size.width - 2 * r) / (kinds.length - 1);
+    final gap = kinds.length == 1
+        ? 0.0
+        : (size.width - 2 * r) / (kinds.length - 1);
     for (var i = 0; i < kinds.length; i++) {
-      paintCarromDisc(canvas, Offset(r + gap * i, size.height / 2), r, kinds[i], striker: striker, pieces: pieces);
+      paintCarromDisc(
+        canvas,
+        Offset(r + gap * i, size.height / 2),
+        r,
+        kinds[i],
+        striker: striker,
+        pieces: pieces,
+      );
     }
   }
 
   @override
-  bool shouldRepaint(_DiscPreview old) => old.striker != striker || old.pieces != pieces || old.kinds != kinds;
+  bool shouldRepaint(_DiscPreview old) =>
+      old.striker != striker || old.pieces != pieces || old.kinds != kinds;
 }

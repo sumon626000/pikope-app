@@ -49,6 +49,9 @@ class DuelTopBar extends ConsumerWidget {
     final unread = ref.watch(notificationUnreadProvider);
     final registered = hasRegisteredAccount(ref);
     final coins = lobbyDisplayCoins(ref);
+    if (DesignBreakpoints.portraitLayout(context)) {
+      return _portraitBar(context, ref, t, settings, unread, registered, coins);
+    }
     return SizedBox(
       height: 112,
       child: Row(
@@ -83,7 +86,9 @@ class DuelTopBar extends ConsumerWidget {
                             )
                           : null,
                       color: registered ? null : const Color(0xFF1A2140),
-                      border: registered ? null : Border.all(color: DuelColors.rimLight, width: 2),
+                      border: registered
+                          ? null
+                          : Border.all(color: DuelColors.rimLight, width: 2),
                       boxShadow: registered
                           ? const [
                               BoxShadow(
@@ -102,7 +107,11 @@ class DuelTopBar extends ConsumerWidget {
                     child: ClipOval(
                       child: registered
                           ? AvatarImage(settings.avatar, size: 76)
-                          : const Icon(Icons.person_rounded, color: DuelColors.silver, size: 44),
+                          : const Icon(
+                              Icons.person_rounded,
+                              color: DuelColors.silver,
+                              size: 44,
+                            ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -113,7 +122,9 @@ class DuelTopBar extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          registered ? settings.name.toUpperCase() : t.browseProfileTitle,
+                          registered
+                              ? settings.name.toUpperCase()
+                              : t.browseProfileTitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppText.label(
@@ -213,12 +224,201 @@ class DuelTopBar extends ConsumerWidget {
                 pushScreen(context, const NotificationsScreen());
               }
             }, badge: unread),
-            _TopIcon(
+            _TopIcon(Icons.settings_rounded, () => _profileTap(context, ref)),
+          ],
+          const SizedBox(width: 42),
+        ],
+      ),
+    );
+  }
+
+  Widget _portraitBar(
+    BuildContext context,
+    WidgetRef ref,
+    AppStrings t,
+    AppSettings settings,
+    int unread,
+    bool registered,
+    int? coins,
+  ) {
+    return SizedBox(
+      height: 52,
+      child: Row(
+        children: [
+          const SizedBox(width: 8),
+          const DuelLogo(height: 30),
+          const SizedBox(width: 8),
+          if (showProfile)
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  AudioService.tap();
+                  _profileTap(context, ref);
+                },
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: DuelColors.rimLight,
+                          width: 1.4,
+                        ),
+                      ),
+                      child: ClipOval(
+                        child: registered
+                            ? AvatarImage(settings.avatar, size: 32)
+                            : const Icon(
+                                Icons.person_rounded,
+                                color: DuelColors.silver,
+                                size: 18,
+                              ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        registered
+                            ? settings.name.toUpperCase()
+                            : t.browseProfileTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.label(
+                          12,
+                          color: DuelColors.silver,
+                          weight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            const Spacer(),
+          _PortraitWallet(
+            coins: coins,
+            placeholder: t.signUpOrLogin,
+            onTap: () {
+              AudioService.tap();
+              _walletTap(context, ref);
+            },
+          ),
+          if (showShortcuts) ...[
+            _PortraitIcon(Icons.mail_rounded, () async {
+              if (!await requireRegisteredAccount(context, ref)) return;
+              if (context.mounted) pushScreen(context, const NoticesScreen());
+            }),
+            _PortraitIcon(Icons.notifications_rounded, () async {
+              if (!await requireRegisteredAccount(context, ref)) return;
+              if (context.mounted)
+                pushScreen(context, const NotificationsScreen());
+            }, badge: unread),
+            _PortraitIcon(
               Icons.settings_rounded,
               () => _profileTap(context, ref),
             ),
           ],
-          const SizedBox(width: 42),
+          const SizedBox(width: 4),
+        ],
+      ),
+    );
+  }
+}
+
+class _PortraitWallet extends StatelessWidget {
+  const _PortraitWallet({
+    required this.coins,
+    required this.placeholder,
+    required this.onTap,
+  });
+
+  final int? coins;
+  final String placeholder;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = coins != null
+        ? formatCoins(coins!, compact: true)
+        : placeholder;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 30,
+        constraints: const BoxConstraints(maxWidth: 118),
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xEE12182E),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: DuelColors.rimLight.withValues(alpha: 0.8)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const PikoCoinIcon(size: 18),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppText.label(
+                  11,
+                  color: Colors.white,
+                  weight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const Icon(Icons.add_rounded, color: Color(0xFFFF8A3C), size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PortraitIcon extends StatelessWidget {
+  const _PortraitIcon(this.icon, this.onTap, {this.badge = 0});
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final int badge;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onTap,
+      visualDensity: VisualDensity.compact,
+      padding: const EdgeInsets.all(6),
+      constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+      icon: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Icon(icon, color: DuelColors.silver, size: 20),
+          if (badge > 0)
+            Positioned(
+              right: -6,
+              top: -4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                decoration: BoxDecoration(
+                  color: DuelColors.red,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  badge > 99 ? '99+' : '$badge',
+                  style: AppText.label(
+                    8,
+                    color: Colors.white,
+                    weight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -298,6 +498,9 @@ class DuelPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
+    if (DesignBreakpoints.portraitLayout(context)) {
+      return _PortraitDuelPage(title: title, sub: sub, child: child);
+    }
     final bodyTop = DesignSecondaryPage.bodyTop(
       expanded: expanded,
       override: contentTop,
@@ -354,6 +557,107 @@ class DuelPage extends ConsumerWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Secondary lobby pages on a portrait phone: real pixels, back, title, wallet.
+class _PortraitDuelPage extends ConsumerWidget {
+  const _PortraitDuelPage({required this.title, this.sub, required this.child});
+
+  final String title;
+  final String? sub;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(stringsProvider);
+    final coins = lobbyDisplayCoins(ref);
+    return Scaffold(
+      backgroundColor: DuelColors.ink,
+      resizeToAvoidBottomInset: true,
+      body: DuelBackdrop(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(6, 2, 8, 0),
+                child: Row(
+                  children: [
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).maybePop(),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: DuelColors.rimLight),
+                            color: const Color(0xCC0B0E1C),
+                          ),
+                          child: const Icon(
+                            Icons.arrow_back_rounded,
+                            color: DuelColors.silver,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const DuelLogo(height: 26),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.label(15, weight: FontWeight.w900),
+                          ),
+                          if (sub != null)
+                            Text(
+                              sub!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.label(
+                                10,
+                                color: DuelColors.dim,
+                                weight: FontWeight.w700,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    _PortraitWallet(
+                      coins: coins,
+                      placeholder: t.signUpOrLogin,
+                      onTap: () async {
+                        AudioService.tap();
+                        if (!await requireRegisteredAccount(context, ref))
+                          return;
+                        if (context.mounted)
+                          pushScreen(context, const ShopScreen());
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                  child: child,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

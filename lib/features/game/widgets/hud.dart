@@ -26,19 +26,54 @@ class SeatLayout {
   static const tableRect = Rect.fromLTWH(420, 96, 1180, 690);
 
   static const avatarSizes = [92.0, 96.0, 84.0, 96.0];
-  static const nameSides = [NameSide.hidden, NameSide.below, NameSide.right, NameSide.below];
-  static const avatar = [Offset(436, 798), Offset(262, 104), Offset(1140, 6), Offset(1632, 470)];
+  static const nameSides = [
+    NameSide.hidden,
+    NameSide.below,
+    NameSide.right,
+    NameSide.below,
+  ];
+  static const avatar = [
+    Offset(436, 798),
+    Offset(262, 104),
+    Offset(1140, 6),
+    Offset(1632, 470),
+  ];
 
   /// The viewer's cards are large and tappable; opponents' are compact.
   static const cardWidths = [72.0, 54.0, 50.0, 54.0];
-  static const handStart = [Offset(548, 792), Offset(270, 250), Offset(770, 10), Offset(1640, 110)];
-  static const handAxis = [Offset(1, 0), Offset(0, 1), Offset(1, 0), Offset(0, 1)];
+  static const handStart = [
+    Offset(548, 792),
+    Offset(270, 250),
+    Offset(770, 10),
+    Offset(1640, 110),
+  ];
+  static const handAxis = [
+    Offset(1, 0),
+    Offset(0, 1),
+    Offset(1, 0),
+    Offset(0, 1),
+  ];
   static const handExtent = [520.0, 300.0, 310.0, 300.0];
   static const handMaxStep = [76.0, 42.0, 46.0, 42.0];
-  static const raiseDir = [Offset(0, -1), Offset(1, 0), Offset(0, 1), Offset(-1, 0)];
+  static const raiseDir = [
+    Offset(0, -1),
+    Offset(1, 0),
+    Offset(0, 1),
+    Offset(-1, 0),
+  ];
   static const quarterTurns = [0, 1, 0, 3];
-  static const breakCard = [Offset(560, 650), Offset(264, 250), Offset(1040, 2), Offset(1640, 300)];
-  static const doneChips = [Offset(0, 0), Offset(262, 628), Offset(1240, 56), Offset(1632, 628)];
+  static const breakCard = [
+    Offset(560, 650),
+    Offset(264, 250),
+    Offset(1040, 2),
+    Offset(1640, 300),
+  ];
+  static const doneChips = [
+    Offset(0, 0),
+    Offset(262, 628),
+    Offset(1240, 56),
+    Offset(1632, 628),
+  ];
 }
 
 enum NameSide { below, right, hidden }
@@ -51,7 +86,11 @@ const _dealOrigin = Offset(974, 390);
 // ----------------------------------------------------------------- seat
 
 class SeatView extends ConsumerWidget {
-  const SeatView({super.key, required this.controller, required this.playerIndex});
+  const SeatView({
+    super.key,
+    required this.controller,
+    required this.playerIndex,
+  });
 
   final GameController controller;
   final int playerIndex;
@@ -62,7 +101,8 @@ class SeatView extends ConsumerWidget {
     final c = controller;
     final p = c.players[playerIndex];
     final phase = c.state.phase;
-    final isCurrent = c.orderKnown &&
+    final isCurrent =
+        c.orderKnown &&
         c.state.currentIndex == playerIndex &&
         !c.dealing &&
         !c.presenting &&
@@ -118,66 +158,82 @@ class AvatarSeat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tile = SizedBox(
-            width: size,
-            height: size,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                FramedTile(
-                  size: size,
-                  frameColor: isWinner
-                      ? AppColors.gold
-                      : isCurrent
-                          ? const Color(0xFF1F4D2A)
-                          : AppColors.frame,
-                  glow: isCurrent || isWinner,
-                  child: AvatarImage(avatar, size: size),
+      width: size,
+      height: size,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          FramedTile(
+            size: size,
+            frameColor: isWinner
+                ? AppColors.gold
+                : isCurrent
+                ? const Color(0xFF1F4D2A)
+                : AppColors.frame,
+            glow: isCurrent || isWinner,
+            child: AvatarImage(avatar, size: size),
+          ),
+          // The clock changes every frame: keep its repaints in their
+          // own layers so the rest of the HUD is not redrawn with it.
+          if (isCurrent)
+            Positioned.fill(
+              child: RepaintBoundary(
+                child: ValueListenableBuilder<double>(
+                  valueListenable: clock,
+                  builder: (_, left, _) => CustomPaint(
+                    painter: _TimerRingPainter(
+                      (left / shotSeconds).clamp(0.0, 1.0),
+                      left <= 10 ? AppColors.danger : AppColors.active,
+                    ),
+                  ),
                 ),
-                // The clock changes every frame: keep its repaints in their
-                // own layers so the rest of the HUD is not redrawn with it.
-                if (isCurrent)
-                  Positioned.fill(
-                    child: RepaintBoundary(
-                      child: ValueListenableBuilder<double>(
-                        valueListenable: clock,
-                        builder: (_, left, _) => CustomPaint(
-                          painter: _TimerRingPainter(
-                            (left / shotSeconds).clamp(0.0, 1.0),
-                            left <= 10 ? AppColors.danger : AppColors.active,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                if (isCurrent)
-                  Positioned(
-                    right: -10,
-                    top: -10,
-                    child: RepaintBoundary(
-                      child: ValueListenableBuilder<double>(
-                        valueListenable: clock,
-                        builder: (_, left, _) => _Badge(
-                          '${left.ceil()}',
-                          left <= 10 ? AppColors.danger : AppColors.active,
-                        ),
-                      ),
-                    ),
-                  ),
-                if (isWinner)
-                  Positioned(left: -14, bottom: -6, right: -14, child: _Badge(winnerLabel, AppColors.gold))
-                else if (tag != null)
-                  Positioned(left: -14, bottom: -6, right: -14, child: _Badge(tag!, AppColors.gold)),
-                if (turnMisses != null)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: -14,
-                    child: Center(child: TurnLifeDots(missed: turnMisses!, size: size * 0.11)),
-                  ),
-              ],
+              ),
             ),
-          );
-    final label = Text(name.toUpperCase(), maxLines: 1, style: AppText.label(size * 0.19));
+          if (isCurrent)
+            Positioned(
+              right: -10,
+              top: -10,
+              child: RepaintBoundary(
+                child: ValueListenableBuilder<double>(
+                  valueListenable: clock,
+                  builder: (_, left, _) => _Badge(
+                    '${left.ceil()}',
+                    left <= 10 ? AppColors.danger : AppColors.active,
+                  ),
+                ),
+              ),
+            ),
+          if (isWinner)
+            Positioned(
+              left: -14,
+              bottom: -6,
+              right: -14,
+              child: _Badge(winnerLabel, AppColors.gold),
+            )
+          else if (tag != null)
+            Positioned(
+              left: -14,
+              bottom: -6,
+              right: -14,
+              child: _Badge(tag!, AppColors.gold),
+            ),
+          if (turnMisses != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: -14,
+              child: Center(
+                child: TurnLifeDots(missed: turnMisses!, size: size * 0.11),
+              ),
+            ),
+        ],
+      ),
+    );
+    final label = Text(
+      name.toUpperCase(),
+      maxLines: 1,
+      style: AppText.label(size * 0.19),
+    );
     switch (nameSide) {
       case NameSide.hidden:
         return Padding(
@@ -187,7 +243,12 @@ class AvatarSeat extends StatelessWidget {
       case NameSide.right:
         return Row(
           mainAxisSize: MainAxisSize.min,
-          children: [const SizedBox(width: 30), tile, const SizedBox(width: 14), label],
+          children: [
+            const SizedBox(width: 30),
+            tile,
+            const SizedBox(width: 14),
+            label,
+          ],
         );
       case NameSide.below:
         return SizedBox(
@@ -236,16 +297,19 @@ class _Badge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 4)],
-          ),
-          child: Text(text, style: AppText.label(15, color: Colors.black, weight: FontWeight.w900)),
-        ),
-      );
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 4)],
+      ),
+      child: Text(
+        text,
+        style: AppText.label(15, color: Colors.black, weight: FontWeight.w900),
+      ),
+    ),
+  );
 }
 
 class _TimerRingPainter extends CustomPainter {
@@ -273,7 +337,8 @@ class _TimerRingPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_TimerRingPainter old) => old.fraction != fraction || old.color != color;
+  bool shouldRepaint(_TimerRingPainter old) =>
+      old.fraction != fraction || old.color != color;
 }
 
 // ---------------------------------------------------------------- hands
@@ -289,9 +354,13 @@ List<Widget> buildHand(GameController c, int playerIndex) {
   final n = p.hand.length;
   final step = n <= 1
       ? 0.0
-      : min(SeatLayout.handMaxStep[slot], SeatLayout.handExtent[slot] / (n - 1));
+      : min(
+          SeatLayout.handMaxStep[slot],
+          SeatLayout.handExtent[slot] / (n - 1),
+        );
   final isViewer = slot == 0 && !p.isBot;
-  final myTurn = c.canAim && c.state.currentIndex == playerIndex && !c.state.isBreakShot;
+  final myTurn =
+      c.canAim && c.state.currentIndex == playerIndex && !c.state.isBreakShot;
   final turns = SeatLayout.quarterTurns[slot];
   final cardW = SeatLayout.cardWidths[slot];
   final cardH = cardW * CardFace.aspect;
@@ -303,18 +372,27 @@ List<Widget> buildHand(GameController c, int playerIndex) {
         final selected = identical(c.state.selectedCard, hc);
         final shown = c.raisedCards.contains(hc);
         final raise = shown ? cardH / 2 : (selected ? cardH * 0.28 : 0.0);
-        final pos = SeatLayout.handStart[slot] +
+        final pos =
+            SeatLayout.handStart[slot] +
             SeatLayout.handAxis[slot] * (step * i) +
             SeatLayout.raiseDir[slot] * raise;
-        final faceUp = (isViewer && !c.handoffPending) || hc.revealed || selected || shown;
-        final selectable = isViewer && myTurn && !hc.completed && p.pendingBalls.contains(hc.card.ball);
+        final faceUp =
+            (isViewer && !c.handoffPending) || hc.revealed || selected || shown;
+        final selectable =
+            isViewer &&
+            myTurn &&
+            !hc.completed &&
+            p.pendingBalls.contains(hc.card.ball);
         final face = CardFace(
           card: hc.card,
           width: cardW,
           completed: hc.completed,
           penalty: hc.isPenalty,
           selected: selected,
-          disabled: isViewer && !hc.completed && !p.pendingBalls.contains(hc.card.ball),
+          disabled:
+              isViewer &&
+              !hc.completed &&
+              !p.pendingBalls.contains(hc.card.ball),
         );
         return AnimatedPositioned(
           key: ValueKey('hand-$playerIndex-${hc.key}'),
@@ -330,12 +408,16 @@ List<Widget> buildHand(GameController c, int playerIndex) {
               tween: Tween(begin: 1, end: 0),
               duration: const Duration(milliseconds: 260),
               curve: Curves.easeOutCubic,
-              builder: (_, t, child) =>
-                  Transform.translate(offset: (_dealOrigin - pos) * (t * 0.6), child: child),
+              builder: (_, t, child) => Transform.translate(
+                offset: (_dealOrigin - pos) * (t * 0.6),
+                child: child,
+              ),
               child: RotatedBox(
                 quarterTurns: turns,
                 child: isViewer
-                    ? (faceUp ? face : CardBack(width: cardW, completed: hc.completed))
+                    ? (faceUp
+                          ? face
+                          : CardBack(width: cardW, completed: hc.completed))
                     : FlipCard(
                         faceUp: faceUp,
                         front: face,
@@ -365,7 +447,10 @@ class DoneChips extends StatelessWidget {
         const Icon(Icons.check_circle, color: AppColors.active, size: 20),
         const SizedBox(width: 4),
         for (final b in done.take(7))
-          Padding(padding: const EdgeInsets.only(right: 3), child: BallIcon(b, size: 24)),
+          Padding(
+            padding: const EdgeInsets.only(right: 3),
+            child: BallIcon(b, size: 24),
+          ),
       ],
     );
   }
@@ -375,7 +460,11 @@ class DoneChips extends StatelessWidget {
 
 /// The viewer's unique objectives (not cards) plus the free-ball selectors.
 class ObjectivePanel extends ConsumerWidget {
-  const ObjectivePanel({super.key, required this.controller, required this.player});
+  const ObjectivePanel({
+    super.key,
+    required this.controller,
+    required this.player,
+  });
 
   final GameController controller;
   final PlayerState player;
@@ -386,7 +475,8 @@ class ObjectivePanel extends ConsumerWidget {
     final c = controller;
     final required = player.requiredBalls.toList()..sort();
     final penalty = player.penaltyBalls;
-    final canPick = c.canAim && identical(c.current, player) && !c.state.isBreakShot;
+    final canPick =
+        c.canAim && identical(c.current, player) && !c.state.isBreakShot;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
       decoration: panelDecoration(),
@@ -396,8 +486,10 @@ class ObjectivePanel extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Text(t.yourBallsCount(player.completedBalls.length, required.length),
-                  style: AppText.label(14, color: AppColors.textDim)),
+              Text(
+                t.yourBallsCount(player.completedBalls.length, required.length),
+                style: AppText.label(14, color: AppColors.textDim),
+              ),
               const Spacer(),
               Text(t.freeBall, style: AppText.label(14, color: AppColors.gold)),
               const SizedBox(width: 34),
@@ -419,7 +511,9 @@ class ObjectivePanel extends ConsumerWidget {
                             ball: b,
                             done: player.completedBalls.contains(b),
                             penalty: penalty.contains(b),
-                            target: c.state.targetBall == b && identical(c.current, player),
+                            target:
+                                c.state.targetBall == b &&
+                                identical(c.current, player),
                           ),
                         ),
                     ],
@@ -437,7 +531,9 @@ class ObjectivePanel extends ConsumerWidget {
                       done: false,
                       penalty: false,
                       dim: !canPick,
-                      target: c.state.selectedFreeBall == b && identical(c.current, player),
+                      target:
+                          c.state.selectedFreeBall == b &&
+                          identical(c.current, player),
                     ),
                   ),
                 ),
@@ -469,16 +565,20 @@ class _ObjectiveChip extends StatelessWidget {
     final ring = target
         ? AppColors.gold
         : penalty
-            ? AppColors.danger
-            : Colors.transparent;
+        ? AppColors.danger
+        : Colors.transparent;
     return Container(
       padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: ring, width: 3)),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: ring, width: 3),
+      ),
       child: Stack(
         alignment: Alignment.center,
         children: [
           BallIcon(ball, size: 40, opacity: done ? 0.35 : (dim ? 0.5 : 1)),
-          if (done) const Icon(Icons.check_rounded, color: AppColors.active, size: 36),
+          if (done)
+            const Icon(Icons.check_rounded, color: AppColors.active, size: 36),
         ],
       ),
     );
@@ -510,7 +610,9 @@ class PowerBar extends StatelessWidget {
       onVerticalDragCancel: c.releaseShot,
       child: Padding(
         padding: touchPad,
-        child: RepaintBoundary(child: CustomPaint(size: size, painter: _PowerBarPainter(c))),
+        child: RepaintBoundary(
+          child: CustomPaint(size: size, painter: _PowerBarPainter(c)),
+        ),
       ),
     );
   }
@@ -527,9 +629,27 @@ class ShootHint extends ConsumerWidget {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(t.pull, style: AppText.label(17, color: AppColors.gold, weight: FontWeight.w900)),
-          Text(t.down, style: AppText.label(17, color: AppColors.gold, weight: FontWeight.w900)),
-          const Icon(Icons.keyboard_double_arrow_down_rounded, color: AppColors.gold, size: 44),
+          Text(
+            t.pull,
+            style: AppText.label(
+              17,
+              color: AppColors.gold,
+              weight: FontWeight.w900,
+            ),
+          ),
+          Text(
+            t.down,
+            style: AppText.label(
+              17,
+              color: AppColors.gold,
+              weight: FontWeight.w900,
+            ),
+          ),
+          const Icon(
+            Icons.keyboard_double_arrow_down_rounded,
+            color: AppColors.gold,
+            size: 44,
+          ),
           Text(t.toShoot, style: AppText.label(15, color: AppColors.text)),
           Text(t.shootLabel, style: AppText.label(15, color: AppColors.text)),
         ],
@@ -538,8 +658,20 @@ class ShootHint extends ConsumerWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(t.pullDownToShoot, textAlign: TextAlign.center, style: AppText.label(15, color: AppColors.gold, weight: FontWeight.w900)),
-        const Icon(Icons.keyboard_double_arrow_down_rounded, color: AppColors.gold, size: 44),
+        Text(
+          t.pullDownToShoot,
+          textAlign: TextAlign.center,
+          style: AppText.label(
+            15,
+            color: AppColors.gold,
+            weight: FontWeight.w900,
+          ),
+        ),
+        const Icon(
+          Icons.keyboard_double_arrow_down_rounded,
+          color: AppColors.gold,
+          size: 44,
+        ),
       ],
     );
   }
@@ -552,7 +684,10 @@ class _PowerBarPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final outer = RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(14));
+    final outer = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      const Radius.circular(14),
+    );
     if (c.canShoot && c.power == 0) {
       // Breathing gold halo: "this is what you pull".
       final pulse = 0.5 + 0.5 * sin(c.frame.value / 11);
@@ -599,7 +734,10 @@ class _PowerBarPainter extends CustomPainter {
         ).createShader(Rect.fromLTWH(cx - 8, 0, 16, size.height)),
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(cx - 3.5, top, 7, 9), const Radius.circular(3)),
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(cx - 3.5, top, 7, 9),
+        const Radius.circular(3),
+      ),
       Paint()..color = const Color(0xFFE8E8EE),
     );
     canvas.restore();
@@ -620,7 +758,9 @@ class SpinControl extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = controller;
     const r = diameter / 2;
-    void set(Offset local) => c.setSpin(Vec2((local.dx - r) / (r * 0.75), -(local.dy - r) / (r * 0.75)));
+    void set(Offset local) => c.setSpin(
+      Vec2((local.dx - r) / (r * 0.75), -(local.dy - r) / (r * 0.75)),
+    );
     return GestureDetector(
       onPanStart: (d) => set(d.localPosition),
       onPanUpdate: (d) => set(d.localPosition),
@@ -635,14 +775,23 @@ class SpinControl extends StatelessWidget {
             colors: [Colors.white, Color(0xFFE4E4DC), Color(0xFFB9B9B0)],
             stops: [0, 0.7, 1],
           ),
-          boxShadow: [BoxShadow(color: Colors.black54, blurRadius: 8, offset: Offset(0, 3))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black54,
+              blurRadius: 8,
+              offset: Offset(0, 3),
+            ),
+          ],
         ),
         child: Align(
           alignment: Alignment(c.spin.x * 0.75, -c.spin.y * 0.75),
           child: Container(
             width: 14,
             height: 14,
-            decoration: const BoxDecoration(color: Color(0xFFE0261B), shape: BoxShape.circle),
+            decoration: const BoxDecoration(
+              color: Color(0xFFE0261B),
+              shape: BoxShape.circle,
+            ),
           ),
         ),
       ),
@@ -671,8 +820,15 @@ class MenuTile extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.grid_view_rounded, color: const Color(0xFFB5B5C0), size: size * 0.46),
-            Text(t.menu, style: AppText.label(size * 0.15, color: const Color(0xFFB5B5C0))),
+            Icon(
+              Icons.grid_view_rounded,
+              color: const Color(0xFFB5B5C0),
+              size: size * 0.46,
+            ),
+            Text(
+              t.menu,
+              style: AppText.label(size * 0.15, color: const Color(0xFFB5B5C0)),
+            ),
           ],
         ),
       ),
@@ -702,7 +858,10 @@ class BannerView extends ConsumerWidget {
       curve: Curves.easeOutCubic,
       builder: (_, t, child) => Opacity(
         opacity: t.clamp(0.0, 1.0),
-        child: Transform.translate(offset: Offset(0, 26 * (1 - t)), child: child),
+        child: Transform.translate(
+          offset: Offset(0, 26 * (1 - t)),
+          child: child,
+        ),
       ),
       child: Container(
         constraints: const BoxConstraints(maxWidth: 720),
@@ -711,7 +870,9 @@ class BannerView extends ConsumerWidget {
           color: const Color(0xE6101014),
           borderRadius: BorderRadius.circular(22),
           border: Border.all(color: color, width: 3),
-          boxShadow: [BoxShadow(color: color.withValues(alpha: 0.45), blurRadius: 30)],
+          boxShadow: [
+            BoxShadow(color: color.withValues(alpha: 0.45), blurRadius: 30),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -724,8 +885,11 @@ class BannerView extends ConsumerWidget {
                   child: Text(
                     s.bannerLine(banner.lines[i]),
                     textAlign: TextAlign.center,
-                    style: AppText.label(i == 0 ? 38 : 22,
-                        color: i == 0 ? color : AppColors.text, weight: FontWeight.w900),
+                    style: AppText.label(
+                      i == 0 ? 38 : 22,
+                      color: i == 0 ? color : AppColors.text,
+                      weight: FontWeight.w900,
+                    ),
                   ),
                 ),
               ),
@@ -734,6 +898,97 @@ class BannerView extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Viewer and opponent hands in a portrait column (no 1950×900 coordinates).
+Widget portraitHandStrip(GameController c, int playerIndex) {
+  final p = c.players[playerIndex];
+  final slot = c.slotOf(playerIndex);
+  final isViewer = slot == 0 && !p.isBot;
+  final myTurn =
+      c.canAim && c.state.currentIndex == playerIndex && !c.state.isBreakShot;
+  final cardW = isViewer ? 46.0 : 30.0;
+  if (p.hand.isEmpty) return const SizedBox.shrink();
+  return SizedBox(
+    height: isViewer ? 74 : 48,
+    child: ListView.separated(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      itemCount: p.hand.length,
+      separatorBuilder: (_, _) => const SizedBox(width: 4),
+      itemBuilder: (_, i) {
+        final hc = p.hand[i];
+        final selected = identical(c.state.selectedCard, hc);
+        final shown = c.raisedCards.contains(hc);
+        final faceUp =
+            (isViewer && !c.handoffPending) || hc.revealed || selected || shown;
+        final selectable =
+            isViewer &&
+            myTurn &&
+            !hc.completed &&
+            p.pendingBalls.contains(hc.card.ball);
+        final face = CardFace(
+          card: hc.card,
+          width: cardW,
+          completed: hc.completed,
+          penalty: hc.isPenalty,
+          selected: selected,
+          disabled:
+              isViewer &&
+              !hc.completed &&
+              !p.pendingBalls.contains(hc.card.ball),
+        );
+        return GestureDetector(
+          onTap: selectable ? () => c.selectCard(hc) : null,
+          child: faceUp
+              ? face
+              : CardBack(width: cardW, completed: hc.completed),
+        );
+      },
+    ),
+  );
+}
+
+Widget portraitBreakSpread(GameController c) {
+  if (c.breakSpread.isEmpty) return const SizedBox.shrink();
+  final picker = c.breakPicker;
+  return Wrap(
+    spacing: 4,
+    runSpacing: 4,
+    alignment: WrapAlignment.center,
+    children: [
+      for (var i = 0; i < c.breakSpread.length; i++)
+        if (c.breakSpread[i] != null)
+          GestureDetector(
+            onTap: picker != null ? () => c.pickBreakCard(i) : null,
+            child: const CardBack(width: 32),
+          ),
+    ],
+  );
+}
+
+Widget portraitBreakRow(GameController c) {
+  final cards = <Widget>[
+    for (var i = 0; i < c.players.length; i++)
+      if (c.players[i].breakCard != null)
+        Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: FlipCard(
+            faceUp: c.breakRevealed,
+            front: CardFace(
+              card: c.players[i].breakCard!,
+              width: 36,
+              selected: c.orderKnown && c.state.turnOrder.indexOf(i) == 0,
+            ),
+            back: CardBack(width: 36, highlighted: !c.players[i].isBot),
+          ),
+        ),
+  ];
+  if (cards.isEmpty) return const SizedBox.shrink();
+  return SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: Row(children: cards),
+  );
 }
 
 // ----------------------------------------------------------- break draw
@@ -780,7 +1035,10 @@ List<Widget> buildBreakCards(GameController c) {
                 ),
                 if (rank >= 0) ...[
                   const SizedBox(height: 4),
-                  _Badge(_ordinals[rank], rank == 0 ? AppColors.gold : AppColors.text),
+                  _Badge(
+                    _ordinals[rank],
+                    rank == 0 ? AppColors.gold : AppColors.text,
+                  ),
                 ],
               ],
             ),
@@ -788,4 +1046,3 @@ List<Widget> buildBreakCards(GameController c) {
         }(),
   ];
 }
-

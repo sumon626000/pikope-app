@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
+import '../../core/design/design.dart';
 import '../../core/duel_ui.dart';
 import '../../core/widgets.dart';
 import '../../data/api_client.dart';
@@ -20,7 +21,11 @@ import '../../l10n/strings.dart';
 export 'challenge_flow.dart' show openChallengeRoom, ChallengeTarget;
 
 /// Top banner (not full-screen) for an incoming challenge.
-Future<void> showIncomingChallenge(BuildContext context, WidgetRef ref, Map<String, dynamic> ch) async {
+Future<void> showIncomingChallenge(
+  BuildContext context,
+  WidgetRef ref,
+  Map<String, dynamic> ch,
+) async {
   await showIncomingChallengeBanner(context, ref, ch);
 }
 
@@ -41,7 +46,10 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
   void initState() {
     super.initState();
     _refresh();
-    _timer = Timer.periodic(const Duration(milliseconds: 1500), (_) => _refresh());
+    _timer = Timer.periodic(
+      const Duration(milliseconds: 1500),
+      (_) => _refresh(),
+    );
   }
 
   @override
@@ -72,25 +80,37 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
         await ref.read(lobbyProvider.notifier).refreshRequired();
       } on ApiException catch (e) {
         if (mounted) {
-          showDuelMessage(context, title: t.challengePageTitle, body: t.maybeApi(e.message));
+          showDuelMessage(
+            context,
+            title: t.challengePageTitle,
+            body: t.maybeApi(e.message),
+          );
         }
         return;
       }
     }
     if (!mounted) return;
-    final target = ChallengeTarget(userId: player['id'] as int, name: player['name'] as String);
+    final target = ChallengeTarget(
+      userId: player['id'] as int,
+      name: player['name'] as String,
+    );
     var gameKey = player['game'] as String? ?? '';
     var mode = duelModeFromApi(gameKey);
     if (mode == null) {
-      gameKey = await Navigator.of(context).push<String>(
-            MaterialPageRoute(builder: (_) => ChallengeGamePickScreen(player: player)),
+      gameKey =
+          await Navigator.of(context).push<String>(
+            MaterialPageRoute(
+              builder: (_) => ChallengeGamePickScreen(player: player),
+            ),
           ) ??
           '';
       mode = duelModeFromApi(gameKey);
     }
     if (!mounted || mode == null) return;
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => BetLevelScreen(mode: mode!, challengeTarget: target)),
+      MaterialPageRoute<void>(
+        builder: (_) => BetLevelScreen(mode: mode!, challengeTarget: target),
+      ),
     );
     if (mounted) _refresh();
   }
@@ -109,24 +129,42 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
                   ? Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(t.maybeApi(_error!), textAlign: TextAlign.center, style: AppText.label(16, color: DuelColors.red)),
+                        Text(
+                          t.maybeApi(_error!),
+                          textAlign: TextAlign.center,
+                          style: AppText.label(16, color: DuelColors.red),
+                        ),
                         const SizedBox(height: 12),
-                        DuelButton(label: t.retry, width: 140, height: 44, onPressed: _refresh),
+                        DuelButton(
+                          label: t.retry,
+                          width: 140,
+                          height: 44,
+                          onPressed: _refresh,
+                        ),
                       ],
                     )
-                  : const CircularProgressIndicator(color: DuelColors.silver))
+                  : const CircularProgressIndicator(color: DuelColors.silver),
+            )
           : players.isEmpty
-              ? Center(child: Text(t.noPlayersOnline, style: AppText.label(20, color: DuelColors.dim)))
-              : GridView.count(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
-                  childAspectRatio: 4.3,
-                  padding: const EdgeInsets.only(bottom: 10),
-                  children: [
-                    for (final p in players) _PlayerRow(player: p, onChallenge: () => _challenge(p)),
-                  ],
-                ),
+          ? Center(
+              child: Text(
+                t.noPlayersOnline,
+                style: AppText.label(20, color: DuelColors.dim),
+              ),
+            )
+          : GridView.count(
+              crossAxisCount: DesignBreakpoints.portraitLayout(context) ? 1 : 2,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              childAspectRatio: DesignBreakpoints.portraitLayout(context)
+                  ? 3.4
+                  : 4.3,
+              padding: const EdgeInsets.only(bottom: 10),
+              children: [
+                for (final p in players)
+                  _PlayerRow(player: p, onChallenge: () => _challenge(p)),
+              ],
+            ),
     );
   }
 }
@@ -160,34 +198,79 @@ class _PlayerRow extends ConsumerWidget {
       decoration: duelPanel(radius: 14),
       child: Row(
         children: [
-          ClipRRect(borderRadius: BorderRadius.circular(10), child: AvatarImage(player['avatar'] as String, size: 58)),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: AvatarImage(player['avatar'] as String, size: 58),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text((player['name'] as String).toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.label(18, weight: FontWeight.w800)),
+                Text(
+                  (player['name'] as String).toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.label(18, weight: FontWeight.w800),
+                ),
                 const SizedBox(height: 3),
-                Text('LV ${player['level']}  -  ${player['rank']}  -  ${formatCoins(player['coins'] as int)}', style: AppText.label(12, color: DuelColors.dim)),
-                Text(activity, style: AppText.label(11, color: busy ? DuelColors.red : DuelColors.green, weight: FontWeight.w700)),
+                Text(
+                  'LV ${player['level']}  -  ${player['rank']}  -  ${formatCoins(player['coins'] as int)}',
+                  style: AppText.label(12, color: DuelColors.dim),
+                ),
+                Text(
+                  activity,
+                  style: AppText.label(
+                    11,
+                    color: busy ? DuelColors.red : DuelColors.green,
+                    weight: FontWeight.w700,
+                  ),
+                ),
               ],
             ),
           ),
           if (busy)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(color: const Color(0xFF2A2F4A), borderRadius: BorderRadius.circular(10)),
-              child: Text(t.inMatch, style: AppText.label(13, color: DuelColors.dim, weight: FontWeight.w800)),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2A2F4A),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                t.inMatch,
+                style: AppText.label(
+                  13,
+                  color: DuelColors.dim,
+                  weight: FontWeight.w800,
+                ),
+              ),
             )
           else if (!accepts)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(color: const Color(0xFF2A2F4A), borderRadius: BorderRadius.circular(10)),
-              child: Text(t.challengesOffShort, style: AppText.label(12, color: DuelColors.dim, weight: FontWeight.w800)),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2A2F4A),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                t.challengesOffShort,
+                style: AppText.label(
+                  12,
+                  color: DuelColors.dim,
+                  weight: FontWeight.w800,
+                ),
+              ),
             )
           else
-            DuelButton(label: t.challengeBtn, width: 170, height: 46, fontSize: 15, color: DuelColors.gold, onPressed: onChallenge),
+            DuelButton(
+              label: t.challengeBtn,
+              width: 170,
+              height: 46,
+              fontSize: 15,
+              color: DuelColors.gold,
+              onPressed: onChallenge,
+            ),
         ],
       ),
     );
@@ -203,10 +286,12 @@ class ChallengeGamePickScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> player;
 
   @override
-  ConsumerState<ChallengeGamePickScreen> createState() => _ChallengeGamePickScreenState();
+  ConsumerState<ChallengeGamePickScreen> createState() =>
+      _ChallengeGamePickScreenState();
 }
 
-class _ChallengeGamePickScreenState extends ConsumerState<ChallengeGamePickScreen> {
+class _ChallengeGamePickScreenState
+    extends ConsumerState<ChallengeGamePickScreen> {
   _PickGameStep _step = _PickGameStep.gameFamily;
   static const _poolGames = ['eight', 'nine', 'ten', 'billiard'];
 
@@ -218,7 +303,8 @@ class _ChallengeGamePickScreenState extends ConsumerState<ChallengeGamePickScree
   void _goBack() {
     AudioService.tap();
     setState(() {
-      if (_step == _PickGameStep.poolMode || _step == _PickGameStep.ludoPlayers) {
+      if (_step == _PickGameStep.poolMode ||
+          _step == _PickGameStep.ludoPlayers) {
         _step = _PickGameStep.gameFamily;
       } else {
         Navigator.of(context).pop();
@@ -227,24 +313,40 @@ class _ChallengeGamePickScreenState extends ConsumerState<ChallengeGamePickScree
   }
 
   String _poolLabel(AppStrings t, String game) => switch (game) {
-        'eight' => t.eightBallTitle,
-        'nine' => t.nineBallTitle,
-        'ten' => t.tenBallTitle,
-        _ => t.billiardTitle,
-      };
+    'eight' => t.eightBallTitle,
+    'nine' => t.nineBallTitle,
+    'ten' => t.tenBallTitle,
+    _ => t.billiardTitle,
+  };
 
   @override
   Widget build(BuildContext context) {
     final t = ref.watch(stringsProvider);
+    final portrait = DesignBreakpoints.portraitLayout(context);
     return DuelCanvas(
       child: Stack(
         children: [
           const Positioned(left: 0, right: 0, top: 6, child: DuelTopBar()),
-          Positioned(
-            left: 42,
-            top: 722,
-            child: NavTile(icon: Icons.reply_rounded, label: t.navBack, onTap: _goBack),
-          ),
+          if (portrait)
+            Positioned(
+              left: 8,
+              bottom: 4,
+              child: NavTile(
+                icon: Icons.reply_rounded,
+                label: t.navBack,
+                onTap: _goBack,
+              ),
+            )
+          else
+            Positioned(
+              left: 42,
+              top: 722,
+              child: NavTile(
+                icon: Icons.reply_rounded,
+                label: t.navBack,
+                onTap: _goBack,
+              ),
+            ),
           Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 620),
@@ -253,10 +355,16 @@ class _ChallengeGamePickScreenState extends ConsumerState<ChallengeGamePickScree
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(t.challengePlayer(widget.player['name'] as String),
-                        textAlign: TextAlign.center, style: AppText.label(22, weight: FontWeight.w900)),
+                    Text(
+                      t.challengePlayer(widget.player['name'] as String),
+                      textAlign: TextAlign.center,
+                      style: AppText.label(22, weight: FontWeight.w900),
+                    ),
                     const SizedBox(height: 8),
-                    Text(t.challengePickGame, style: AppText.label(14, color: DuelColors.dim)),
+                    Text(
+                      t.challengePickGame,
+                      style: AppText.label(14, color: DuelColors.dim),
+                    ),
                     const SizedBox(height: 20),
                     switch (_step) {
                       _PickGameStep.gameFamily => _buildGameFamilyStep(t),
@@ -277,7 +385,11 @@ class _ChallengeGamePickScreenState extends ConsumerState<ChallengeGamePickScree
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(t.challengePickGame, textAlign: TextAlign.center, style: AppText.label(13, color: DuelColors.dim)),
+        Text(
+          t.challengePickGame,
+          textAlign: TextAlign.center,
+          style: AppText.label(13, color: DuelColors.dim),
+        ),
         const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
@@ -345,7 +457,10 @@ class _ChallengeGamePickScreenState extends ConsumerState<ChallengeGamePickScree
         child: DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: accent.withValues(alpha: 0.85), width: 1.8),
+            border: Border.all(
+              color: accent.withValues(alpha: 0.85),
+              width: 1.8,
+            ),
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -356,7 +471,11 @@ class _ChallengeGamePickScreenState extends ConsumerState<ChallengeGamePickScree
               ],
             ),
             boxShadow: [
-              BoxShadow(color: accent.withValues(alpha: 0.28), blurRadius: 10, spreadRadius: -2),
+              BoxShadow(
+                color: accent.withValues(alpha: 0.28),
+                blurRadius: 10,
+                spreadRadius: -2,
+              ),
             ],
           ),
           child: Column(
@@ -364,7 +483,12 @@ class _ChallengeGamePickScreenState extends ConsumerState<ChallengeGamePickScree
             children: [
               Expanded(
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(compact ? 5 : 7, compact ? 5 : 7, compact ? 5 : 7, 0),
+                  padding: EdgeInsets.fromLTRB(
+                    compact ? 5 : 7,
+                    compact ? 5 : 7,
+                    compact ? 5 : 7,
+                    0,
+                  ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(10),
                     child: art,
@@ -372,11 +496,20 @@ class _ChallengeGamePickScreenState extends ConsumerState<ChallengeGamePickScree
                 ),
               ),
               Padding(
-                padding: EdgeInsets.fromLTRB(4, compact ? 4 : 6, 4, compact ? 6 : 8),
+                padding: EdgeInsets.fromLTRB(
+                  4,
+                  compact ? 4 : 6,
+                  4,
+                  compact ? 6 : 8,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(icon, size: compact ? 14 : 16, color: Colors.white.withValues(alpha: 0.9)),
+                    Icon(
+                      icon,
+                      size: compact ? 14 : 16,
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(
@@ -384,7 +517,11 @@ class _ChallengeGamePickScreenState extends ConsumerState<ChallengeGamePickScree
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: AppText.label(fontSize, color: Colors.white, weight: FontWeight.w900),
+                        style: AppText.label(
+                          fontSize,
+                          color: Colors.white,
+                          weight: FontWeight.w900,
+                        ),
                       ),
                     ),
                   ],
@@ -401,9 +538,21 @@ class _ChallengeGamePickScreenState extends ConsumerState<ChallengeGamePickScree
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(t.poolTitle, textAlign: TextAlign.center, style: AppText.label(18, color: DuelColors.gold, weight: FontWeight.w900)),
+        Text(
+          t.poolTitle,
+          textAlign: TextAlign.center,
+          style: AppText.label(
+            18,
+            color: DuelColors.gold,
+            weight: FontWeight.w900,
+          ),
+        ),
         const SizedBox(height: 6),
-        Text(t.challengePickGame, textAlign: TextAlign.center, style: AppText.label(13, color: DuelColors.dim)),
+        Text(
+          t.challengePickGame,
+          textAlign: TextAlign.center,
+          style: AppText.label(13, color: DuelColors.dim),
+        ),
         const SizedBox(height: 14),
         Row(
           children: [
@@ -424,7 +573,12 @@ class _ChallengeGamePickScreenState extends ConsumerState<ChallengeGamePickScree
     );
   }
 
-  Widget _poolModeChip(String label, {required Color accent, required bool selected, required VoidCallback onTap}) {
+  Widget _poolModeChip(
+    String label, {
+    required Color accent,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: () {
         AudioService.tap();
@@ -436,7 +590,10 @@ class _ChallengeGamePickScreenState extends ConsumerState<ChallengeGamePickScree
         padding: const EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: selected ? accent : DuelColors.rim, width: selected ? 2 : 1),
+          border: Border.all(
+            color: selected ? accent : DuelColors.rim,
+            width: selected ? 2 : 1,
+          ),
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -444,14 +601,25 @@ class _ChallengeGamePickScreenState extends ConsumerState<ChallengeGamePickScree
                 ? [accent.withValues(alpha: 0.22), const Color(0xFF0C101E)]
                 : [const Color(0xFF141A2E), const Color(0xFF0A0D18)],
           ),
-          boxShadow: selected ? [BoxShadow(color: accent.withValues(alpha: 0.25), blurRadius: 8)] : null,
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.25),
+                    blurRadius: 8,
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           label,
           textAlign: TextAlign.center,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: AppText.label(12, color: selected ? accent : DuelColors.silver, weight: FontWeight.w900),
+          style: AppText.label(
+            12,
+            color: selected ? accent : DuelColors.silver,
+            weight: FontWeight.w900,
+          ),
         ),
       ),
     );
@@ -461,9 +629,21 @@ class _ChallengeGamePickScreenState extends ConsumerState<ChallengeGamePickScree
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(t.ludoTitle, textAlign: TextAlign.center, style: AppText.label(18, color: const Color(0xFF3B8CFF), weight: FontWeight.w900)),
+        Text(
+          t.ludoTitle,
+          textAlign: TextAlign.center,
+          style: AppText.label(
+            18,
+            color: const Color(0xFF3B8CFF),
+            weight: FontWeight.w900,
+          ),
+        ),
         const SizedBox(height: 6),
-        Text(t.challengePickGame, textAlign: TextAlign.center, style: AppText.label(13, color: DuelColors.dim)),
+        Text(
+          t.challengePickGame,
+          textAlign: TextAlign.center,
+          style: AppText.label(13, color: DuelColors.dim),
+        ),
         const SizedBox(height: 14),
         Row(
           children: [
@@ -488,7 +668,11 @@ class _ChallengeGamePickScreenState extends ConsumerState<ChallengeGamePickScree
     );
   }
 
-  Widget _ludoPlayerChip({required String label, required bool selected, required VoidCallback onTap}) {
+  Widget _ludoPlayerChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
     const accent = Color(0xFF3B8CFF);
     return GestureDetector(
       onTap: () {
@@ -500,15 +684,33 @@ class _ChallengeGamePickScreenState extends ConsumerState<ChallengeGamePickScree
         alignment: Alignment.center,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: selected ? accent : DuelColors.rim, width: selected ? 2 : 1),
+          border: Border.all(
+            color: selected ? accent : DuelColors.rim,
+            width: selected ? 2 : 1,
+          ),
           gradient: LinearGradient(
             colors: selected
                 ? [accent.withValues(alpha: 0.2), const Color(0xFF0C101E)]
                 : [const Color(0xFF141A2E), const Color(0xFF0A0D18)],
           ),
-          boxShadow: selected ? [BoxShadow(color: accent.withValues(alpha: 0.28), blurRadius: 10)] : null,
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.28),
+                    blurRadius: 10,
+                  ),
+                ]
+              : null,
         ),
-        child: Text(label, textAlign: TextAlign.center, style: AppText.label(14, color: selected ? accent : DuelColors.silver, weight: FontWeight.w900)),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: AppText.label(
+            14,
+            color: selected ? accent : DuelColors.silver,
+            weight: FontWeight.w900,
+          ),
+        ),
       ),
     );
   }
