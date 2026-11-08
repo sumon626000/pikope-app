@@ -46,6 +46,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(stringsProvider);
+    if (DesignBreakpoints.portraitLayout(context)) {
+      return DuelCanvas(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+          children: [
+            const Center(child: DuelLogo(height: 72)),
+            const SizedBox(height: 12),
+            Text(
+              s.taglineGames,
+              textAlign: TextAlign.center,
+              style: AppText.label(
+                16,
+                color: DuelColors.silver,
+                weight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              s.taglinePick,
+              textAlign: TextAlign.center,
+              style: AppText.label(13, color: AppColors.gold),
+            ),
+            const SizedBox(height: 16),
+            LoginAuthPanel(compact: true, onAuthenticated: _onAuthenticated),
+          ],
+        ),
+      );
+    }
     return DuelCanvas(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(

@@ -12,7 +12,6 @@ import 'core/perf.dart';
 import 'core/push_service.dart';
 import 'core/root_nav.dart';
 import 'core/web_apk_promo.dart';
-import 'core/web_fullscreen.dart';
 import 'core/web_play.dart';
 import 'data/app_storage.dart';
 import 'features/duel/challenge_inbox_host.dart';
@@ -23,31 +22,33 @@ import 'features/start/app_start_gate.dart';
 Future<void> bootstrapPikope({required bool mobileShell}) async {
   WidgetsFlutterBinding.ensureInitialized();
   ErrorWidget.builder = (details) => Material(
-        color: const Color(0xFF070A18),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: Text(
-              kReleaseMode ? 'Something went wrong. Please restart the app.' : details.exceptionAsString(),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFFE9ECF5),
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                decoration: TextDecoration.none,
-              ),
-            ),
+    color: const Color(0xFF070A18),
+    child: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Text(
+          kReleaseMode
+              ? 'Something went wrong. Please restart the app.'
+              : details.exceptionAsString(),
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Color(0xFFE9ECF5),
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            decoration: TextDecoration.none,
           ),
         ),
-      );
+      ),
+    ),
+  );
   try {
     await PushService.initLocal();
   } catch (_) {
     // Notifications optional — must not block launch.
   }
   await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.landscapeLeft,
-    DeviceOrientation.landscapeRight,
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
   ]);
   if (mobileShell) {
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -59,15 +60,12 @@ Future<void> bootstrapPikope({required bool mobileShell}) async {
   } catch (_) {
     storage = MemoryStorage();
   }
-  runApp(ProviderScope(
-    overrides: [storageProvider.overrideWithValue(storage)],
-    child: const BilliardPokerApp(),
-  ));
-  if (kIsWeb) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      webTryLockLandscape();
-    });
-  }
+  runApp(
+    ProviderScope(
+      overrides: [storageProvider.overrideWithValue(storage)],
+      child: const BilliardPokerApp(),
+    ),
+  );
 }
 
 class BilliardPokerApp extends ConsumerWidget {
@@ -90,12 +88,12 @@ class BilliardPokerApp extends ConsumerWidget {
       ],
       home: const AppStartGate(),
       builder: (context, child) => WebLandscapeGate(
-            child: WebApkPromoHost(
-              child: ChallengeInboxHost(
-                child: ZiniPayReturnHost(child: child ?? const SizedBox.shrink()),
-              ),
-            ),
+        child: WebApkPromoHost(
+          child: ChallengeInboxHost(
+            child: ZiniPayReturnHost(child: child ?? const SizedBox.shrink()),
           ),
+        ),
+      ),
     );
   }
 }
@@ -140,9 +138,11 @@ void _logFrameTimings() {
     final slow = frames
         .where((f) => ms(f.buildDuration) > 16.7 || ms(f.rasterDuration) > 16.7)
         .length;
-    debugPrint('PERF frames ${frames.length} | build ${stats([for (final f in frames) ms(f.buildDuration)])}'
-        ' | raster ${stats([for (final f in frames) ms(f.rasterDuration)])} | late: $slow'
-        ' | ${Perf.report()}');
+    debugPrint(
+      'PERF frames ${frames.length} | build ${stats([for (final f in frames) ms(f.buildDuration)])}'
+      ' | raster ${stats([for (final f in frames) ms(f.rasterDuration)])} | late: $slow'
+      ' | ${Perf.report()}',
+    );
     frames.clear();
   });
 }

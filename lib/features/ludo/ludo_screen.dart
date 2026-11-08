@@ -132,6 +132,9 @@ class _LudoScreenState extends ConsumerState<LudoScreen>
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final state = _c.state;
+    if (DesignBreakpoints.portraitLayout(context)) {
+      return _portraitMatch(settings, state);
+    }
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -286,6 +289,198 @@ class _LudoScreenState extends ConsumerState<LudoScreen>
     if (_c.isMyTurn || _c.diceSeat != state.turn) return '';
     final p = state.players[_c.diceSeat];
     return '${p.name.toUpperCase()} IS PLAYING...';
+  }
+
+  Widget _portraitMatch(AppSettings settings, LudoState? state) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) setState(() => _paused = !_paused);
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF060814),
+        body: _LudoBackground(
+          child: SafeArea(
+            child: state == null
+                ? const Center(
+                    child: CircularProgressIndicator(color: DuelColors.silver),
+                  )
+                : Stack(
+                    children: [
+                      Column(
+                        children: [
+                          SizedBox(
+                            height: 40,
+                            child: Row(
+                              children: [
+                                SizedBox(
+                                  width: 64,
+                                  height: 36,
+                                  child: FittedBox(
+                                    child: _MenuTab(
+                                      onTap: () =>
+                                          setState(() => _paused = true),
+                                    ),
+                                  ),
+                                ),
+                                const Spacer(),
+                                if (widget.config.bet.staked)
+                                  SizedBox(
+                                    width: 36,
+                                    height: 36,
+                                    child: FittedBox(
+                                      child: MatchPrizeTile(
+                                        prize: widget.config.bet.prize,
+                                      ),
+                                    ),
+                                  ),
+                                Flexible(
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: _FairDiceBadge(
+                                      online: _c.online,
+                                      label: ref
+                                          .watch(stringsProvider)
+                                          .ludoFairDice,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: 44,
+                                  height: 36,
+                                  child: FittedBox(
+                                    child: _ChatButton(onTap: _openChat),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          _portraitSeatRow(state, 0, state.seats == 2 ? 1 : 1),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Center(
+                                child: AspectRatio(
+                                  aspectRatio: 1,
+                                  child: Stack(
+                                    children: [
+                                      _Board(
+                                        controller: _c,
+                                        theme: ludoThemeOf(settings.ludoBoard),
+                                        onTapToken: _c.moveToken,
+                                      ),
+                                      IgnorePointer(
+                                        child: Center(
+                                          child: _c.toast == null
+                                              ? const SizedBox.shrink()
+                                              : GameplayToastBanner(
+                                                  key: ValueKey(_c.toast),
+                                                  lines: [_c.toast!],
+                                                ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (state.seats > 2) _portraitSeatRow(state, 2, 3),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+                            child: Text(
+                              _hint(),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.label(
+                                12,
+                                color: _c.canRoll || _c.movable.isNotEmpty
+                                    ? DesignGameplay.hintActive
+                                    : DesignGameplay.hintIdle,
+                                weight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (widget.driver != null) ...[
+                        OpponentDisconnectBanner(
+                          presence: _c.opponentPresence,
+                          serverOffsetMs: _c.serverOffsetMs,
+                          opponentName: _opponentName(),
+                        ),
+                        ConnectionStatusLayer(
+                          offline: widget.driver!.offline,
+                          onLeave: () => Navigator.of(context).pop(),
+                        ),
+                      ],
+                      if (_c.over) _result(),
+                      if (_paused)
+                        PauseOverlay(
+                          soundOn: settings.soundOn,
+                          onResume: () => setState(() => _paused = false),
+                          onToggleSound: () => ref
+                              .read(settingsProvider.notifier)
+                              .update((s) => s.copyWith(soundOn: !s.soundOn)),
+                          onRules: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const HowToPlayScreen(),
+                            ),
+                          ),
+                          onQuit: _quit,
+                        ),
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _portraitSeatRow(LudoState state, int a, int b) {
+    return SizedBox(
+      height: 96,
+      child: Row(
+        children: [
+          Expanded(
+            child: FittedBox(fit: BoxFit.contain, child: _seatCard(state, a)),
+          ),
+          if (b < state.seats)
+            Expanded(
+              child: FittedBox(fit: BoxFit.contain, child: _seatCard(state, b)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _seatCard(LudoState state, int seat) {
+    final session = ref.watch(sessionProvider);
+    final myCoins = ref.watch(settingsProvider).coins;
+    final p = state.players[seat];
+    final you = _c.online && seat == _c.mySeat || (!_c.online && seat == 0);
+    final active = _c.diceSeat == seat && !_c.over;
+    return _SeatPanel(
+      name: p.name,
+      avatar: p.avatar,
+      colour: LudoBoard.colours[p.colour],
+      active: active,
+      out: p.out,
+      you: you,
+      coins: you ? myCoins : null,
+      level: you ? session.level : null,
+      top: false,
+      mirror: false,
+      face: _c.diceFace,
+      rolling: active && _c.diceRolling,
+      canRoll: active && _c.canRoll,
+      onRoll: _c.roll,
+      missed: p.missed,
+      clock: _c.clock,
+      turnLeft: active && _c.online ? () => _c.turnLeft : null,
+      chat: _c.chatTextOf(seat),
+    );
   }
 
   List<Widget> _seatPanels() {

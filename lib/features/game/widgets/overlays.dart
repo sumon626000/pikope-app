@@ -19,24 +19,25 @@ class Scrim extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Positioned.fill(
-        child: GestureDetector(
-          onTap: () {},
-          child: Container(
-            decoration: const BoxDecoration(
-              // The shadow paints under the box as well, so it alone dims the
-              // canvas and spills past it to cover wide screens edge to edge.
-              boxShadow: [BoxShadow(color: Color(0xCC000000), spreadRadius: 900)],
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                if (confetti) const Positioned.fill(child: IgnorePointer(child: _Confetti())),
-                child,
-              ],
-            ),
-          ),
+    child: GestureDetector(
+      onTap: () {},
+      child: Container(
+        decoration: const BoxDecoration(
+          // The shadow paints under the box as well, so it alone dims the
+          // canvas and spills past it to cover wide screens edge to edge.
+          boxShadow: [BoxShadow(color: Color(0xCC000000), spreadRadius: 900)],
         ),
-      );
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            if (confetti)
+              const Positioned.fill(child: IgnorePointer(child: _Confetti())),
+            child,
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _Confetti extends StatefulWidget {
@@ -46,9 +47,12 @@ class _Confetti extends StatefulWidget {
   State<_Confetti> createState() => _ConfettiState();
 }
 
-class _ConfettiState extends State<_Confetti> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller =
-      AnimationController(vsync: this, duration: const Duration(seconds: 6))..repeat();
+class _ConfettiState extends State<_Confetti>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 6),
+  )..repeat();
 
   @override
   void dispose() {
@@ -57,7 +61,8 @@ class _ConfettiState extends State<_Confetti> with SingleTickerProviderStateMixi
   }
 
   @override
-  Widget build(BuildContext context) => CustomPaint(painter: _ConfettiPainter(_controller));
+  Widget build(BuildContext context) =>
+      CustomPaint(painter: _ConfettiPainter(_controller));
 }
 
 class _ConfettiPainter extends CustomPainter {
@@ -65,12 +70,24 @@ class _ConfettiPainter extends CustomPainter {
 
   final Animation<double> t;
 
-  static const _colors = [AppColors.gold, AppColors.active, Color(0xFFFF4D8D), Color(0xFF4DA3FF), Colors.white];
+  static const _colors = [
+    AppColors.gold,
+    AppColors.active,
+    Color(0xFFFF4D8D),
+    Color(0xFF4DA3FF),
+    Colors.white,
+  ];
   static final _pieces = [
     for (final r in [Random(7)])
       for (var i = 0; i < 90; i++)
-        (x: r.nextDouble(), phase: r.nextDouble(), speed: 0.6 + r.nextDouble() * 0.8,
-         sway: r.nextDouble() * 2 * pi, size: 8 + r.nextDouble() * 10, color: i % _colors.length)
+        (
+          x: r.nextDouble(),
+          phase: r.nextDouble(),
+          speed: 0.6 + r.nextDouble() * 0.8,
+          sway: r.nextDouble() * 2 * pi,
+          size: 8 + r.nextDouble() * 10,
+          color: i % _colors.length,
+        ),
   ];
 
   @override
@@ -83,7 +100,11 @@ class _ConfettiPainter extends CustomPainter {
       canvas.translate(x, y);
       canvas.rotate(fall * 2 * pi * 3 + p.sway);
       canvas.drawRect(
-        Rect.fromCenter(center: Offset.zero, width: p.size, height: p.size * 0.5),
+        Rect.fromCenter(
+          center: Offset.zero,
+          width: p.size,
+          height: p.size * 0.5,
+        ),
         Paint()..color = _colors[p.color],
       );
       canvas.restore();
@@ -95,19 +116,37 @@ class _ConfettiPainter extends CustomPainter {
 }
 
 class OverlayPanel extends StatelessWidget {
-  const OverlayPanel({super.key, required this.child, this.width = 760, this.borderColor = AppColors.frame});
+  const OverlayPanel({
+    super.key,
+    required this.child,
+    this.width = 760,
+    this.borderColor = AppColors.frame,
+  });
 
   final Widget child;
   final double width;
   final Color borderColor;
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: width,
-        padding: const EdgeInsets.all(32),
-        decoration: panelDecoration(radius: 28, border: borderColor, borderWidth: 4, opacity: 1, glow: borderColor),
-        child: child,
-      );
+  Widget build(BuildContext context) {
+    final view = MediaQuery.sizeOf(context);
+    final panel = Container(
+      width: width,
+      padding: const EdgeInsets.all(32),
+      decoration: panelDecoration(
+        radius: 28,
+        border: borderColor,
+        borderWidth: 4,
+        opacity: 1,
+        glow: borderColor,
+      ),
+      child: child,
+    );
+    if (view.height > view.width && width > view.width - 24) {
+      return FittedBox(fit: BoxFit.scaleDown, child: panel);
+    }
+    return panel;
+  }
 }
 
 /// Pass & play: hides the table state until the next player holds the device.
@@ -127,11 +166,21 @@ class HandoffOverlay extends ConsumerWidget {
           children: [
             FramedTile(size: 130, child: AvatarImage(p.avatar, size: 130)),
             const SizedBox(height: 18),
-            Text(t.passDeviceTo, style: AppText.label(20, color: AppColors.textDim)),
+            Text(
+              t.passDeviceTo,
+              style: AppText.label(20, color: AppColors.textDim),
+            ),
             const SizedBox(height: 6),
-            Text(p.name.toUpperCase(), style: AppText.label(40, weight: FontWeight.w900)),
+            Text(
+              p.name.toUpperCase(),
+              style: AppText.label(40, weight: FontWeight.w900),
+            ),
             const SizedBox(height: 26),
-            GameButton(label: t.imReady, width: 320, onPressed: controller.confirmHandoff),
+            GameButton(
+              label: t.imReady,
+              width: 320,
+              onPressed: controller.confirmHandoff,
+            ),
           ],
         ),
       ),
@@ -151,6 +200,7 @@ class GameOverOverlay extends ConsumerWidget {
 
   final GameController controller;
   final int? reward;
+
   /// Null hides the button (online matches restart from the lobby).
   final VoidCallback? onRematch;
   final String rematchLabel;
@@ -161,22 +211,29 @@ class GameOverOverlay extends ConsumerWidget {
     final t = ref.watch(stringsProvider);
     final c = controller;
     final winner = c.players[c.state.winner!];
-    Widget cell(String text, {double flex = 1, Color color = AppColors.text, bool left = false}) =>
-        Expanded(
-          flex: (flex * 10).round(),
-          child: Text(text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: left ? TextAlign.left : TextAlign.center,
-              style: AppText.label(18, color: color)),
-        );
+    Widget cell(
+      String text, {
+      double flex = 1,
+      Color color = AppColors.text,
+      bool left = false,
+    }) => Expanded(
+      flex: (flex * 10).round(),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: left ? TextAlign.left : TextAlign.center,
+        style: AppText.label(18, color: color),
+      ),
+    );
     return Scrim(
       confetti: true,
       child: TweenAnimationBuilder<double>(
         tween: Tween(begin: 1, end: 0),
         duration: const Duration(milliseconds: 380),
         curve: Curves.easeOutBack,
-        builder: (_, t, child) => Transform.translate(offset: Offset(0, 120 * t), child: child),
+        builder: (_, t, child) =>
+            Transform.translate(offset: Offset(0, 120 * t), child: child),
         child: OverlayPanel(
           width: 980,
           borderColor: AppColors.gold,
@@ -195,49 +252,82 @@ class GameOverOverlay extends ConsumerWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(children: [
-                        const Icon(Icons.emoji_events_rounded, color: AppColors.gold, size: 44),
-                        const SizedBox(width: 10),
-                        Text(t.winner, style: AppText.label(26, color: AppColors.gold)),
-                      ]),
-                      Text(winner.name.toUpperCase(), style: AppText.label(48, weight: FontWeight.w900)),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.emoji_events_rounded,
+                            color: AppColors.gold,
+                            size: 44,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            t.winner,
+                            style: AppText.label(26, color: AppColors.gold),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        winner.name.toUpperCase(),
+                        style: AppText.label(48, weight: FontWeight.w900),
+                      ),
                       if (reward != null && reward! > 0)
-                        Text('+${formatPicoCoins(reward!)}', style: AppText.label(20, color: AppColors.gold)),
+                        Text(
+                          '+${formatPicoCoins(reward!)}',
+                          style: AppText.label(20, color: AppColors.gold),
+                        ),
                     ],
                   ),
                 ],
               ),
               const SizedBox(height: 24),
-              Row(children: [
-                cell(t.playerCol, flex: 2.2, color: AppColors.textDim, left: true),
-                cell(t.shotsCol, color: AppColors.textDim),
-                cell(t.ballsCol, color: AppColors.textDim),
-                cell(t.foulsCol, color: AppColors.textDim),
-                cell(t.penaltyCol, color: AppColors.textDim),
-                cell(t.leftCol, color: AppColors.textDim),
-              ]),
+              Row(
+                children: [
+                  cell(
+                    t.playerCol,
+                    flex: 2.2,
+                    color: AppColors.textDim,
+                    left: true,
+                  ),
+                  cell(t.shotsCol, color: AppColors.textDim),
+                  cell(t.ballsCol, color: AppColors.textDim),
+                  cell(t.foulsCol, color: AppColors.textDim),
+                  cell(t.penaltyCol, color: AppColors.textDim),
+                  cell(t.leftCol, color: AppColors.textDim),
+                ],
+              ),
               const Divider(color: AppColors.frame, height: 18),
               for (final i in c.state.turnOrder)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 5),
-                  child: Row(children: [
-                    cell(c.players[i].name.toUpperCase(),
+                  child: Row(
+                    children: [
+                      cell(
+                        c.players[i].name.toUpperCase(),
                         flex: 2.2,
                         left: true,
-                        color: i == c.state.winner ? AppColors.gold : AppColors.text),
-                    cell('${c.players[i].stats.shots}'),
-                    cell('${c.players[i].stats.ballsCompleted}'),
-                    cell('${c.players[i].stats.fouls}'),
-                    cell('${c.players[i].stats.penaltyCards}'),
-                    cell('${c.players[i].pendingCount}'),
-                  ]),
+                        color: i == c.state.winner
+                            ? AppColors.gold
+                            : AppColors.text,
+                      ),
+                      cell('${c.players[i].stats.shots}'),
+                      cell('${c.players[i].stats.ballsCompleted}'),
+                      cell('${c.players[i].stats.fouls}'),
+                      cell('${c.players[i].stats.penaltyCards}'),
+                      cell('${c.players[i].pendingCount}'),
+                    ],
+                  ),
                 ),
               const SizedBox(height: 26),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (onRematch != null) ...[
-                    GameButton(label: rematchLabel, icon: Icons.replay_rounded, width: 300, onPressed: onRematch),
+                    GameButton(
+                      label: rematchLabel,
+                      icon: Icons.replay_rounded,
+                      width: 300,
+                      onPressed: onRematch,
+                    ),
                     const SizedBox(width: 24),
                   ],
                   GameButton(
@@ -284,11 +374,18 @@ class PauseOverlay extends ConsumerWidget {
           children: [
             Text(t.menu, style: AppText.label(34, weight: FontWeight.w900)),
             const SizedBox(height: DesignSpacing.x6),
-            GameButton(label: t.resume, icon: Icons.play_arrow_rounded, width: 400, onPressed: onResume),
+            GameButton(
+              label: t.resume,
+              icon: Icons.play_arrow_rounded,
+              width: 400,
+              onPressed: onResume,
+            ),
             const SizedBox(height: 14),
             GameButton(
               label: t.soundOnLabel(soundOn),
-              icon: soundOn ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+              icon: soundOn
+                  ? Icons.volume_up_rounded
+                  : Icons.volume_off_rounded,
               width: 400,
               color: AppColors.frame,
               onPressed: onToggleSound,
@@ -319,7 +416,11 @@ class PauseOverlay extends ConsumerWidget {
 /// Online play: covers the table while the server cannot be reached, and
 /// confirms briefly when the connection is back.
 class ConnectionStatusLayer extends StatefulWidget {
-  const ConnectionStatusLayer({super.key, required this.offline, required this.onLeave});
+  const ConnectionStatusLayer({
+    super.key,
+    required this.offline,
+    required this.onLeave,
+  });
 
   final ValueListenable<bool> offline;
   final VoidCallback onLeave;
@@ -328,9 +429,12 @@ class ConnectionStatusLayer extends StatefulWidget {
   State<ConnectionStatusLayer> createState() => _ConnectionStatusLayerState();
 }
 
-class _ConnectionStatusLayerState extends State<ConnectionStatusLayer> with SingleTickerProviderStateMixin {
-  late final AnimationController _pulse =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat();
+class _ConnectionStatusLayerState extends State<ConnectionStatusLayer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat();
   bool _wasOffline = false;
   bool _showBack = false;
   int _backToken = 0;
@@ -381,17 +485,31 @@ class _ConnectionStatusLayerState extends State<ConnectionStatusLayer> with Sing
                     height: 132,
                     child: AnimatedBuilder(
                       animation: _pulse,
-                      builder: (_, child) => CustomPaint(painter: _SignalPainter(_pulse.value), child: child),
-                      child: const Center(child: Icon(Icons.wifi_off_rounded, size: 56, color: AppColors.gold)),
+                      builder: (_, child) => CustomPaint(
+                        painter: _SignalPainter(_pulse.value),
+                        child: child,
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.wifi_off_rounded,
+                          size: 56,
+                          color: AppColors.gold,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 18),
-                  Text(t.connectionLost, style: AppText.label(34, weight: FontWeight.w900)),
+                  Text(
+                    t.connectionLost,
+                    style: AppText.label(34, weight: FontWeight.w900),
+                  ),
                   const SizedBox(height: 10),
                   AnimatedBuilder(
                     animation: _pulse,
                     builder: (_, _) => Text(
-                      t.reconnectingDots(1 + (_pulse.value * 3).floor().clamp(0, 2)),
+                      t.reconnectingDots(
+                        1 + (_pulse.value * 3).floor().clamp(0, 2),
+                      ),
                       style: AppText.label(22, color: AppColors.gold),
                     ),
                   ),
@@ -399,13 +517,21 @@ class _ConnectionStatusLayerState extends State<ConnectionStatusLayer> with Sing
                   Text(
                     t.connectionLostBody,
                     textAlign: TextAlign.center,
-                    style: AppText.label(15, color: AppColors.textDim, weight: FontWeight.w600),
+                    style: AppText.label(
+                      15,
+                      color: AppColors.textDim,
+                      weight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     t.shotClockExitHint,
                     textAlign: TextAlign.center,
-                    style: AppText.label(13, color: AppColors.textDim, weight: FontWeight.w600),
+                    style: AppText.label(
+                      13,
+                      color: AppColors.textDim,
+                      weight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   GameButton(
@@ -428,19 +554,35 @@ class _ConnectionStatusLayerState extends State<ConnectionStatusLayer> with Sing
             child: IgnorePointer(
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 26,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.panel,
                     borderRadius: BorderRadius.circular(40),
                     border: Border.all(color: AppColors.active, width: 3),
-                    boxShadow: const [BoxShadow(color: Color(0x662EE84F), blurRadius: 18)],
+                    boxShadow: const [
+                      BoxShadow(color: Color(0x662EE84F), blurRadius: 18),
+                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.wifi_rounded, color: AppColors.active, size: 30),
+                      const Icon(
+                        Icons.wifi_rounded,
+                        color: AppColors.active,
+                        size: 30,
+                      ),
                       const SizedBox(width: 12),
-                      Text(t.backOnline, style: AppText.label(22, color: AppColors.active, weight: FontWeight.w900)),
+                      Text(
+                        t.backOnline,
+                        style: AppText.label(
+                          22,
+                          color: AppColors.active,
+                          weight: FontWeight.w900,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -464,7 +606,11 @@ class _SignalPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = size.center(Offset.zero);
     final maxR = size.width / 2;
-    canvas.drawCircle(center, maxR * 0.5, Paint()..color = const Color(0x22FFC928));
+    canvas.drawCircle(
+      center,
+      maxR * 0.5,
+      Paint()..color = const Color(0x22FFC928),
+    );
     for (var i = 0; i < 2; i++) {
       final p = (t + i * 0.5) % 1.0;
       canvas.drawCircle(

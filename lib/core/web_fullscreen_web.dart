@@ -22,12 +22,5 @@ Future<void> webTryHideMobileBrowserChrome() async {
   } catch (_) {}
 }
 
-/// Best-effort; may require a user gesture on some mobile browsers.
-Future<void> webTryLockLandscape() async {
-  try {
-    final orient = web.window.screen.orientation;
-    if (orient != null) {
-      await orient.lock('landscape').toDart;
-    }
-  } catch (_) {}
-}
+/// Portrait is the phone layout. Do not force a landscape lock.
+Future<void> webTryLockLandscape() async {}

@@ -6,10 +6,13 @@ import '../../core/app_state.dart';
 import '../../core/audio_service.dart';
 import '../../core/app_theme.dart';
 import '../../core/perf.dart';
+import '../../core/design/design.dart';
 import '../../core/widgets.dart';
 import '../../data/demo_data.dart';
 import '../../game/models/match_state.dart';
+import '../../game/models/player_state.dart';
 import '../../data/api_client.dart';
+import '../../l10n/strings.dart';
 import '../../data/app_game.dart';
 import '../misc/how_to_play_screen.dart';
 import '../duel/match_overlays.dart';
@@ -23,7 +26,12 @@ import 'widgets/overlays.dart';
 import 'widgets/table_view.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
-  const GameScreen({super.key, required this.config, this.driver, this.intro = false});
+  const GameScreen({
+    super.key,
+    required this.config,
+    this.driver,
+    this.intro = false,
+  });
 
   /// Spin the jackpot wheel first (a staked match that just started).
   final bool intro;
@@ -37,7 +45,8 @@ class GameScreen extends ConsumerStatefulWidget {
   ConsumerState<GameScreen> createState() => _GameScreenState();
 }
 
-class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProviderStateMixin {
+class _GameScreenState extends ConsumerState<GameScreen>
+    with SingleTickerProviderStateMixin {
   late final AudioService _audio;
   late final GameController _c;
   late final Ticker _ticker;
@@ -55,7 +64,8 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
     _audio = ref.read(audioProvider);
     _audio.playGameplayMusic();
     final driver = widget.driver;
-    _c = GameController(widget.config, _audio, link: driver)..addListener(_onChanged);
+    _c = GameController(widget.config, _audio, link: driver)
+      ..addListener(_onChanged);
     if (driver != null) {
       driver
         ..onState = _c.applyRemote
@@ -70,8 +80,7 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
       final perf = Perf.begin();
       if (!_paused) _c.tick(dt);
       Perf.end('tick', perf);
-    })
-      ..start();
+    })..start();
   }
 
   void _onChanged() {
@@ -119,7 +128,6 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
     navigator.pop();
   }
 
-
   /// Online: a fresh room for the same players.
   Future<void> _playAgain() async {
     final driver = widget.driver!;
@@ -127,7 +135,9 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
     final messenger = ScaffoldMessenger.of(context);
     try {
       final room = await driver.api.post('/rooms/${driver.roomId}/rematch');
-      navigator.pushReplacement(MaterialPageRoute<void>(builder: (_) => RoomScreen(room: room)));
+      navigator.pushReplacement(
+        MaterialPageRoute<void>(builder: (_) => RoomScreen(room: room)),
+      );
     } on ApiException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     }
@@ -163,7 +173,12 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
     final c = _c;
     final phase = c.state.phase;
     final viewer = c.players[c.viewerIndex];
-    final inPlay = phase != GamePhase.determiningBreak && phase != GamePhase.dealing;
+    final inPlay =
+        phase != GamePhase.determiningBreak && phase != GamePhase.dealing;
+
+    if (DesignBreakpoints.portraitLayout(context)) {
+      return _portraitPoker(settings, c, phase, viewer, inPlay);
+    }
 
     return PopScope(
       canPop: false,
@@ -180,7 +195,9 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
                 left: 118,
                 top: 14,
                 child: widget.config.bet.staked
-                    ? MatchPrizeTile(prize: _intro ? 0 : widget.config.bet.prize)
+                    ? MatchPrizeTile(
+                        prize: _intro ? 0 : widget.config.bet.prize,
+                      )
                     : CoinsTile(coins: settings.coins, size: 84),
               ),
               Positioned(
@@ -189,9 +206,21 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
                 child: PowerBar(controller: c),
               ),
               if (c.canShoot)
-                const Positioned(left: 92, top: 716, child: IgnorePointer(child: ShootHint())),
-              Positioned(left: 24, top: 14, child: MenuTile(onTap: () => setState(() => _paused = true))),
-              Positioned(left: 1836, top: 14, child: SpinControl(controller: c)),
+                const Positioned(
+                  left: 92,
+                  top: 716,
+                  child: IgnorePointer(child: ShootHint()),
+                ),
+              Positioned(
+                left: 24,
+                top: 14,
+                child: MenuTile(onTap: () => setState(() => _paused = true)),
+              ),
+              Positioned(
+                left: 1836,
+                top: 14,
+                child: SpinControl(controller: c),
+              ),
               Positioned(
                 left: 214,
                 top: 16,
@@ -205,8 +234,17 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.all(Radius.circular(40)),
                     boxShadow: [
-                      BoxShadow(color: Color(0xCC000000), blurRadius: 50, spreadRadius: 8, offset: Offset(0, 22)),
-                      BoxShadow(color: Color(0x22FFFFFF), blurRadius: 70, spreadRadius: 4),
+                      BoxShadow(
+                        color: Color(0xCC000000),
+                        blurRadius: 50,
+                        spreadRadius: 8,
+                        offset: Offset(0, 22),
+                      ),
+                      BoxShadow(
+                        color: Color(0x22FFFFFF),
+                        blurRadius: 70,
+                        spreadRadius: 4,
+                      ),
                     ],
                   ),
                 ),
@@ -265,12 +303,19 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
                   rect: _tableRect,
                   child: IgnorePointer(
                     child: Center(
-                      child: BannerView(key: ValueKey(c.bannerId), banner: c.banner!),
+                      child: BannerView(
+                        key: ValueKey(c.bannerId),
+                        banner: c.banner!,
+                      ),
                     ),
                   ),
                 ),
               if (c.handoffPending && !_paused) HandoffOverlay(controller: c),
-              if (_intro) JackpotWheelOverlay(bet: widget.config.bet, onDone: () => setState(() => _intro = false)),
+              if (_intro)
+                JackpotWheelOverlay(
+                  bet: widget.config.bet,
+                  onDone: () => setState(() => _intro = false),
+                ),
               if (phase == GamePhase.gameOver && widget.driver != null)
                 DuelResultOverlay(
                   players: [
@@ -291,7 +336,9 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
                   controller: c,
                   reward: _reward,
                   onRematch: widget.driver == null ? _rematch : _playAgain,
-                  rematchLabel: widget.driver == null ? 'REMATCH' : 'PLAY AGAIN',
+                  rematchLabel: widget.driver == null
+                      ? 'REMATCH'
+                      : 'PLAY AGAIN',
                   onHome: () => Navigator.of(context).pop(),
                 ),
               if (widget.driver != null) ...[
@@ -313,8 +360,221 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
                   onToggleSound: () => ref
                       .read(settingsProvider.notifier)
                       .update((s) => s.copyWith(soundOn: !s.soundOn)),
-                  onRules: () => Navigator.of(context)
-                      .push(MaterialPageRoute<void>(builder: (_) => const HowToPlayScreen())),
+                  onRules: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const HowToPlayScreen(),
+                    ),
+                  ),
+                  onQuit: _quit,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _portraitPoker(
+    AppSettings settings,
+    GameController c,
+    GamePhase phase,
+    PlayerState viewer,
+    bool inPlay,
+  ) {
+    final t = ref.watch(stringsProvider);
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) setState(() => _paused = !_paused);
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF070A18),
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  SizedBox(
+                    height: 40,
+                    child: Row(
+                      children: [
+                        MenuTile(
+                          size: 36,
+                          onTap: () => setState(() => _paused = true),
+                        ),
+                        Expanded(child: StatusPill(c.statusText)),
+                        SizedBox(
+                          width: 36,
+                          height: 36,
+                          child: FittedBox(
+                            child: widget.config.bet.staked
+                                ? MatchPrizeTile(
+                                    prize: _intro ? 0 : widget.config.bet.prize,
+                                  )
+                                : CoinsTile(coins: settings.coins, size: 84),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 36,
+                          height: 36,
+                          child: FittedBox(child: SpinControl(controller: c)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    height: 52,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      children: [
+                        for (var i = 0; i < c.players.length; i++)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: SizedBox(
+                              width: 64,
+                              child: FittedBox(
+                                fit: BoxFit.contain,
+                                child: SeatView(controller: c, playerIndex: i),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (!inPlay)
+                    Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: portraitBreakSpread(c),
+                    ),
+                  if (inPlay)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: portraitBreakRow(c),
+                    ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          const aspect = 600 / 351;
+                          var w = constraints.maxWidth;
+                          var h = w / aspect;
+                          if (h > constraints.maxHeight) {
+                            h = constraints.maxHeight;
+                            w = h * aspect;
+                          }
+                          return Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Center(
+                                child: SizedBox(
+                                  width: w,
+                                  height: h,
+                                  child: TableView(
+                                    controller: c,
+                                    skin: DemoData.skin(settings.tableSkin),
+                                  ),
+                                ),
+                              ),
+                              if (c.canDeclare)
+                                GameButton(
+                                  label: 'DECLARE',
+                                  icon: Icons.emoji_events_rounded,
+                                  color: AppColors.gold,
+                                  width: 160,
+                                  height: 44,
+                                  fontSize: 14,
+                                  onPressed: c.declareWinner,
+                                ),
+                              if (c.banner != null)
+                                IgnorePointer(
+                                  child: BannerView(
+                                    key: ValueKey(c.bannerId),
+                                    banner: c.banner!,
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  if (inPlay)
+                    for (var i = 0; i < c.players.length; i++)
+                      if (c.slotOf(i) != 0) portraitHandStrip(c, i),
+                  if (inPlay &&
+                      !c.dealing &&
+                      !viewer.isBot &&
+                      !c.handoffPending)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: ObjectivePanel(controller: c, player: viewer),
+                    ),
+                  if (inPlay) portraitHandStrip(c, c.viewerIndex),
+                  if (c.canShoot) const SizedBox(height: 4),
+                  if (c.canShoot)
+                    SizedBox(
+                      height: 132,
+                      child: FittedBox(
+                        fit: BoxFit.contain,
+                        child: PowerBar(controller: c),
+                      ),
+                    ),
+                ],
+              ),
+              if (c.handoffPending && !_paused) HandoffOverlay(controller: c),
+              if (_intro)
+                JackpotWheelOverlay(
+                  bet: widget.config.bet,
+                  onDone: () => setState(() => _intro = false),
+                ),
+              if (phase == GamePhase.gameOver && widget.driver != null)
+                DuelResultOverlay(
+                  players: [
+                    for (var i = 0; i < c.players.length; i++)
+                      ResultPlayer(
+                        name: c.players[i].name,
+                        avatar: widget.config.seats[i].avatar,
+                        won: i == c.state.winner,
+                        me: i == widget.driver!.seat,
+                      ),
+                  ],
+                  bet: widget.config.bet,
+                  reason: null,
+                  onBack: () => Navigator.of(context).pop(),
+                )
+              else if (phase == GamePhase.gameOver)
+                GameOverOverlay(
+                  controller: c,
+                  reward: _reward,
+                  onRematch: widget.driver == null ? _rematch : _playAgain,
+                  rematchLabel: widget.driver == null ? t.rematch : t.playAgain,
+                  onHome: () => Navigator.of(context).pop(),
+                ),
+              if (widget.driver != null) ...[
+                OpponentDisconnectBanner(
+                  presence: _c.opponentPresence,
+                  serverOffsetMs: _c.serverOffsetMs,
+                  opponentName: _c.players[1 - widget.driver!.seat].name,
+                ),
+                ConnectionStatusLayer(
+                  offline: widget.driver!.offline,
+                  onLeave: () => Navigator.of(context).pop(),
+                ),
+              ],
+              if (_paused)
+                PauseOverlay(
+                  soundOn: settings.soundOn,
+                  onResume: () => setState(() => _paused = false),
+                  onToggleSound: () => ref
+                      .read(settingsProvider.notifier)
+                      .update((s) => s.copyWith(soundOn: !s.soundOn)),
+                  onRules: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const HowToPlayScreen(),
+                    ),
+                  ),
                   onQuit: _quit,
                 ),
             ],
