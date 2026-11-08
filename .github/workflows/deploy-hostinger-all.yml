@@ -1,0 +1,16 @@
+name: Deploy all (web + admin + APK)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-hostinger-all
+  cancel-in-progress: false
+
+jobs:
+  web:
+    uses: ./.github/workflows/deploy-web-hostinger.yml
+  backend:
+    uses: ./.github/workflows/deploy-backend-hostinger.yml
+  apk:
+    uses: ./.github/workflows/deploy-apk-hostinger.yml

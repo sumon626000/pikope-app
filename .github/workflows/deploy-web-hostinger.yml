@@ -1,6 +1,7 @@
 name: Deploy web (main domain)
 
 on:
+  workflow_call:
   push:
     branches: [main]
     paths:
@@ -10,6 +11,7 @@ on:
       - 'pubspec.lock'
       - 'assets/**'
       - '.github/workflows/deploy-web-hostinger.yml'
+      - '.github/workflows/deploy-hostinger-all.yml'
   workflow_dispatch:
 
 concurrency:

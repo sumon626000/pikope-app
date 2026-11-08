@@ -1,0 +1,74 @@
+name: Deploy APK (landing download)
+
+on:
+  workflow_call:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'android/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - 'assets/**'
+      - '.github/workflows/deploy-apk-hostinger.yml'
+      - '.github/workflows/deploy-hostinger-all.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-apk-hostinger
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: flutter pub get
+        run: flutter pub get
+
+      - name: Decode release keystore
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
+
+      - name: Write key.properties
+        run: |
+          cat > android/key.properties <<EOF
+          storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=upload-keystore.jks
+          EOF
+
+      - name: Build release APK
+        env:
+          PIKOPE_API_BASE_URL: ${{ vars.PIKOPE_API_BASE_URL }}
+        run: |
+          API="${PIKOPE_API_BASE_URL:-https://adminnew.pikope.com}"
+          flutter build apk --release \
+            --dart-define=API_BASE_URL="$API" \
+            --target-platform android-arm,android-arm64,android-x64
+
+      - name: Stage pikope-latest.apk
+        run: |
+          mkdir -p deploy/apk
+          cp build/app/outputs/flutter-apk/app-release.apk deploy/apk/pikope-latest.apk
+
+      - name: Deploy APK to Hostinger (FTP)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.HOSTINGER_API_FTP_HOST }}
+          username: ${{ secrets.HOSTINGER_API_FTP_USER }}
+          password: ${{ secrets.HOSTINGER_API_FTP_PASSWORD }}
+          local-dir: deploy/apk/
+          server-dir: ${{ secrets.HOSTINGER_APK_FTP_REMOTE_DIR }}/
+          log-level: minimal
