@@ -16,7 +16,6 @@ android/captures/
 android/key.properties
 *.keystore
 *.jks
-**/android/**/gradle-wrapper.jar
 .gradle/
 local.properties
 GeneratedPluginRegistrant.*
