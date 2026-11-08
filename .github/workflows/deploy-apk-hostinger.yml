@@ -40,8 +40,23 @@ jobs:
       - name: Setup Gradle (cache + prefetch wrapper)
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: wrapper
+          gradle-version: '9.1.0'
           cache-read-only: false
+
+      - name: Bootstrap Gradle wrapper
+        working-directory: android
+        shell: bash
+        run: |
+          chmod +x gradlew
+          for attempt in 1 2 3 4 5 6; do
+            if ./gradlew --version; then
+              echo "Gradle wrapper ready"
+              exit 0
+            fi
+            echo "Wrapper attempt $attempt failed; sleep 90s"
+            sleep 90
+          done
+          exit 1
 
       - name: Decode release keystore
         run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
