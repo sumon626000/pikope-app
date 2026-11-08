@@ -37,6 +37,27 @@ jobs:
       - name: flutter pub get
         run: flutter pub get
 
+      - name: Setup Gradle (cache + prefetch wrapper)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: wrapper
+          cache-read-only: false
+
+      - name: Warm Gradle wrapper
+        working-directory: android
+        shell: bash
+        run: |
+          set -e
+          chmod +x gradlew
+          for attempt in 1 2 3; do
+            if ./gradlew --version; then
+              exit 0
+            fi
+            echo "Gradle prefetch attempt $attempt failed; waiting 45s…"
+            sleep 45
+          done
+          exit 1
+
       - name: Decode release keystore
         run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
 
@@ -52,11 +73,20 @@ jobs:
       - name: Build release APK
         env:
           PIKOPE_API_BASE_URL: ${{ vars.PIKOPE_API_BASE_URL }}
+        shell: bash
         run: |
           API="${PIKOPE_API_BASE_URL:-https://adminnew.pikope.com}"
-          flutter build apk --release \
-            --dart-define=API_BASE_URL="$API" \
-            --target-platform android-arm,android-arm64,android-x64
+          set -e
+          for attempt in 1 2 3; do
+            if flutter build apk --release \
+              --dart-define=API_BASE_URL="$API" \
+              --target-platform android-arm,android-arm64,android-x64; then
+              exit 0
+            fi
+            echo "APK build attempt $attempt failed; waiting 60s…"
+            sleep 60
+          done
+          exit 1
 
       - name: Stage pikope-latest.apk
         run: |
