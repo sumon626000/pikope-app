@@ -275,6 +275,20 @@ class AppStrings {
   String get payNow => _t('PAY NOW', 'এখনই পে');
   String get paymentUnavailable =>
       _t('Payment is not available right now.', 'পেমেন্ট এখন চালু নেই।');
+  String get choosePaymentMethod =>
+      _t('CHOOSE PAYMENT', 'পেমেন্ট বেছে নিন');
+  String get choosePaymentBody => _t(
+    'Pay with mobile banking or crypto.',
+    'মোবাইল ব্যাংকিং অথবা ক্রিপ্টো দিয়ে পেমেন্ট করুন।',
+  );
+  String get payLocalMfs =>
+      _t('bKash / Nagad / Rocket', 'বিকাশ / নগদ / রকেট');
+  String get payCrypto => _t('CRYPTO', 'ক্রিপ্টো');
+  String get cryptoPendingConfirm => _t(
+    'Payment is confirming. Coins will appear shortly.',
+    'পেমেন্ট নিশ্চিত হচ্ছে। কয়েন শিগগিরই যোগ হবে।',
+  );
+  String get ivePaidCheck => _t("I'VE PAID — CHECK", 'পেমেন্ট করেছি — চেক');
   String get addCoinManual => _t('MANUAL', 'ম্যানুয়াল');
   String get addCoinAuto => _t('AUTO (ZiniPay)', 'অটো (ZiniPay)');
   String get autoAddTitle => _t('AUTO ADD COIN', 'অটো কয়েন যোগ');

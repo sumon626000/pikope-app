@@ -18,6 +18,8 @@ import 'coin_transfer_tab.dart';
 import 'coin_tutorial_video.dart';
 import 'shop_phone_layout.dart';
 import 'shop_tab_insets.dart';
+import 'nowpayments_checkout.dart';
+import 'payment_method_chooser.dart';
 import 'zini_pay_checkout.dart';
 import '../start/auth_prompt.dart';
 
@@ -343,6 +345,37 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
 
     if (!await requireRegisteredAccount(context, ref)) return;
     if (!mounted) return;
+
+    final localOk = shopLocalPayAvailable(cfg);
+    final cryptoOk = shopCryptoPayAvailable(cfg);
+    final method = await showShopPaymentMethodChooser(
+      context,
+      localAvailable: localOk,
+      cryptoAvailable: cryptoOk,
+    );
+    if (!mounted || method == null) {
+      if (method == null && mounted && !localOk && !cryptoOk) {
+        final t = ref.read(stringsProvider);
+        showDuelMessage(
+          context,
+          title: t.picoCoin,
+          body: t.paymentUnavailable,
+          icon: Icons.payment_rounded,
+        );
+      }
+      return;
+    }
+
+    if (method == ShopPayMethod.crypto) {
+      await openNowPaymentsDeposit(
+        context,
+        ref,
+        config: cfg,
+        bdt: pack.coins,
+        packId: pack.id,
+      );
+      return;
+    }
 
     if (cfg.autoEnabled) {
       await openZiniPayDeposit(

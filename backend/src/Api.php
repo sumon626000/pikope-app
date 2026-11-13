@@ -16,10 +16,18 @@ final class Api
         if (Http::method() === 'GET' && Http::path() === '/deposit/zinipay/return') {
             ZiniPay::returnHtml();
         }
+        if (Http::method() === 'GET' && Http::path() === '/deposit/nowpayments/return') {
+            NowPayments::returnHtml();
+        }
         if (Http::method() === 'POST' && Http::path() === '/webhooks/zinipay') {
             $raw = file_get_contents('php://input') ?: '';
             $body = json_decode($raw, true);
             Http::json(ZiniPay::webhook(is_array($body) ? $body : []));
+        }
+        if (Http::method() === 'POST' && Http::path() === '/webhooks/nowpayments') {
+            $raw = file_get_contents('php://input') ?: '';
+            $body = json_decode($raw, true);
+            Http::json(NowPayments::webhook(is_array($body) ? $body : []));
         }
         Cors::apply();
         header('X-Content-Type-Options: nosniff');
@@ -103,6 +111,8 @@ final class Api
             $method === 'POST' && $path === '/deposit/request' => self::throttled('deposit', 15, 3600, self::depositRequest(...)),
             $method === 'POST' && $path === '/deposit/zinipay/start' => self::throttled('zini', 20, 3600, self::ziniPayStart(...)),
             $method === 'POST' && $path === '/deposit/zinipay/finish' => self::throttled('zini', 40, 3600, self::ziniPayFinish(...)),
+            $method === 'POST' && $path === '/deposit/nowpayments/start' => self::throttled('nowpay', 20, 3600, self::nowPaymentsStart(...)),
+            $method === 'POST' && $path === '/deposit/nowpayments/finish' => self::throttled('nowpay', 40, 3600, self::nowPaymentsFinish(...)),
             $method === 'GET' && $path === '/notices' => self::notices(),
             $method === 'GET' && $path === '/me/notifications' => self::notifications(),
             $method === 'POST' && $path === '/me/notifications/read' => self::readNotifications(),
@@ -608,6 +618,24 @@ final class Api
     private static function ziniPayFinish(): array
     {
         return ZiniPay::finish((int) Auth::user()['id'], self::int(Http::body(), 'depositId'));
+    }
+
+    private static function nowPaymentsStart(): array
+    {
+        $body = Http::body();
+        $packId = trim((string) ($body['packId'] ?? ''));
+        $qty = (int) ($body['qty'] ?? 1);
+        return NowPayments::start(
+            (int) Auth::user()['id'],
+            self::int($body, 'bdt'),
+            $packId !== '' ? $packId : null,
+            $qty
+        );
+    }
+
+    private static function nowPaymentsFinish(): array
+    {
+        return NowPayments::finish((int) Auth::user()['id'], self::int(Http::body(), 'depositId'));
     }
 
     private static function depositRequest(): array

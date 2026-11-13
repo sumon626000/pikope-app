@@ -75,6 +75,8 @@ final class Admin
                     self::saveDepositConfig();
                 case '/admin/zinipay/save':
                     self::saveZiniPayConfig();
+                case '/admin/nowpayments/save':
+                    self::saveNowPaymentsConfig();
                 case '/admin/deposit/approve':
                     self::reviewDeposit(true);
                 case '/admin/deposit/reject':
@@ -143,6 +145,7 @@ final class Admin
             '/admin/alerts' => self::alertsPage($csrf),
             '/admin/transfer' => self::transferPage($csrf),
             '/admin/zinipay' => self::ziniPayPage($csrf),
+            '/admin/nowpayments' => self::nowPaymentsPage($csrf),
             '/admin/landing' => self::landingPage($csrf),
             default => throw ApiError::notFound('No such endpoint'),
         };
@@ -725,6 +728,7 @@ CSS;
             'Money' => [
                 'deposits' => ['Coin add', '/admin/deposits'],
                 'zinipay' => ['ZiniPay (auto)', '/admin/zinipay'],
+                'nowpayments' => ['NOWPayments (crypto)', '/admin/nowpayments'],
                 'redeems' => ['Redeem', '/admin/redeems'],
                 'transfer' => ['Coin transfer', '/admin/transfer'],
                 'coin-shop' => ['Coin shop', '/admin/coin-shop'],
@@ -786,6 +790,7 @@ CSS;
             ['Security signals', '/admin/alerts', 'Redeem abuse, hacks, transfers', $pending['alerts']],
             ['Coin transfer fee', '/admin/transfer', 'Fee % and limits', 0],
             ['ZiniPay auto add', '/admin/zinipay', 'API key & WebView pay', 0],
+            ['NOWPayments crypto', '/admin/nowpayments', 'API key, IPN & invoice', 0],
             ['Players', '/admin/players', 'Search and edit accounts', 0],
             ['Economy', '/admin/economy', 'Stakes, fees, bonus', 0],
             ['Push message', '/admin/push', 'APK notifications', 0],
@@ -1915,6 +1920,89 @@ CSS;
             'apiKey' => $key,
         ]);
         self::back('/admin/zinipay', 'ZiniPay settings saved.');
+    }
+
+    private static function saveNowPaymentsConfig(): never
+    {
+        $prev = NowPayments::config();
+        $key = trim((string) ($_POST['apiKey'] ?? ''));
+        if (($_POST['clearKey'] ?? '0') === '1') {
+            $key = '';
+        } elseif ($key === '') {
+            $key = (string) $prev['apiKey'];
+        }
+        $ipn = trim((string) ($_POST['ipnSecret'] ?? ''));
+        if (($_POST['clearIpn'] ?? '0') === '1') {
+            $ipn = '';
+        } elseif ($ipn === '') {
+            $ipn = (string) $prev['ipnSecret'];
+        }
+        $enabled = ($_POST['enabled'] ?? '0') === '1';
+        if ($enabled && $key === '') {
+            self::fail('API key is required when NOWPayments is enabled.', '/admin/nowpayments');
+        }
+        NowPayments::save([
+            'enabled' => $enabled,
+            'apiKey' => $key,
+            'ipnSecret' => $ipn,
+            'priceCurrency' => (string) ($_POST['priceCurrency'] ?? 'usd'),
+            'bdtPerUsd' => (float) ($_POST['bdtPerUsd'] ?? 110),
+        ]);
+        self::back('/admin/nowpayments', 'NOWPayments settings saved.');
+    }
+
+    private static function nowPaymentsPage(string $csrf): never
+    {
+        $base = self::base();
+        $urls = NowPayments::adminUrls();
+        $ready = NowPayments::publicEnabled();
+        $c = NowPayments::config();
+        $rows = [];
+        try {
+            $rows = NowPayments::listRecent(80);
+        } catch (\Throwable $e) {
+            error_log('[admin/nowpayments] ' . $e->getMessage());
+        }
+        self::begin('NOWPayments (crypto)', 'nowpayments');
+        self::pageLead('Players pick <b>Crypto</b> on the coin pack popup. API key and IPN secret never ship in the APK.');
+        echo '<section class="section"><h2>Status</h2><div class="stats">';
+        echo '<div class="stat"><b>', $ready ? 'ON' : 'OFF', '</b><span>Crypto in app</span></div>';
+        echo '<div class="stat"><b>', self::e(NowPayments::maskedApiKey()), '</b><span>API key</span></div>';
+        echo '<div class="stat"><b>', $urls['appUrl'] !== '' ? 'OK' : 'MISSING', '</b><span>APP_URL</span></div>';
+        echo '</div></section>';
+        echo '<section class="section"><h2>Settings</h2><div class="card"><form method="post" action="', self::e($base), '/admin/nowpayments/save">',
+            self::csrfField($csrf),
+            '<label class="check"><input type="checkbox" name="enabled" value="1"', $c['enabled'] ? ' checked' : '', '> Enable crypto (NOWPayments) in the shop popup</label>',
+            '<label>API key<input type="password" name="apiKey" value="" autocomplete="new-password" placeholder="Paste NOWPayments API key"></label>',
+            '<p class="hint">Leave blank to keep the current key.</p>',
+            '<label class="check"><input type="checkbox" name="clearKey" value="1"> Clear API key</label>',
+            '<label>IPN secret<input type="password" name="ipnSecret" value="" autocomplete="new-password" placeholder="Dashboard → Payment Settings → IPN secret"></label>',
+            '<label class="check"><input type="checkbox" name="clearIpn" value="1"> Clear IPN secret</label>',
+            '<label>Price currency<select name="priceCurrency"><option value="usd"', $c['priceCurrency'] === 'usd' ? ' selected' : '', '>USD (convert from BDT)</option>',
+            '<option value="bdt"', $c['priceCurrency'] === 'bdt' ? ' selected' : '', '>BDT (if enabled on NOWPayments)</option></select></label>',
+            '<label>BDT per 1 USD<input type="number" step="0.01" min="1" name="bdtPerUsd" value="', self::e((string) $c['bdtPerUsd']), '"></label>',
+            '<p class="hint">Used when currency is USD. Pack prices stay in BDT in the app.</p>',
+            '<button>Save NOWPayments</button></form></div>';
+        echo '<div class="card grid" style="margin-top:12px">';
+        foreach ([
+            'IPN webhook (paste in NOWPayments)' => $urls['webhookUrl'],
+            'Return URL example' => $urls['returnUrlExample'],
+        ] as $label => $url) {
+            echo '<label>', self::e($label), '<input readonly value="', self::e($url), '" onclick="this.select()"></label>';
+        }
+        echo '</div></section>';
+        echo '<section class="section"><h2>Recent crypto deposits</h2><div class="card" style="overflow:auto"><table><thead><tr>',
+            '<th>ID</th><th>Player</th><th>BDT</th><th>Coins</th><th>Status</th><th>Credited</th><th>When</th></tr></thead><tbody>';
+        if ($rows === []) {
+            echo '<tr><td colspan="7" class="muted">No crypto deposits yet.</td></tr>';
+        }
+        foreach ($rows as $r) {
+            echo '<tr><td>', (int) $r['id'], '</td><td>', self::e((string) $r['display_name']), '</td><td>',
+                (int) $r['bdt_amount'], '</td><td>', (int) $r['coins'], '</td><td>', self::e((string) $r['payment_status']),
+                '</td><td>', (int) $r['credited'] === 1 ? 'yes' : 'no', '</td><td>', self::e((string) $r['created_at']), '</td></tr>';
+        }
+        echo '</tbody></table></div></section>';
+        self::end();
     }
 
     private static function ziniPayConfigBlock(string $csrf, string $base, bool $withUrls = true): void

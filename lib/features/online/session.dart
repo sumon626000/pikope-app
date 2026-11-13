@@ -208,6 +208,27 @@ class SessionNotifier extends Notifier<SessionState> {
     return r;
   }
 
+  Future<Map<String, dynamic>> startNowPaymentsDeposit(
+    int bdt, {
+    String? packId,
+    int qty = 1,
+  }) async {
+    await ensureSignedIn();
+    final body = <String, dynamic>{'bdt': bdt, 'qty': qty};
+    if (packId != null && packId.isNotEmpty) body['packId'] = packId;
+    return await _api.post('/deposit/nowpayments/start', body);
+  }
+
+  Future<Map<String, dynamic>> finishNowPaymentsDeposit(int depositId) async {
+    await ensureSignedIn();
+    final r = await _api.post('/deposit/nowpayments/finish', {
+      'depositId': depositId,
+    });
+    final user = r['user'];
+    if (user is Map<String, dynamic>) _adopt(user);
+    return r;
+  }
+
   Future<Map<String, dynamic>> submitDeposit({
     required int bdt,
     required String provider,
