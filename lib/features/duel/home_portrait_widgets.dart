@@ -34,57 +34,105 @@ String titleCase(String s) {
 }
 
 /// Rubik, bold by default, with the soft dark drop shadow every home label has.
-TextStyle pcText(double size, {Color color = Colors.white, FontWeight weight = FontWeight.w700, bool shadow = true}) => TextStyle(
-      fontFamily: DesignTypography.poolCityFont,
-      fontSize: size,
-      color: color,
-      fontWeight: weight,
-      height: 1.1,
-      shadows: shadow ? const [Shadow(color: Color(0xB3000000), blurRadius: 6, offset: Offset(0, 2))] : null,
-    );
+TextStyle pcText(
+  double size, {
+  Color color = Colors.white,
+  FontWeight weight = FontWeight.w700,
+  bool shadow = true,
+}) => TextStyle(
+  fontFamily: DesignTypography.poolCityFont,
+  fontSize: size,
+  color: color,
+  fontWeight: weight,
+  height: 1.1,
+  shadows: shadow
+      ? const [
+          Shadow(color: Color(0xB3000000), blurRadius: 6, offset: Offset(0, 2)),
+        ]
+      : null,
+);
 
 // ------------------------------------------------------------------ canvas
 
 /// Portrait page: 1080 design units wide; the height follows the screen so
 /// the layout can spread with Spacers. Below [minHeight] the page scrolls
 /// instead of squeezing.
+///
+/// On wide desktop / tablet landscape viewports the canvas is capped to a
+/// phone column and centered so UI does not stretch edge-to-edge.
 class PortraitCanvas extends StatelessWidget {
-  const PortraitCanvas({super.key, required this.builder, this.minHeight = 1800});
+  const PortraitCanvas({
+    super.key,
+    required this.builder,
+    this.minHeight = 1800,
+  });
 
   static const width = 1080.0;
+
+  /// Above this viewport width, use a centered phone column instead of full bleed.
+  static const wideBreakpoint = 700.0;
+
+  /// Max logical width of the phone column on desktop / large web.
+  static const phoneColumnMaxWidth = 480.0;
 
   final double minHeight;
 
   /// Receives the canvas height in design units.
   final Widget Function(BuildContext context, double height) builder;
 
+  /// Width used to scale the 1080 design canvas for [viewportWidth].
+  static double columnWidthFor(double viewportWidth) {
+    if (viewportWidth >= wideBreakpoint) {
+      return min(phoneColumnMaxWidth, viewportWidth);
+    }
+    return viewportWidth;
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: DesignColors.pcInk,
-        resizeToAvoidBottomInset: false,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Own layer: the animations above must not repaint the hall.
-            const RepaintBoundary(child: CustomPaint(painter: PoolCityBackdropPainter())),
-            SafeArea(
-              child: LayoutBuilder(
-                builder: (context, c) {
-                  final scale = c.maxWidth / width;
-                  final fit = c.maxHeight / scale;
-                  final height = max(minHeight, fit);
-                  final canvas = FittedBox(
-                    fit: BoxFit.fitWidth,
-                    alignment: Alignment.topCenter,
-                    child: SizedBox(width: width, height: height, child: builder(context, height)),
-                  );
-                  return fit < minHeight ? SingleChildScrollView(child: canvas) : canvas;
-                },
-              ),
-            ),
-          ],
+    backgroundColor: DesignColors.pcInk,
+    resizeToAvoidBottomInset: false,
+    body: Stack(
+      fit: StackFit.expand,
+      children: [
+        // Own layer: the animations above must not repaint the hall.
+        const RepaintBoundary(
+          child: CustomPaint(painter: PoolCityBackdropPainter()),
         ),
-      );
+        SafeArea(
+          child: LayoutBuilder(
+            builder: (context, c) {
+              final columnW = columnWidthFor(c.maxWidth);
+              final scale = columnW / width;
+              final fit = c.maxHeight / scale;
+              final height = max(minHeight, fit);
+              final canvas = FittedBox(
+                fit: BoxFit.fitWidth,
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: width,
+                  height: height,
+                  child: builder(context, height),
+                ),
+              );
+              final body = fit < minHeight
+                  ? SingleChildScrollView(child: canvas)
+                  : canvas;
+              if (columnW >= c.maxWidth - 0.5) return body;
+              return Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: columnW,
+                  height: c.maxHeight,
+                  child: body,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 ui.Image? _backdrop;
@@ -132,15 +180,25 @@ ui.Image? _bakedBackdrop() {
       ).createShader(rect),
   );
   void glow(Offset c, double r, Color color) => canvas.drawCircle(
-        c,
-        r,
-        Paint()..shader = RadialGradient(colors: [color, color.withValues(alpha: 0)]).createShader(Rect.fromCircle(center: c, radius: r)),
-      );
-  glow(const Offset(270, 330), 300, DesignColors.pcRibbonDeep.withValues(alpha: 0.42));
+    c,
+    r,
+    Paint()
+      ..shader = RadialGradient(
+        colors: [color, color.withValues(alpha: 0)],
+      ).createShader(Rect.fromCircle(center: c, radius: r)),
+  );
+  glow(
+    const Offset(270, 330),
+    300,
+    DesignColors.pcRibbonDeep.withValues(alpha: 0.42),
+  );
   glow(const Offset(70, 150), 170, const Color(0x443B6CFF));
 
   // --- out-of-focus table, seen from the near end, blurred in screen space
-  canvas.saveLayer(const Rect.fromLTWH(-200, 480, 940, 700), Paint()..imageFilter = ui.ImageFilter.blur(sigmaX: 9, sigmaY: 9));
+  canvas.saveLayer(
+    const Rect.fromLTWH(-200, 480, 940, 700),
+    Paint()..imageFilter = ui.ImageFilter.blur(sigmaX: 9, sigmaY: 9),
+  );
   canvas.save();
   final m = Matrix4.identity()
     ..setEntry(3, 2, 0.0016)
@@ -151,7 +209,14 @@ ui.Image? _bakedBackdrop() {
   canvas.scale(2.9);
   canvas.translate(-300, -175);
   paintProTable(canvas, const Size(600, 351), _backdropTable);
-  for (final (x, y, n) in const [(410.0, 130.0, 1), (455.0, 165.0, 3), (380.0, 215.0, 8), (470.0, 230.0, 5), (330.0, 150.0, 12), (240.0, 240.0, 0)]) {
+  for (final (x, y, n) in const [
+    (410.0, 130.0, 1),
+    (455.0, 165.0, 3),
+    (380.0, 215.0, 8),
+    (470.0, 230.0, 5),
+    (330.0, 150.0, 12),
+    (240.0, 240.0, 0),
+  ]) {
     paintBall(canvas, Offset(x, y), 7.2, n);
   }
   canvas.restore();
@@ -161,12 +226,21 @@ ui.Image? _bakedBackdrop() {
   final mark = TextPainter(
     text: TextSpan(
       text: 'PikoPe',
-      style: TextStyle(fontFamily: DesignTypography.poolCityFont, fontSize: 118, fontWeight: FontWeight.w700, color: Colors.white.withValues(alpha: 0.055)),
+      style: TextStyle(
+        fontFamily: DesignTypography.poolCityFont,
+        fontSize: 118,
+        fontWeight: FontWeight.w700,
+        color: Colors.white.withValues(alpha: 0.055),
+      ),
     ),
     textDirection: TextDirection.ltr,
   )..layout();
   mark.paint(canvas, Offset(270 - mark.width / 2, 240 - mark.height / 2));
-  paintCrown(canvas, const Rect.fromLTWH(200, 95, 140, 90), Colors.white.withValues(alpha: 0.05));
+  paintCrown(
+    canvas,
+    const Rect.fromLTWH(200, 95, 140, 90),
+    Colors.white.withValues(alpha: 0.05),
+  );
 
   // Darken the edges so panels read clearly.
   canvas.drawRect(
@@ -201,8 +275,12 @@ class PoolCityBackdropPainter extends CustomPainter {
       canvas.drawRect(dest, Paint()..color = DesignColors.pcInk);
       return;
     }
-    canvas.drawImageRect(image, Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()), dest,
-        Paint()..filterQuality = FilterQuality.medium);
+    canvas.drawImageRect(
+      image,
+      Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+      dest,
+      Paint()..filterQuality = FilterQuality.medium,
+    );
   }
 
   @override
@@ -225,9 +303,12 @@ void paintCrown(Canvas canvas, Rect r, [Color? color]) {
     canvas.drawPath(crown, Paint()..color = color);
     return;
   }
-  canvas.drawPath(crown.shift(Offset(0, h * 0.08)), Paint()
-    ..color = const Color(0x99000000)
-    ..maskFilter = MaskFilter.blur(BlurStyle.normal, h * 0.06));
+  canvas.drawPath(
+    crown.shift(Offset(0, h * 0.08)),
+    Paint()
+      ..color = const Color(0x99000000)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, h * 0.06),
+  );
   canvas.drawPath(
     crown,
     Paint()
@@ -244,24 +325,36 @@ void paintCrown(Canvas canvas, Rect r, [Color? color]) {
       ..strokeWidth = max(1.5, h * 0.025)
       ..color = const Color(0xFF8A4A1E),
   );
-  canvas.drawRect(Rect.fromLTWH(r.left + w * 0.12, r.top + h * 0.8, w * 0.76, h * 0.2), Paint()..color = const Color(0xFFD9A35A));
+  canvas.drawRect(
+    Rect.fromLTWH(r.left + w * 0.12, r.top + h * 0.8, w * 0.76, h * 0.2),
+    Paint()..color = const Color(0xFFD9A35A),
+  );
   for (final x in [0.02, 0.5, 0.98]) {
-    canvas.drawCircle(Offset(r.left + w * x, r.top + h * (x == 0.5 ? 0.02 : 0.3)), w * 0.045, Paint()..color = const Color(0xFFE53950));
+    canvas.drawCircle(
+      Offset(r.left + w * x, r.top + h * (x == 0.5 ? 0.02 : 0.3)),
+      w * 0.045,
+      Paint()..color = const Color(0xFFE53950),
+    );
   }
 }
 
 /// Glass fill shared by the round / square shortcut buttons.
-BoxDecoration _shortcutFill({BoxShape shape = BoxShape.circle, double radius = 18}) => BoxDecoration(
-      shape: shape,
-      borderRadius: shape == BoxShape.circle ? null : BorderRadius.circular(radius),
-      gradient: const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [Color(0xFF5A4A9C), Color(0xFF3A2A74)],
-      ),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.28), width: 2),
-      boxShadow: const [BoxShadow(color: Color(0x99000000), blurRadius: 14, offset: Offset(0, 6))],
-    );
+BoxDecoration _shortcutFill({
+  BoxShape shape = BoxShape.circle,
+  double radius = 18,
+}) => BoxDecoration(
+  shape: shape,
+  borderRadius: shape == BoxShape.circle ? null : BorderRadius.circular(radius),
+  gradient: const LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [Color(0xFF5A4A9C), Color(0xFF3A2A74)],
+  ),
+  border: Border.all(color: Colors.white.withValues(alpha: 0.28), width: 2),
+  boxShadow: const [
+    BoxShadow(color: Color(0x99000000), blurRadius: 14, offset: Offset(0, 6)),
+  ],
+);
 
 // ----------------------------------------------------------------- top bar
 
@@ -300,28 +393,43 @@ class HomeTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: height,
-        child: Row(
-          children: [
-            const SizedBox(width: 18),
-            _AvatarButton(avatar: avatar, registered: registered, level: level, onTap: onProfile),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Center(
-                child: HomeWalletBar(coins: coins, gems: gems, placeholder: placeholder, onAdd: onWallet),
-              ),
-            ),
-            _TopIcon(Icons.email_rounded, onMail),
-            _TopIcon(Icons.notifications_rounded, onBell, badge: unread),
-            _TopIcon(Icons.settings_rounded, onSettings),
-            const SizedBox(width: 10),
-          ],
+    height: height,
+    child: Row(
+      children: [
+        const SizedBox(width: 18),
+        _AvatarButton(
+          avatar: avatar,
+          registered: registered,
+          level: level,
+          onTap: onProfile,
         ),
-      );
+        const SizedBox(width: 10),
+        Expanded(
+          child: Center(
+            child: HomeWalletBar(
+              coins: coins,
+              gems: gems,
+              placeholder: placeholder,
+              onAdd: onWallet,
+            ),
+          ),
+        ),
+        _TopIcon(Icons.email_rounded, onMail),
+        _TopIcon(Icons.notifications_rounded, onBell, badge: unread),
+        _TopIcon(Icons.settings_rounded, onSettings),
+        const SizedBox(width: 10),
+      ],
+    ),
+  );
 }
 
 class _AvatarButton extends StatelessWidget {
-  const _AvatarButton({required this.avatar, required this.registered, required this.level, required this.onTap});
+  const _AvatarButton({
+    required this.avatar,
+    required this.registered,
+    required this.level,
+    required this.onTap,
+  });
 
   final String avatar;
   final bool registered;
@@ -330,61 +438,86 @@ class _AvatarButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PressScale(
-        onTap: onTap,
-        scale: 0.94,
-        child: SizedBox(
-          width: 122,
-          height: 124,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned(
-                left: 6,
-                top: 10,
-                child: Container(
-                  width: 110,
-                  height: 110,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFBFD4FF), width: 3),
-                    color: const Color(0xFF2A1C5E),
-                    boxShadow: const [BoxShadow(color: Color(0xAA000000), blurRadius: 12, offset: Offset(0, 5))],
+    onTap: onTap,
+    scale: 0.94,
+    child: SizedBox(
+      width: 122,
+      height: 124,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            left: 6,
+            top: 10,
+            child: Container(
+              width: 110,
+              height: 110,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFBFD4FF), width: 3),
+                color: const Color(0xFF2A1C5E),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0xAA000000),
+                    blurRadius: 12,
+                    offset: Offset(0, 5),
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(7),
-                    child: registered
-                        ? AvatarImage(avatar, size: 104)
-                        : const ColoredBox(
-                            color: Color(0xFF1A1240),
-                            child: Icon(Icons.person_rounded, color: DesignColors.pcTextDim, size: 72),
-                          ),
-                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(7),
+                child: registered
+                    ? AvatarImage(avatar, size: 104)
+                    : const ColoredBox(
+                        color: Color(0xFF1A1240),
+                        child: Icon(
+                          Icons.person_rounded,
+                          color: DesignColors.pcTextDim,
+                          size: 72,
+                        ),
+                      ),
+              ),
+            ),
+          ),
+          if (registered)
+            Positioned(
+              left: -6,
+              top: -4,
+              child: SizedBox(
+                width: 56,
+                height: 56,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(
+                      Icons.star_rounded,
+                      color: Color(0xFF8A4A1E),
+                      size: 58,
+                    ),
+                    const Icon(
+                      Icons.star_rounded,
+                      color: DesignColors.pcGold,
+                      size: 50,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Text(
+                        '$level',
+                        style: pcText(
+                          level >= 100 ? 16 : 22,
+                          color: const Color(0xFF5A2E00),
+                          shadow: false,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              if (registered)
-                Positioned(
-                  left: -6,
-                  top: -4,
-                  child: SizedBox(
-                    width: 56,
-                    height: 56,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        const Icon(Icons.star_rounded, color: Color(0xFF8A4A1E), size: 58),
-                        const Icon(Icons.star_rounded, color: DesignColors.pcGold, size: 50),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 3),
-                          child: Text('$level', style: pcText(level >= 100 ? 16 : 22, color: const Color(0xFF5A2E00), shadow: false)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      );
+            ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _TopIcon extends StatelessWidget {
@@ -396,25 +529,43 @@ class _TopIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PressScale(
-        onTap: onTap,
-        scale: 0.9,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Icon(icon, color: const Color(0xFFF2F4FB), size: 66, shadows: const [Shadow(color: Color(0xAA000000), blurRadius: 8, offset: Offset(0, 3))]),
-              if (badge > 0) Positioned(right: -10, top: -8, child: _CountBadge(badge)),
+    onTap: onTap,
+    scale: 0.9,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Icon(
+            icon,
+            color: const Color(0xFFF2F4FB),
+            size: 66,
+            shadows: const [
+              Shadow(
+                color: Color(0xAA000000),
+                blurRadius: 8,
+                offset: Offset(0, 3),
+              ),
             ],
           ),
-        ),
-      );
+          if (badge > 0)
+            Positioned(right: -10, top: -8, child: _CountBadge(badge)),
+        ],
+      ),
+    ),
+  );
 }
 
 /// One dark bar holding the wallets: [gems] (premium chip) and [coins], each
 /// with a green "+" that opens the shop. Signed out: a single sign-in cell.
 class HomeWalletBar extends StatelessWidget {
-  const HomeWalletBar({super.key, required this.coins, required this.gems, required this.placeholder, required this.onAdd});
+  const HomeWalletBar({
+    super.key,
+    required this.coins,
+    required this.gems,
+    required this.placeholder,
+    required this.onAdd,
+  });
 
   final int? coins;
   final int? gems;
@@ -423,37 +574,55 @@ class HomeWalletBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PressScale(
-        onTap: onAdd,
-        scale: 0.97,
-        child: Container(
-          height: 64,
-          padding: const EdgeInsets.only(left: 40, right: 5),
-          decoration: BoxDecoration(
-            color: DesignColors.pcPill.withValues(alpha: 0.93),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
-            boxShadow: const [BoxShadow(color: Color(0x99000000), blurRadius: 12, offset: Offset(0, 5))],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (gems != null) ...[
-                _WalletCell(icon: const GemIcon(size: 74), text: formatCoins(gems!, compact: gems! >= 10000000)),
-                const SizedBox(width: 34),
-              ],
-              _WalletCell(
-                icon: const PikoCoinIcon(size: 76),
-                text: coins != null ? formatCoins(coins!, compact: coins! >= 10000000) : placeholder,
-                small: coins == null,
-              ),
-            ],
-          ),
+    onTap: onAdd,
+    scale: 0.97,
+    child: Container(
+      height: 64,
+      padding: const EdgeInsets.only(left: 40, right: 5),
+      decoration: BoxDecoration(
+        color: DesignColors.pcPill.withValues(alpha: 0.93),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 1.5,
         ),
-      );
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x99000000),
+            blurRadius: 12,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (gems != null) ...[
+            _WalletCell(
+              icon: const GemIcon(size: 74),
+              text: formatCoins(gems!, compact: gems! >= 10000000),
+            ),
+            const SizedBox(width: 34),
+          ],
+          _WalletCell(
+            icon: const PikoCoinIcon(size: 76),
+            text: coins != null
+                ? formatCoins(coins!, compact: coins! >= 10000000)
+                : placeholder,
+            small: coins == null,
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _WalletCell extends StatelessWidget {
-  const _WalletCell({required this.icon, required this.text, this.small = false});
+  const _WalletCell({
+    required this.icon,
+    required this.text,
+    this.small = false,
+  });
 
   final Widget icon;
   final String text;
@@ -461,33 +630,43 @@ class _WalletCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Transform.translate(offset: const Offset(-28, 0), child: icon),
-          Transform.translate(
-            offset: const Offset(-10, 0),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minWidth: small ? 0 : 120),
-              child: Text(small ? titleCase(text) : text, textAlign: TextAlign.center, style: pcText(small ? 24 : 36)),
-            ),
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Transform.translate(offset: const Offset(-28, 0), child: icon),
+      Transform.translate(
+        offset: const Offset(-10, 0),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: small ? 0 : 120),
+          child: Text(
+            small ? titleCase(text) : text,
+            textAlign: TextAlign.center,
+            style: pcText(small ? 24 : 36),
           ),
-          const SizedBox(width: 6),
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              gradient: const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF34C25A), Color(0xFF1C9A40)],
-              ),
-              boxShadow: const [BoxShadow(color: Color(0x88000000), blurRadius: 6, offset: Offset(0, 3))],
-            ),
-            child: const Icon(Icons.add_rounded, color: Colors.white, size: 46),
+        ),
+      ),
+      const SizedBox(width: 6),
+      Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF34C25A), Color(0xFF1C9A40)],
           ),
-        ],
-      );
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x88000000),
+              blurRadius: 6,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: const Icon(Icons.add_rounded, color: Colors.white, size: 46),
+      ),
+    ],
+  );
 }
 
 // ------------------------------------------------------------- shortcuts
@@ -518,60 +697,83 @@ class HomeRoundButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PressScale(
-        onTap: onTap,
-        enabled: onTap != null,
-        scale: 0.94,
-        child: IdleAttentionScale(
-          active: attention,
-          child: SizedBox(
-            width: 150,
-            height: 150,
-            child: Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.topCenter,
-              children: [
-                Positioned(
-                  top: 0,
+    onTap: onTap,
+    enabled: onTap != null,
+    scale: 0.94,
+    child: IdleAttentionScale(
+      active: attention,
+      child: SizedBox(
+        width: 150,
+        height: 150,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.topCenter,
+          children: [
+            Positioned(
+              top: 0,
+              child: Container(
+                width: size,
+                height: size,
+                decoration: _shortcutFill(),
+                alignment: const Alignment(0, -0.55),
+                child: Icon(
+                  icon,
+                  size: 58,
+                  color: iconColor,
+                  shadows: const [
+                    Shadow(
+                      color: Color(0x99000000),
+                      blurRadius: 6,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              left: -10,
+              right: -10,
+              top: 76,
+              child: Text(
+                titleCase(label),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                style: pcText(28).copyWith(
+                  height: 1.0,
+                  shadows: const [
+                    Shadow(
+                      color: Color(0xE6000000),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                    Shadow(color: Color(0xCC000000), blurRadius: 10),
+                  ],
+                ),
+              ),
+            ),
+            if (dot)
+              Positioned(
+                left: 14,
+                top: 8,
+                child: PulseBadge(
                   child: Container(
-                    width: size,
-                    height: size,
-                    decoration: _shortcutFill(),
-                    alignment: const Alignment(0, -0.55),
-                    child: Icon(icon, size: 58, color: iconColor, shadows: const [Shadow(color: Color(0x99000000), blurRadius: 6, offset: Offset(0, 3))]),
-                  ),
-                ),
-                Positioned(
-                  left: -10,
-                  right: -10,
-                  top: 76,
-                  child: Text(
-                    titleCase(label),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    style: pcText(28).copyWith(height: 1.0, shadows: const [
-                      Shadow(color: Color(0xE6000000), blurRadius: 4, offset: Offset(0, 2)),
-                      Shadow(color: Color(0xCC000000), blurRadius: 10),
-                    ]),
-                  ),
-                ),
-                if (dot)
-                  Positioned(
-                    left: 14,
-                    top: 8,
-                    child: PulseBadge(
-                      child: Container(
-                        width: 30,
-                        height: 30,
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: DuelColors.red, border: Border.all(color: Colors.white, width: 2.5)),
-                      ),
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: DuelColors.red,
+                      border: Border.all(color: Colors.white, width: 2.5),
                     ),
                   ),
-                if (count > 0) Positioned(right: 4, top: -2, child: _CountBadge(count)),
-              ],
-            ),
-          ),
+                ),
+              ),
+            if (count > 0)
+              Positioned(right: 4, top: -2, child: _CountBadge(count)),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 }
 
 /// Square icon-only shortcut (left column: the "NEW" clipboard and friends).
@@ -595,46 +797,69 @@ class HomeSquareButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PressScale(
-        onTap: onTap,
-        scale: 0.94,
-        child: SizedBox(
-          width: size + 16,
-          height: size + 12,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned(
-                left: 6,
-                top: 8,
+    onTap: onTap,
+    scale: 0.94,
+    child: SizedBox(
+      width: size + 16,
+      height: size + 12,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            left: 6,
+            top: 8,
+            child: Container(
+              width: size,
+              height: size,
+              decoration: _shortcutFill(
+                shape: BoxShape.rectangle,
+                radius: size * 0.2,
+              ),
+              child: Icon(
+                icon,
+                size: size * 0.58,
+                color: iconColor,
+                shadows: const [
+                  Shadow(
+                    color: Color(0x99000000),
+                    blurRadius: 6,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (tag != null)
+            Positioned(
+              right: -14,
+              top: -4,
+              child: Transform.rotate(
+                angle: -0.2,
                 child: Container(
-                  width: size,
-                  height: size,
-                  decoration: _shortcutFill(shape: BoxShape.rectangle, radius: size * 0.2),
-                  child: Icon(icon, size: size * 0.58, color: iconColor, shadows: const [Shadow(color: Color(0x99000000), blurRadius: 6, offset: Offset(0, 3))]),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF03A4E),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x88000000),
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Text(tag!, style: pcText(22, shadow: false)),
                 ),
               ),
-              if (tag != null)
-                Positioned(
-                  right: -14,
-                  top: -4,
-                  child: Transform.rotate(
-                    angle: -0.2,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF03A4E),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: Colors.white, width: 2),
-                        boxShadow: const [BoxShadow(color: Color(0x88000000), blurRadius: 4, offset: Offset(0, 2))],
-                      ),
-                      child: Text(tag!, style: pcText(22, shadow: false)),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      );
+            ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _CountBadge extends StatelessWidget {
@@ -644,22 +869,31 @@ class _CountBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PulseBadge(
-        minScale: 0.94,
-        maxScale: 1.08,
-        child: Container(
-          constraints: const BoxConstraints(minWidth: 40),
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 9),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF03A4E),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white, width: 3),
-            boxShadow: const [BoxShadow(color: Color(0x88000000), blurRadius: 4, offset: Offset(0, 2))],
+    minScale: 0.94,
+    maxScale: 1.08,
+    child: Container(
+      constraints: const BoxConstraints(minWidth: 40),
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 9),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF03A4E),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white, width: 3),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x88000000),
+            blurRadius: 4,
+            offset: Offset(0, 2),
           ),
-          child: Text(count > 99 ? '99+' : '$count', style: pcText(24, shadow: false)),
-        ),
-      );
+        ],
+      ),
+      child: Text(
+        count > 99 ? '99+' : '$count',
+        style: pcText(24, shadow: false),
+      ),
+    ),
+  );
 }
 
 // ------------------------------------------------------------------- rank
@@ -691,69 +925,132 @@ class RankBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PressScale(
-        onTap: onTap,
-        scale: 0.98,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(width: 180, height: 190, child: CustomPaint(painter: RankEmblemPainter(registered ? tier : -1))),
-            Transform.translate(
-              offset: const Offset(0, -14),
-              child: SizedBox(
-                width: 650,
-                height: 92,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    const CustomPaint(size: Size(650, 92), painter: _RibbonPainter()),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10, left: 90, right: 90),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(titleCase(rankName), style: pcText(60).copyWith(letterSpacing: 0.5)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Transform.translate(
-              offset: const Offset(0, -14),
-              child: Container(
-                width: 520,
-                height: 80,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [DesignColors.pcPanelLighter, DesignColors.pcPanelLight]),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFFB9A8FF).withValues(alpha: 0.6), width: 2),
-                  boxShadow: const [BoxShadow(color: Color(0x99000000), blurRadius: 14, offset: Offset(0, 6))],
-                ),
-                child: Row(
-                  children: [
-                    SizedBox(width: 70, child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(position, style: pcText(44)))),
-                    const SizedBox(width: 10),
-                    Container(
-                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFF9FE4FF), width: 2)),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: registered
-                            ? AvatarImage(avatar, size: 54)
-                            : const SizedBox(width: 54, height: 54, child: ColoredBox(color: Color(0xFF1A1240), child: Icon(Icons.person_rounded, color: DesignColors.pcTextDim, size: 40))),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: pcText(34))),
-                    Text(coins, style: pcText(36)),
-                    const SizedBox(width: 8),
-                    const PikoCoinIcon(size: 50),
-                  ],
-                ),
-              ),
-            ),
-          ],
+    onTap: onTap,
+    scale: 0.98,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 180,
+          height: 190,
+          child: CustomPaint(
+            painter: RankEmblemPainter(registered ? tier : -1),
+          ),
         ),
-      );
+        Transform.translate(
+          offset: const Offset(0, -14),
+          child: SizedBox(
+            width: 650,
+            height: 92,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                const CustomPaint(
+                  size: Size(650, 92),
+                  painter: _RibbonPainter(),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(
+                    bottom: 10,
+                    left: 90,
+                    right: 90,
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      titleCase(rankName),
+                      style: pcText(60).copyWith(letterSpacing: 0.5),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Transform.translate(
+          offset: const Offset(0, -14),
+          child: Container(
+            width: 520,
+            height: 80,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  DesignColors.pcPanelLighter,
+                  DesignColors.pcPanelLight,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: const Color(0xFFB9A8FF).withValues(alpha: 0.6),
+                width: 2,
+              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x99000000),
+                  blurRadius: 14,
+                  offset: Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 70,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(position, style: pcText(44)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: const Color(0xFF9FE4FF),
+                      width: 2,
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: registered
+                        ? AvatarImage(avatar, size: 54)
+                        : const SizedBox(
+                            width: 54,
+                            height: 54,
+                            child: ColoredBox(
+                              color: Color(0xFF1A1240),
+                              child: Icon(
+                                Icons.person_rounded,
+                                color: DesignColors.pcTextDim,
+                                size: 40,
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: pcText(34),
+                  ),
+                ),
+                Text(coins, style: pcText(36)),
+                const SizedBox(width: 8),
+                const PikoCoinIcon(size: 50),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 /// Faceted gem in the rank tier's colour, in a bronze bezel with a small
@@ -784,18 +1081,30 @@ class RankEmblemPainter extends CustomPainter {
       ..lineTo(c.dx + shift.dx, c.dy + ry * sy + shift.dy)
       ..lineTo(c.dx - rx * sx + shift.dx, c.dy + shift.dy)
       ..close();
-    canvas.drawPath(rhombus(1.1, 1.1, const Offset(0, 8)), Paint()
-      ..color = const Color(0x99000000)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
+    canvas.drawPath(
+      rhombus(1.1, 1.1, const Offset(0, 8)),
+      Paint()
+        ..color = const Color(0x99000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+    );
     // Bronze bezel with its own facets.
-    final bezelRect = Rect.fromCenter(center: c, width: rx * 2.2, height: ry * 2.2);
+    final bezelRect = Rect.fromCenter(
+      center: c,
+      width: rx * 2.2,
+      height: ry * 2.2,
+    );
     canvas.drawPath(
       rhombus(1.1, 1.1),
       Paint()
         ..shader = const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFF0C27A), Color(0xFFB87333), Color(0xFF6E3B14), Color(0xFFD9A35A)],
+          colors: [
+            Color(0xFFF0C27A),
+            Color(0xFFB87333),
+            Color(0xFF6E3B14),
+            Color(0xFFD9A35A),
+          ],
           stops: [0, 0.35, 0.7, 1],
         ).createShader(bezelRect),
     );
@@ -807,14 +1116,22 @@ class RankEmblemPainter extends CustomPainter {
         ..color = const Color(0xFF4A2608),
     );
     // Gem face.
-    final face = Rect.fromCenter(center: c, width: rx * 1.76, height: ry * 1.76);
+    final face = Rect.fromCenter(
+      center: c,
+      width: rx * 1.76,
+      height: ry * 1.76,
+    );
     canvas.drawPath(
       rhombus(0.88, 0.88),
       Paint()
         ..shader = LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color.lerp(metal[0], Colors.white, 0.4)!, metal[0], metal[1]],
+          colors: [
+            Color.lerp(metal[0], Colors.white, 0.4)!,
+            metal[0],
+            metal[1],
+          ],
           stops: const [0, 0.4, 1],
         ).createShader(face),
     );
@@ -842,11 +1159,22 @@ class RankEmblemPainter extends CustomPainter {
         ..strokeWidth = 1.5
         ..color = Colors.white.withValues(alpha: 0.55),
     );
-    canvas.drawCircle(Offset(c.dx - gx * 0.32, c.dy - gy * 0.36), w * 0.05, Paint()
-      ..color = Colors.white.withValues(alpha: 0.8)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3));
+    canvas.drawCircle(
+      Offset(c.dx - gx * 0.32, c.dy - gy * 0.36),
+      w * 0.05,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.8)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+    );
     // Crown sitting in the bezel's top point; a drop at the bottom point.
-    paintCrown(canvas, Rect.fromCenter(center: Offset(c.dx, c.dy - gy * 0.62), width: w * 0.3, height: h * 0.14));
+    paintCrown(
+      canvas,
+      Rect.fromCenter(
+        center: Offset(c.dx, c.dy - gy * 0.62),
+        width: w * 0.3,
+        height: h * 0.14,
+      ),
+    );
     canvas.drawPath(
       Path()
         ..moveTo(c.dx, c.dy + ry * 1.1)
@@ -882,7 +1210,10 @@ class _RibbonPainter extends CustomPainter {
         ..lineTo(x0, h)
         ..lineTo(notch, h / 2 + 11)
         ..close();
-      canvas.drawPath(p.shift(const Offset(0, 4)), Paint()..color = const Color(0x77000000));
+      canvas.drawPath(
+        p.shift(const Offset(0, 4)),
+        Paint()..color = const Color(0x77000000),
+      );
       canvas.drawPath(p, Paint()..color = DesignColors.pcRibbonEdge);
       final fold = Path()
         ..moveTo(left ? inset : w - inset, h - 10)
@@ -895,7 +1226,10 @@ class _RibbonPainter extends CustomPainter {
     tail(true);
     tail(false);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(body.shift(const Offset(0, 6)), const Radius.circular(4)),
+      RRect.fromRectAndRadius(
+        body.shift(const Offset(0, 6)),
+        const Radius.circular(4),
+      ),
       Paint()
         ..color = const Color(0x99000000)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
@@ -906,12 +1240,19 @@ class _RibbonPainter extends CustomPainter {
         ..shader = const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFFEA4A9B), DesignColors.pcRibbon, DesignColors.pcRibbonDeep],
+          colors: [
+            Color(0xFFEA4A9B),
+            DesignColors.pcRibbon,
+            DesignColors.pcRibbonDeep,
+          ],
           stops: [0, 0.3, 1],
         ).createShader(body),
     );
     // Darker base band and a light top edge.
-    canvas.drawRect(Rect.fromLTRB(body.left, body.bottom - 12, body.right, body.bottom), Paint()..color = const Color(0xFFA5125F));
+    canvas.drawRect(
+      Rect.fromLTRB(body.left, body.bottom - 12, body.right, body.bottom),
+      Paint()..color = const Color(0xFFA5125F),
+    );
     canvas.drawLine(
       Offset(body.left + 4, body.top + 2),
       Offset(body.right - 4, body.top + 2),
@@ -959,52 +1300,68 @@ class HeroTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PressScale(
-        onTap: onTap,
-        scale: 0.97,
-        child: SizedBox(
-          width: width,
-          height: height,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned.fill(child: CustomPaint(painter: _TrapezoidTilePainter(colors, slantRight))),
-              Positioned(
-                left: artInsets.left + (slantRight ? 0 : slant),
-                right: artInsets.right + (slantRight ? slant : 0),
-                top: artInsets.top,
-                bottom: artInsets.bottom,
-                child: art,
-              ),
-              Positioned(
-                left: slantRight ? 50 : 50 + slant * 0.5,
-                right: 30,
-                bottom: 20,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      titleCase(label),
-                      style: pcText(66).copyWith(
-                        shadows: const [
-                          Shadow(color: Color(0xCC000000), blurRadius: 10, offset: Offset(0, 4)),
-                          Shadow(color: Color(0x88000000), blurRadius: 2, offset: Offset(0, 1)),
-                        ],
+    onTap: onTap,
+    scale: 0.97,
+    child: SizedBox(
+      width: width,
+      height: height,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _TrapezoidTilePainter(colors, slantRight),
+            ),
+          ),
+          Positioned(
+            left: artInsets.left + (slantRight ? 0 : slant),
+            right: artInsets.right + (slantRight ? slant : 0),
+            top: artInsets.top,
+            bottom: artInsets.bottom,
+            child: art,
+          ),
+          Positioned(
+            left: slantRight ? 50 : 50 + slant * 0.5,
+            right: 30,
+            bottom: 20,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  titleCase(label),
+                  style: pcText(66).copyWith(
+                    shadows: const [
+                      Shadow(
+                        color: Color(0xCC000000),
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
                       ),
-                    ),
+                      Shadow(
+                        color: Color(0x88000000),
+                        blurRadius: 2,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              if (crown)
-                Positioned(
-                  right: 110,
-                  top: -58,
-                  child: SizedBox(width: 160, height: 96, child: CustomPaint(painter: _CrownWidgetPainter())),
-                ),
-            ],
+            ),
           ),
-        ),
-      );
+          if (crown)
+            Positioned(
+              right: 110,
+              top: -58,
+              child: SizedBox(
+                width: 160,
+                height: 96,
+                child: CustomPaint(painter: _CrownWidgetPainter()),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _TrapezoidTilePainter extends CustomPainter {
@@ -1019,17 +1376,17 @@ class _TrapezoidTilePainter extends CustomPainter {
     const s = HeroTile.slant;
     final shape = slantRight
         ? (Path()
-          ..moveTo(0, 0)
-          ..lineTo(w, 0)
-          ..lineTo(w - s, h)
-          ..lineTo(0, h)
-          ..close())
+            ..moveTo(0, 0)
+            ..lineTo(w, 0)
+            ..lineTo(w - s, h)
+            ..lineTo(0, h)
+            ..close())
         : (Path()
-          ..moveTo(s, 0)
-          ..lineTo(w, 0)
-          ..lineTo(w, h)
-          ..lineTo(0, h)
-          ..close());
+            ..moveTo(s, 0)
+            ..lineTo(w, 0)
+            ..lineTo(w, h)
+            ..lineTo(0, h)
+            ..close());
     canvas.drawPath(
       shape.shift(const Offset(0, 14)),
       Paint()
@@ -1043,7 +1400,11 @@ class _TrapezoidTilePainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color.lerp(colors[0], Colors.white, 0.1)!, colors[0], colors[1]],
+          colors: [
+            Color.lerp(colors[0], Colors.white, 0.1)!,
+            colors[0],
+            colors[1],
+          ],
           stops: const [0, 0.4, 1],
         ).createShader(rect),
     );
@@ -1066,7 +1427,10 @@ class _TrapezoidTilePainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Colors.white.withValues(alpha: 0.26), Colors.white.withValues(alpha: 0.0)],
+          colors: [
+            Colors.white.withValues(alpha: 0.26),
+            Colors.white.withValues(alpha: 0.0),
+          ],
           stops: const [0, 0.55],
         ).createShader(rect),
     );
@@ -1081,12 +1445,14 @@ class _TrapezoidTilePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_TrapezoidTilePainter old) => old.colors != colors || old.slantRight != slantRight;
+  bool shouldRepaint(_TrapezoidTilePainter old) =>
+      old.colors != colors || old.slantRight != slantRight;
 }
 
 class _CrownWidgetPainter extends CustomPainter {
   @override
-  void paint(Canvas canvas, Size size) => paintCrown(canvas, Offset.zero & size);
+  void paint(Canvas canvas, Size size) =>
+      paintCrown(canvas, Offset.zero & size);
 
   @override
   bool shouldRepaint(_CrownWidgetPainter old) => false;
@@ -1097,7 +1463,8 @@ class RackArt extends StatelessWidget {
   const RackArt({super.key});
 
   @override
-  Widget build(BuildContext context) => const CustomPaint(painter: _RackArtPainter());
+  Widget build(BuildContext context) =>
+      const CustomPaint(painter: _RackArtPainter());
 }
 
 class _RackArtPainter extends CustomPainter {
@@ -1119,9 +1486,12 @@ class _RackArtPainter extends CustomPainter {
       ..lineTo(apex.dx + r * 6.9, apex.dy + r * 8.4)
       ..lineTo(apex.dx - r * 6.9, apex.dy + r * 8.4)
       ..close();
-    canvas.drawPath(tri.shift(Offset(0, r * 0.7)), Paint()
-      ..color = const Color(0x99000000)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, r * 0.5));
+    canvas.drawPath(
+      tri.shift(Offset(0, r * 0.7)),
+      Paint()
+        ..color = const Color(0x99000000)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, r * 0.5),
+    );
     canvas.drawPath(
       tri,
       Paint()
@@ -1159,37 +1529,90 @@ class LudoHeroArt extends StatelessWidget {
   const LudoHeroArt({super.key});
 
   @override
-  Widget build(BuildContext context) => const CustomPaint(painter: _LudoHeroPainter());
+  Widget build(BuildContext context) =>
+      const CustomPaint(painter: _LudoHeroPainter());
 }
 
 class _LudoHeroPainter extends CustomPainter {
   const _LudoHeroPainter();
 
-  static const _cols = [Color(0xFFE0333B), Color(0xFF2FA84F), Color(0xFFE8B91C), Color(0xFF2F6BDC)];
+  static const _cols = [
+    Color(0xFFE0333B),
+    Color(0xFF2FA84F),
+    Color(0xFFE8B91C),
+    Color(0xFF2F6BDC),
+  ];
 
   void _pawn(Canvas canvas, Offset base, double h, Color color) {
     final r = h * 0.22;
     final dark = Color.lerp(color, Colors.black, 0.45)!;
     final light = Color.lerp(color, Colors.white, 0.45)!;
     // Shadow on the board.
-    canvas.drawOval(Rect.fromCenter(center: base + Offset(h * 0.06, h * 0.04), width: r * 2.6, height: r * 1.1), Paint()
-      ..color = const Color(0x77000000)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, r * 0.4));
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: base + Offset(h * 0.06, h * 0.04),
+        width: r * 2.6,
+        height: r * 1.1,
+      ),
+      Paint()
+        ..color = const Color(0x77000000)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, r * 0.4),
+    );
     // Base disc, body, head.
-    canvas.drawOval(Rect.fromCenter(center: base, width: r * 2.4, height: r), Paint()..color = dark);
-    canvas.drawOval(Rect.fromCenter(center: base - Offset(0, r * 0.12), width: r * 2.4, height: r), Paint()
-      ..shader = LinearGradient(colors: [light, color, dark]).createShader(Rect.fromCenter(center: base, width: r * 2.4, height: r)));
+    canvas.drawOval(
+      Rect.fromCenter(center: base, width: r * 2.4, height: r),
+      Paint()..color = dark,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: base - Offset(0, r * 0.12),
+        width: r * 2.4,
+        height: r,
+      ),
+      Paint()
+        ..shader = LinearGradient(colors: [light, color, dark]).createShader(
+          Rect.fromCenter(center: base, width: r * 2.4, height: r),
+        ),
+    );
     final body = Path()
       ..moveTo(base.dx - r * 1.0, base.dy - r * 0.1)
-      ..quadraticBezierTo(base.dx - r * 0.25, base.dy - h * 0.45, base.dx - r * 0.42, base.dy - h * 0.62)
+      ..quadraticBezierTo(
+        base.dx - r * 0.25,
+        base.dy - h * 0.45,
+        base.dx - r * 0.42,
+        base.dy - h * 0.62,
+      )
       ..lineTo(base.dx + r * 0.42, base.dy - h * 0.62)
-      ..quadraticBezierTo(base.dx + r * 0.25, base.dy - h * 0.45, base.dx + r * 1.0, base.dy - r * 0.1)
+      ..quadraticBezierTo(
+        base.dx + r * 0.25,
+        base.dy - h * 0.45,
+        base.dx + r * 1.0,
+        base.dy - r * 0.1,
+      )
       ..close();
-    canvas.drawPath(body, Paint()..shader = LinearGradient(colors: [light, color, dark], stops: const [0, 0.45, 1]).createShader(body.getBounds()));
+    canvas.drawPath(
+      body,
+      Paint()
+        ..shader = LinearGradient(
+          colors: [light, color, dark],
+          stops: const [0, 0.45, 1],
+        ).createShader(body.getBounds()),
+    );
     final head = Offset(base.dx, base.dy - h * 0.78);
-    canvas.drawCircle(head, r * 0.95, Paint()
-      ..shader = RadialGradient(center: const Alignment(-0.4, -0.4), colors: [light, color, dark]).createShader(Rect.fromCircle(center: head, radius: r * 0.95)));
-    canvas.drawCircle(head + Offset(-r * 0.3, -r * 0.35), r * 0.22, Paint()..color = Colors.white.withValues(alpha: 0.8));
+    canvas.drawCircle(
+      head,
+      r * 0.95,
+      Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(-0.4, -0.4),
+          colors: [light, color, dark],
+        ).createShader(Rect.fromCircle(center: head, radius: r * 0.95)),
+    );
+    canvas.drawCircle(
+      head + Offset(-r * 0.3, -r * 0.35),
+      r * 0.22,
+      Paint()..color = Colors.white.withValues(alpha: 0.8),
+    );
   }
 
   void _die(Canvas canvas, Offset c, double s) {
@@ -1197,9 +1620,19 @@ class _LudoHeroPainter extends CustomPainter {
     canvas.save();
     canvas.translate(c.dx, c.dy);
     // Shadow.
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(s * 0.08, s * 0.62), width: s * 1.2, height: s * 0.5), Radius.circular(s * 0.2)), Paint()
-      ..color = const Color(0x88000000)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, s * 0.12));
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset(s * 0.08, s * 0.62),
+          width: s * 1.2,
+          height: s * 0.5,
+        ),
+        Radius.circular(s * 0.2),
+      ),
+      Paint()
+        ..color = const Color(0x88000000)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, s * 0.12),
+    );
     // Side face (right, darker), top face (lighter), front face.
     final side = Path()
       ..moveTo(d, -d)
@@ -1207,32 +1640,82 @@ class _LudoHeroPainter extends CustomPainter {
       ..lineTo(d + s * 0.36, d - s * 0.3)
       ..lineTo(d, d)
       ..close();
-    canvas.drawPath(side, Paint()..shader = const LinearGradient(colors: [Color(0xFFC9CCD8), Color(0xFF8E93A6)]).createShader(side.getBounds()));
+    canvas.drawPath(
+      side,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFFC9CCD8), Color(0xFF8E93A6)],
+        ).createShader(side.getBounds()),
+    );
     final top = Path()
       ..moveTo(-d, -d)
       ..lineTo(-d + s * 0.36, -d - s * 0.3)
       ..lineTo(d + s * 0.36, -d - s * 0.3)
       ..lineTo(d, -d)
       ..close();
-    canvas.drawPath(top, Paint()..shader = const LinearGradient(colors: [Colors.white, Color(0xFFE4E6EE)]).createShader(top.getBounds()));
-    final front = RRect.fromRectAndRadius(Rect.fromCenter(center: Offset.zero, width: d * 2, height: d * 2), Radius.circular(s * 0.08));
-    canvas.drawRRect(front, Paint()..shader = const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Colors.white, Color(0xFFDDE0EA)]).createShader(front.outerRect));
-    canvas.drawRRect(front, Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = s * 0.012
-      ..color = const Color(0xFF9A9FB3));
+    canvas.drawPath(
+      top,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Colors.white, Color(0xFFE4E6EE)],
+        ).createShader(top.getBounds()),
+    );
+    final front = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset.zero, width: d * 2, height: d * 2),
+      Radius.circular(s * 0.08),
+    );
+    canvas.drawRRect(
+      front,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, Color(0xFFDDE0EA)],
+        ).createShader(front.outerRect),
+    );
+    canvas.drawRRect(
+      front,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = s * 0.012
+        ..color = const Color(0xFF9A9FB3),
+    );
     // Pips: five on the front, three on top, two on the side.
     final pip = Paint()..color = const Color(0xFF1B1B22);
     final pr = s * 0.065;
-    for (final p in [const Offset(-0.5, -0.5), const Offset(0.5, -0.5), Offset.zero, const Offset(-0.5, 0.5), const Offset(0.5, 0.5)]) {
+    for (final p in [
+      const Offset(-0.5, -0.5),
+      const Offset(0.5, -0.5),
+      Offset.zero,
+      const Offset(-0.5, 0.5),
+      const Offset(0.5, 0.5),
+    ]) {
       canvas.drawCircle(Offset(p.dx * d, p.dy * d), pr, pip);
-      canvas.drawCircle(Offset(p.dx * d - pr * 0.3, p.dy * d - pr * 0.3), pr * 0.3, Paint()..color = Colors.white.withValues(alpha: 0.35));
+      canvas.drawCircle(
+        Offset(p.dx * d - pr * 0.3, p.dy * d - pr * 0.3),
+        pr * 0.3,
+        Paint()..color = Colors.white.withValues(alpha: 0.35),
+      );
     }
     for (final k in [-0.5, 0.0, 0.5]) {
-      canvas.drawOval(Rect.fromCenter(center: Offset(k * d + s * 0.18, -d - s * 0.15 + k * d * 0.0), width: pr * 2.2, height: pr * 1.3), pip);
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(k * d + s * 0.18, -d - s * 0.15 + k * d * 0.0),
+          width: pr * 2.2,
+          height: pr * 1.3,
+        ),
+        pip,
+      );
     }
     for (final k in [-0.45, 0.45]) {
-      canvas.drawOval(Rect.fromCenter(center: Offset(d + s * 0.18, k * d - s * 0.15), width: pr * 1.3, height: pr * 2.0), pip);
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(d + s * 0.18, k * d - s * 0.15),
+          width: pr * 1.3,
+          height: pr * 2.0,
+        ),
+        pip,
+      );
     }
     canvas.restore();
   }
@@ -1247,26 +1730,69 @@ class _LudoHeroPainter extends CustomPainter {
     canvas.scale(1, 0.72);
     final b = min(w, h) * 0.98;
     final board = Rect.fromCenter(center: Offset.zero, width: b, height: b);
-    canvas.drawRRect(RRect.fromRectAndRadius(board.shift(Offset(0, b * 0.06)), Radius.circular(b * 0.05)), Paint()
-      ..color = const Color(0x99000000)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, b * 0.05));
-    canvas.drawRRect(RRect.fromRectAndRadius(board, Radius.circular(b * 0.05)), Paint()..color = const Color(0xFFF2F4FA));
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        board.shift(Offset(0, b * 0.06)),
+        Radius.circular(b * 0.05),
+      ),
+      Paint()
+        ..color = const Color(0x99000000)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, b * 0.05),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(board, Radius.circular(b * 0.05)),
+      Paint()..color = const Color(0xFFF2F4FA),
+    );
     final s = b / 15;
-    final yards = [[0.0, 9.0], [0.0, 0.0], [9.0, 0.0], [9.0, 9.0]];
+    final yards = [
+      [0.0, 9.0],
+      [0.0, 0.0],
+      [9.0, 0.0],
+      [9.0, 9.0],
+    ];
     for (var i = 0; i < 4; i++) {
-      final r = Rect.fromLTWH(board.left + yards[i][0] * s, board.top + yards[i][1] * s, 6 * s, 6 * s);
-      canvas.drawRRect(RRect.fromRectAndRadius(r, Radius.circular(s)), Paint()..color = _cols[i]);
-      canvas.drawRRect(RRect.fromRectAndRadius(r.deflate(s), Radius.circular(s * 0.6)), Paint()..color = Colors.white);
+      final r = Rect.fromLTWH(
+        board.left + yards[i][0] * s,
+        board.top + yards[i][1] * s,
+        6 * s,
+        6 * s,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(r, Radius.circular(s)),
+        Paint()..color = _cols[i],
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(r.deflate(s), Radius.circular(s * 0.6)),
+        Paint()..color = Colors.white,
+      );
     }
     final mid = board.center;
-    final c = [Offset(mid.dx - 1.5 * s, mid.dy - 1.5 * s), Offset(mid.dx + 1.5 * s, mid.dy - 1.5 * s), Offset(mid.dx + 1.5 * s, mid.dy + 1.5 * s), Offset(mid.dx - 1.5 * s, mid.dy + 1.5 * s)];
-    void tri(Offset a, Offset b2, Color col) => canvas.drawPath(Path()..moveTo(mid.dx, mid.dy)..lineTo(a.dx, a.dy)..lineTo(b2.dx, b2.dy)..close(), Paint()..color = col);
+    final c = [
+      Offset(mid.dx - 1.5 * s, mid.dy - 1.5 * s),
+      Offset(mid.dx + 1.5 * s, mid.dy - 1.5 * s),
+      Offset(mid.dx + 1.5 * s, mid.dy + 1.5 * s),
+      Offset(mid.dx - 1.5 * s, mid.dy + 1.5 * s),
+    ];
+    void tri(Offset a, Offset b2, Color col) => canvas.drawPath(
+      Path()
+        ..moveTo(mid.dx, mid.dy)
+        ..lineTo(a.dx, a.dy)
+        ..lineTo(b2.dx, b2.dy)
+        ..close(),
+      Paint()..color = col,
+    );
     tri(c[0], c[1], _cols[2]);
     tri(c[1], c[2], _cols[3]);
     tri(c[2], c[3], _cols[0]);
     tri(c[3], c[0], _cols[1]);
     for (final k in [1.5, 7.5, 13.5]) {
-      canvas.drawLine(Offset(board.left + 6 * s, board.top + k * s), Offset(board.right - 6 * s, board.top + k * s), Paint()..color = const Color(0xFFBFC6D8)..strokeWidth = 1);
+      canvas.drawLine(
+        Offset(board.left + 6 * s, board.top + k * s),
+        Offset(board.right - 6 * s, board.top + k * s),
+        Paint()
+          ..color = const Color(0xFFBFC6D8)
+          ..strokeWidth = 1,
+      );
     }
     canvas.restore();
     // Pawns and the die in front.
@@ -1290,8 +1816,12 @@ class TapHandHint extends StatefulWidget {
   State<TapHandHint> createState() => _TapHandHintState();
 }
 
-class _TapHandHintState extends State<TapHandHint> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat();
+class _TapHandHintState extends State<TapHandHint>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  )..repeat();
 
   @override
   void dispose() {
@@ -1301,27 +1831,29 @@ class _TapHandHintState extends State<TapHandHint> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        width: widget.size,
-        height: widget.size * 1.15,
-        child: AnimatedBuilder(
-          animation: _c,
-          builder: (context, _) {
-            final t = _c.value;
-            // Press from 0.15→0.4, hold, lift 0.6→0.85.
-            final press = t < 0.15
-                ? 0.0
-                : t < 0.4
-                    ? Curves.easeIn.transform((t - 0.15) / 0.25)
-                    : t < 0.6
-                        ? 1.0
-                        : t < 0.85
-                            ? 1 - Curves.easeOut.transform((t - 0.6) / 0.25)
-                            : 0.0;
-            final ripple = t < 0.38 || t > 0.95 ? 0.0 : ((t - 0.38) / 0.57).clamp(0.0, 1.0);
-            return CustomPaint(painter: _HandPainter(press, ripple));
-          },
-        ),
-      );
+    width: widget.size,
+    height: widget.size * 1.15,
+    child: AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) {
+        final t = _c.value;
+        // Press from 0.15→0.4, hold, lift 0.6→0.85.
+        final press = t < 0.15
+            ? 0.0
+            : t < 0.4
+            ? Curves.easeIn.transform((t - 0.15) / 0.25)
+            : t < 0.6
+            ? 1.0
+            : t < 0.85
+            ? 1 - Curves.easeOut.transform((t - 0.6) / 0.25)
+            : 0.0;
+        final ripple = t < 0.38 || t > 0.95
+            ? 0.0
+            : ((t - 0.38) / 0.57).clamp(0.0, 1.0);
+        return CustomPaint(painter: _HandPainter(press, ripple));
+      },
+    ),
+  );
 }
 
 class _HandPainter extends CustomPainter {
@@ -1357,21 +1889,33 @@ class _HandPainter extends CustomPainter {
       ..strokeWidth = w * 0.012
       ..color = const Color(0xFF8F95B5);
     final u = w * 0.105;
-    RRect capsule(Rect r) => RRect.fromRectAndRadius(r, Radius.circular(r.width / 2));
+    RRect capsule(Rect r) =>
+        RRect.fromRectAndRadius(r, Radius.circular(r.width / 2));
     // Index finger (tip at the origin), fist below it, thumb on the left, cuff.
     final finger = capsule(Rect.fromLTWH(-u * 0.7, 0, u * 1.4, u * 5.6));
-    final fist = RRect.fromRectAndRadius(Rect.fromLTWH(-u * 1.9, u * 3.9, u * 4.6, u * 4.0), Radius.circular(u * 1.4));
+    final fist = RRect.fromRectAndRadius(
+      Rect.fromLTWH(-u * 1.9, u * 3.9, u * 4.6, u * 4.0),
+      Radius.circular(u * 1.4),
+    );
     final thumb = capsule(Rect.fromLTWH(-u * 2.9, u * 3.4, u * 1.3, u * 3.2));
-    final cuff = RRect.fromRectAndRadius(Rect.fromLTWH(-u * 1.7, u * 7.4, u * 4.2, u * 1.3), Radius.circular(u * 0.4));
-    canvas.drawRRect(fist.shift(Offset(u * 0.3, u * 0.5)), Paint()
-      ..color = const Color(0x66000000)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, u * 0.6));
+    final cuff = RRect.fromRectAndRadius(
+      Rect.fromLTWH(-u * 1.7, u * 7.4, u * 4.2, u * 1.3),
+      Radius.circular(u * 0.4),
+    );
+    canvas.drawRRect(
+      fist.shift(Offset(u * 0.3, u * 0.5)),
+      Paint()
+        ..color = const Color(0x66000000)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, u * 0.6),
+    );
     canvas.drawRRect(thumb, shade);
     canvas.drawRRect(thumb, outline);
     canvas.drawRRect(fist, glove);
     canvas.drawRRect(fist, outline);
     for (var i = 0; i < 3; i++) {
-      final knuckle = capsule(Rect.fromLTWH(-u * 0.6 + i * u * 1.0, u * 3.6, u * 0.95, u * 2.0));
+      final knuckle = capsule(
+        Rect.fromLTWH(-u * 0.6 + i * u * 1.0, u * 3.6, u * 0.95, u * 2.0),
+      );
       canvas.drawRRect(knuckle, i == 0 ? glove : shade);
       canvas.drawRRect(knuckle, outline);
     }
@@ -1383,12 +1927,18 @@ class _HandPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_HandPainter old) => old.press != press || old.ripple != ripple;
+  bool shouldRepaint(_HandPainter old) =>
+      old.press != press || old.ripple != ripple;
 }
 
 /// Gentle vertical float for tile art (the reference's balls bob).
 class FloatBob extends StatefulWidget {
-  const FloatBob({super.key, required this.child, this.amplitude = 9, this.period = const Duration(milliseconds: 2600)});
+  const FloatBob({
+    super.key,
+    required this.child,
+    this.amplitude = 9,
+    this.period = const Duration(milliseconds: 2600),
+  });
 
   final Widget child;
   final double amplitude;
@@ -1398,8 +1948,12 @@ class FloatBob extends StatefulWidget {
   State<FloatBob> createState() => _FloatBobState();
 }
 
-class _FloatBobState extends State<FloatBob> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: widget.period)..repeat();
+class _FloatBobState extends State<FloatBob>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: widget.period,
+  )..repeat();
 
   @override
   void dispose() {
@@ -1409,10 +1963,13 @@ class _FloatBobState extends State<FloatBob> with SingleTickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-        animation: _c,
-        builder: (context, child) => Transform.translate(offset: Offset(0, sin(_c.value * 2 * pi) * widget.amplitude), child: child),
-        child: widget.child,
-      );
+    animation: _c,
+    builder: (context, child) => Transform.translate(
+      offset: Offset(0, sin(_c.value * 2 * pi) * widget.amplitude),
+      child: child,
+    ),
+    child: widget.child,
+  );
 }
 
 /// Small gradient tile with an icon or art and a label (Room / Minigames /
@@ -1439,52 +1996,72 @@ class SmallTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PressScale(
-        onTap: onTap,
-        scale: 0.96,
-        child: SizedBox(
-          width: width,
-          height: height,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned.fill(
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Color.lerp(colors[0], Colors.white, 0.08)!, colors[0], colors[1]],
-                      stops: const [0, 0.35, 1],
-                    ),
-                    border: Border.all(color: const Color(0xFFBDEFFF).withValues(alpha: 0.75), width: 2.5),
-                    boxShadow: const [BoxShadow(color: Color(0xAA000000), blurRadius: 14, offset: Offset(0, 8))],
+    onTap: onTap,
+    scale: 0.96,
+    child: SizedBox(
+      width: width,
+      height: height,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color.lerp(colors[0], Colors.white, 0.08)!,
+                    colors[0],
+                    colors[1],
+                  ],
+                  stops: const [0, 0.35, 1],
+                ),
+                border: Border.all(
+                  color: const Color(0xFFBDEFFF).withValues(alpha: 0.75),
+                  width: 2.5,
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0xAA000000),
+                    blurRadius: 14,
+                    offset: Offset(0, 8),
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Stack(
-                      children: [
-                        Positioned(left: 14, right: 14, top: 12, bottom: 78, child: child),
-                        Positioned(
-                          left: 10,
-                          right: 10,
-                          bottom: 16,
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(titleCase(label), style: pcText(56)),
-                          ),
-                        ),
-                        const DuelGloss(radius: 10, strength: 0.16),
-                      ],
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      left: 14,
+                      right: 14,
+                      top: 12,
+                      bottom: 78,
+                      child: child,
                     ),
-                  ),
+                    Positioned(
+                      left: 10,
+                      right: 10,
+                      bottom: 16,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(titleCase(label), style: pcText(56)),
+                      ),
+                    ),
+                    const DuelGloss(radius: 10, strength: 0.16),
+                  ],
                 ),
               ),
-              if (count > 0) Positioned(left: -8, top: -10, child: _CountBadge(count)),
-            ],
+            ),
           ),
-        ),
-      );
+          if (count > 0)
+            Positioned(left: -8, top: -10, child: _CountBadge(count)),
+        ],
+      ),
+    ),
+  );
 }
 
 // ----------------------------------------------------------------- panels
@@ -1517,92 +2094,118 @@ class LadderPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PressScale(
-        onTap: onTap,
-        scale: 0.98,
-        child: SizedBox(
-          width: width,
-          height: height,
-          child: Stack(
-            children: [
-              Positioned(
-                left: 0,
-                right: 0,
-                top: 36,
-                bottom: 0,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [DesignColors.pcSeason, DesignColors.pcSeasonDeep]),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF2A1C5E), width: 2),
-                    boxShadow: const [BoxShadow(color: Color(0xAA000000), blurRadius: 16, offset: Offset(0, 8))],
-                  ),
+    onTap: onTap,
+    scale: 0.98,
+    child: SizedBox(
+      width: width,
+      height: height,
+      child: Stack(
+        children: [
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 36,
+            bottom: 0,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [DesignColors.pcSeason, DesignColors.pcSeasonDeep],
                 ),
-              ),
-              // Header tab.
-              Positioned(
-                left: 0,
-                top: 0,
-                child: ClipPath(
-                  clipper: _TabClipper(),
-                  child: Container(
-                    height: 60,
-                    padding: const EdgeInsets.fromLTRB(16, 0, 44, 0),
-                    color: const Color(0xFF5A48B8),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.hexagon_rounded, color: Color(0xFF5DD6FF), size: 42),
-                        const SizedBox(width: 12),
-                        Text(titleCase(title), style: pcText(30)),
-                        const SizedBox(width: 16),
-                        timer,
-                      ],
-                    ),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFF2A1C5E), width: 2),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0xAA000000),
+                    blurRadius: 16,
+                    offset: Offset(0, 8),
                   ),
-                ),
+                ],
               ),
-              Positioned(
-                left: 24,
-                right: 24,
-                bottom: 6,
-                child: Container(
-                  height: 12,
-                  decoration: BoxDecoration(color: const Color(0xFF2A1C5E), borderRadius: BorderRadius.circular(4)),
-                  alignment: Alignment.centerLeft,
-                  child: FractionallySizedBox(
-                    widthFactor: progress.clamp(0.04, 1.0),
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [DesignColors.pcGold, DesignColors.pcGoldDeep]),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 40,
-                right: 40,
-                top: 62,
+            ),
+          ),
+          // Header tab.
+          Positioned(
+            left: 0,
+            top: 0,
+            child: ClipPath(
+              clipper: _TabClipper(),
+              child: Container(
+                height: 60,
+                padding: const EdgeInsets.fromLTRB(16, 0, 44, 0),
+                color: const Color(0xFF5A48B8),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    for (var i = 0; i < boxes.length; i++) ...[
-                      if (i > 0) const Spacer(),
-                      boxes[i],
-                    ],
+                    const Icon(
+                      Icons.hexagon_rounded,
+                      color: Color(0xFF5DD6FF),
+                      size: 42,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(titleCase(title), style: pcText(30)),
+                    const SizedBox(width: 16),
+                    timer,
                   ],
                 ),
               ),
-              if (footnote != null)
-                Positioned(
-                  right: 24,
-                  top: 40,
-                  child: Text(footnote!, style: pcText(20, color: DesignColors.pcTextDim, weight: FontWeight.w500)),
-                ),
-            ],
+            ),
           ),
-        ),
-      );
+          Positioned(
+            left: 24,
+            right: 24,
+            bottom: 6,
+            child: Container(
+              height: 12,
+              decoration: BoxDecoration(
+                color: const Color(0xFF2A1C5E),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              alignment: Alignment.centerLeft,
+              child: FractionallySizedBox(
+                widthFactor: progress.clamp(0.04, 1.0),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [DesignColors.pcGold, DesignColors.pcGoldDeep],
+                    ),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 40,
+            right: 40,
+            top: 62,
+            child: Row(
+              children: [
+                for (var i = 0; i < boxes.length; i++) ...[
+                  if (i > 0) const Spacer(),
+                  boxes[i],
+                ],
+              ],
+            ),
+          ),
+          if (footnote != null)
+            Positioned(
+              right: 24,
+              top: 40,
+              child: Text(
+                footnote!,
+                style: pcText(
+                  20,
+                  color: DesignColors.pcTextDim,
+                  weight: FontWeight.w500,
+                ),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _TabClipper extends CustomClipper<Path> {
@@ -1620,7 +2223,14 @@ class _TabClipper extends CustomClipper<Path> {
 
 /// One reward box of the [LadderPanel]: art, count inside, caption below.
 class LadderBox extends StatelessWidget {
-  const LadderBox({super.key, required this.art, required this.count, required this.caption, this.highlight = false, this.done = false});
+  const LadderBox({
+    super.key,
+    required this.art,
+    required this.count,
+    required this.caption,
+    this.highlight = false,
+    this.done = false,
+  });
 
   final Widget art;
   final String count;
@@ -1630,34 +2240,55 @@ class LadderBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 120,
-            height: 108,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: highlight ? const [Color(0xFF8E4CF0), Color(0xFF4B1FA8)] : const [Color(0xFF3D7BE8), Color(0xFF1E3FA8)],
-              ),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: highlight ? const Color(0xFFD59CFF) : const Color(0xFF7FB6FF), width: 2.5),
-              boxShadow: const [BoxShadow(color: Color(0x88000000), blurRadius: 8, offset: Offset(0, 4))],
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Positioned(top: 8, child: Opacity(opacity: done ? 0.45 : 1, child: art)),
-                Positioned(bottom: 4, child: Text(count, style: pcText(26))),
-                if (done) const Icon(Icons.check_circle_rounded, color: Color(0xFF4DF08A), size: 44),
-              ],
-            ),
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 120,
+        height: 108,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: highlight
+                ? const [Color(0xFF8E4CF0), Color(0xFF4B1FA8)]
+                : const [Color(0xFF3D7BE8), Color(0xFF1E3FA8)],
           ),
-          const SizedBox(height: 4),
-          Text(caption, style: pcText(26)),
-        ],
-      );
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: highlight
+                ? const Color(0xFFD59CFF)
+                : const Color(0xFF7FB6FF),
+            width: 2.5,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x88000000),
+              blurRadius: 8,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Positioned(
+              top: 8,
+              child: Opacity(opacity: done ? 0.45 : 1, child: art),
+            ),
+            Positioned(bottom: 4, child: Text(count, style: pcText(26))),
+            if (done)
+              const Icon(
+                Icons.check_circle_rounded,
+                color: Color(0xFF4DF08A),
+                size: 44,
+              ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(caption, style: pcText(26)),
+    ],
+  );
 }
 
 /// Wide purple panel (used for "rejoin your match").
@@ -1687,44 +2318,70 @@ class HomeWideBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PressScale(
-        onTap: onTap,
-        scale: 0.98,
-        child: Container(
-          width: width,
-          height: height,
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [DesignColors.pcSeason, DesignColors.pcSeasonDeep]),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: rim, width: 2),
-            boxShadow: [
-              const BoxShadow(color: Color(0xAA000000), blurRadius: 16, offset: Offset(0, 8)),
-              if (glow) BoxShadow(color: rim.withValues(alpha: 0.55), blurRadius: 28, spreadRadius: 1),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  icon,
-                  const SizedBox(width: 12),
-                  Expanded(child: Text(titleCase(title), maxLines: 1, overflow: TextOverflow.ellipsis, style: pcText(30))),
-                  ?trailing,
-                ],
-              ),
-              const SizedBox(height: 10),
-              Expanded(child: child),
-            ],
-          ),
+    onTap: onTap,
+    scale: 0.98,
+    child: Container(
+      width: width,
+      height: height,
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [DesignColors.pcSeason, DesignColors.pcSeasonDeep],
         ),
-      );
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: rim, width: 2),
+        boxShadow: [
+          const BoxShadow(
+            color: Color(0xAA000000),
+            blurRadius: 16,
+            offset: Offset(0, 8),
+          ),
+          if (glow)
+            BoxShadow(
+              color: rim.withValues(alpha: 0.55),
+              blurRadius: 28,
+              spreadRadius: 1,
+            ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              icon,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  titleCase(title),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: pcText(30),
+                ),
+              ),
+              ?trailing,
+            ],
+          ),
+          const SizedBox(height: 10),
+          Expanded(child: child),
+        ],
+      ),
+    ),
+  );
 }
 
 // ------------------------------------------------------------- bottom nav
 
 class HomeNavItem {
-  const HomeNavItem({required this.icon, required this.label, required this.onTap, this.active = false, this.badge = false});
+  const HomeNavItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.active = false,
+    this.badge = false,
+  });
 
   final IconData icon;
   final String label;
@@ -1744,30 +2401,51 @@ class HomeBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: height,
-        child: Stack(
-          children: [
-            Positioned(
-              left: 0,
-              right: 0,
-              top: raise,
-              bottom: 0,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF3A2B78), DesignColors.pcNav]),
-                  border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.16), width: 2)),
-                  boxShadow: const [BoxShadow(color: Color(0xCC000000), blurRadius: 24, offset: Offset(0, -6))],
+    height: height,
+    child: Stack(
+      children: [
+        Positioned(
+          left: 0,
+          right: 0,
+          top: raise,
+          bottom: 0,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF3A2B78), DesignColors.pcNav],
+              ),
+              border: Border(
+                top: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  width: 2,
                 ),
               ),
-            ),
-            Row(
-              children: [
-                for (var i = 0; i < items.length; i++) Expanded(child: _NavCell(items[i], divider: i < items.length - 1 && !items[i + 1].active)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0xCC000000),
+                  blurRadius: 24,
+                  offset: Offset(0, -6),
+                ),
               ],
             ),
+          ),
+        ),
+        Row(
+          children: [
+            for (var i = 0; i < items.length; i++)
+              Expanded(
+                child: _NavCell(
+                  items[i],
+                  divider: i < items.length - 1 && !items[i + 1].active,
+                ),
+              ),
           ],
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _NavCell extends StatelessWidget {
@@ -1793,27 +2471,57 @@ class _NavCell extends StatelessWidget {
                       gradient: const LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Color(0xFF6A95DC), Color(0xFF4C63D8), DesignColors.pcNavActiveDeep],
+                        colors: [
+                          Color(0xFF6A95DC),
+                          Color(0xFF4C63D8),
+                          DesignColors.pcNavActiveDeep,
+                        ],
                         stops: [0, 0.35, 1],
                       ),
                       border: Border(
-                        top: BorderSide(color: Colors.white.withValues(alpha: 0.5), width: 2),
-                        left: BorderSide(color: Colors.white.withValues(alpha: 0.2), width: 2),
-                        right: BorderSide(color: Colors.white.withValues(alpha: 0.2), width: 2),
+                        top: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.5),
+                          width: 2,
+                        ),
+                        left: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          width: 2,
+                        ),
+                        right: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          width: 2,
+                        ),
                       ),
-                      boxShadow: const [BoxShadow(color: Color(0x663B6CFF), blurRadius: 18)],
+                      boxShadow: const [
+                        BoxShadow(color: Color(0x663B6CFF), blurRadius: 18),
+                      ],
                     )
                   : null,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(item.icon, size: 96, color: color, shadows: const [Shadow(color: Color(0x99000000), blurRadius: 6, offset: Offset(0, 3))]),
+                  Icon(
+                    item.icon,
+                    size: 96,
+                    color: color,
+                    shadows: const [
+                      Shadow(
+                        color: Color(0x99000000),
+                        blurRadius: 6,
+                        offset: Offset(0, 3),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 2),
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: Text(titleCase(item.label), maxLines: 1, style: pcText(36, color: color)),
+                      child: Text(
+                        titleCase(item.label),
+                        maxLines: 1,
+                        style: pcText(36, color: color),
+                      ),
                     ),
                   ),
                 ],
@@ -1825,7 +2533,10 @@ class _NavCell extends StatelessWidget {
               right: 0,
               top: HomeBottomNav.raise + 50,
               bottom: 50,
-              child: Container(width: 2, color: Colors.white.withValues(alpha: 0.14)),
+              child: Container(
+                width: 2,
+                color: Colors.white.withValues(alpha: 0.14),
+              ),
             ),
           if (item.badge)
             Positioned(
@@ -1835,7 +2546,11 @@ class _NavCell extends StatelessWidget {
                 child: Container(
                   width: 28,
                   height: 28,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFFF03A4E), border: Border.all(color: Colors.white, width: 2.5)),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFFF03A4E),
+                    border: Border.all(color: Colors.white, width: 2.5),
+                  ),
                 ),
               ),
             ),
