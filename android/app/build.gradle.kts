@@ -48,6 +48,12 @@ android {
         }
     }
 
+    lint {
+        // AGP 9.3 + plugin lintVital can crash (e.g. image_picker_android JavaDocParser).
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
+
     buildTypes {
         release {
             if (keystorePropertiesFile.exists()) {
