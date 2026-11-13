@@ -141,6 +141,7 @@ class LoadingSplashBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Compact phone-style splash: logo + 3 small cards in one row + bar.
     return Center(
       child: FittedBox(
         fit: BoxFit.scaleDown,
@@ -150,23 +151,23 @@ class LoadingSplashBody extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const DuelLogo(height: 300),
-              const SizedBox(height: 60),
-              Row(
+              const DuelLogo(height: 200),
+              const SizedBox(height: 36),
+              const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
+                children: [
                   _LoadingGameCard(
                     rim: DesignColors.pcTileOrange,
                     label: 'POOL',
                     art: BilliardArt(),
                   ),
-                  SizedBox(width: 24),
+                  SizedBox(width: 16),
                   _LoadingGameCard(
                     rim: DesignColors.pcTilePink,
                     label: 'LUDO',
                     art: LudoArt(),
                   ),
-                  SizedBox(width: 24),
+                  SizedBox(width: 16),
                   _LoadingGameCard(
                     rim: DesignColors.pcTileTeal,
                     label: 'CARROM',
@@ -174,10 +175,13 @@ class LoadingSplashBody extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 70),
-              Text(titleCase(message), style: pcText(36, color: const Color(0xFFE6E2FF))),
-              const SizedBox(height: 40),
-              SizedBox(width: 700, child: progress),
+              const SizedBox(height: 44),
+              Text(
+                titleCase(message),
+                style: pcText(32, color: const Color(0xFFE6E2FF)),
+              ),
+              const SizedBox(height: 28),
+              SizedBox(width: 560, child: progress),
             ],
           ),
         ),
@@ -197,21 +201,35 @@ class _LoadingGameCard extends StatelessWidget {
   final String label;
   final Widget art;
 
+  static const width = 220.0;
+  static const height = 138.0;
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 300,
-      height: 200,
+      width: width,
+      height: height,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.4),
+          width: 2.5,
+        ),
         boxShadow: [
-          BoxShadow(color: rim.withValues(alpha: 0.35), blurRadius: 22, offset: const Offset(0, 8)),
-          const BoxShadow(color: Color(0x99000000), blurRadius: 14, offset: Offset(0, 8)),
+          BoxShadow(
+            color: rim.withValues(alpha: 0.35),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+          const BoxShadow(
+            color: Color(0x99000000),
+            blurRadius: 10,
+            offset: Offset(0, 6),
+          ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(11),
+        borderRadius: BorderRadius.circular(9),
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -221,9 +239,13 @@ class _LoadingGameCard extends StatelessWidget {
               right: 0,
               bottom: 0,
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
+                padding: const EdgeInsets.symmetric(vertical: 6),
                 color: Colors.black.withValues(alpha: 0.4),
-                child: Text(titleCase(label), textAlign: TextAlign.center, style: pcText(34)),
+                child: Text(
+                  titleCase(label),
+                  textAlign: TextAlign.center,
+                  style: pcText(26),
+                ),
               ),
             ),
           ],

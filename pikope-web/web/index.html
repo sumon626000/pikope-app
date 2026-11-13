@@ -39,26 +39,22 @@
       text-align: center;
     }
     .logo {
-      width: min(220px, 52vw);
+      width: min(180px, 42vw);
       height: auto;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
       filter: drop-shadow(0 8px 24px rgba(245, 200, 66, 0.25));
     }
     .games {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 14px;
-      justify-content: center;
-      max-width: 980px;
-      margin: 20px 0 22px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      width: min(560px, 92vw);
+      margin: 14px 0 16px;
     }
     .game-card {
-      flex: 1 1 240px;
-      max-width: 300px;
-      border-radius: 16px;
+      border-radius: 12px;
       overflow: hidden;
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(245, 200, 66, 0.12);
-      transform: translateY(0);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(245, 200, 66, 0.12);
       animation: floatIn 0.7s ease backwards;
     }
     .game-card:nth-child(1) { animation-delay: 0.05s; }
@@ -68,6 +64,8 @@
       display: block;
       width: 100%;
       height: auto;
+      aspect-ratio: 320 / 200;
+      object-fit: cover;
       vertical-align: middle;
     }
     @keyframes floatIn {
@@ -78,12 +76,12 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       opacity: 0.9;
     }
     .spin {
-      width: 36px;
-      height: 36px;
+      width: 28px;
+      height: 28px;
       border: 3px solid rgba(245, 200, 66, 0.22);
       border-top-color: #f5c842;
       border-radius: 50%;
@@ -92,14 +90,23 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     #load p {
       margin: 0;
-      font-size: 14px;
-      line-height: 1.45;
-      max-width: 360px;
+      font-size: 13px;
+      line-height: 1.4;
+      max-width: 280px;
       color: #b8bfd4;
     }
+    /* Phone: keep 3-up row, tighter — never stack full-width giant cards */
     @media (max-width: 520px) {
-      .games { gap: 10px; }
-      .game-card { flex: 1 1 100%; max-width: 320px; }
+      #load { padding: 16px 12px 20px; }
+      .logo { width: min(132px, 36vw); }
+      .games {
+        width: min(340px, 88vw);
+        gap: 8px;
+        margin: 10px 0 12px;
+      }
+      .game-card { border-radius: 10px; }
+      .spin { width: 24px; height: 24px; }
+      #load p { font-size: 12px; max-width: 240px; }
     }
   </style>
 </head>
