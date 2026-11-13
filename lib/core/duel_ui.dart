@@ -42,7 +42,9 @@ class DuelColors {
 String formatCoins(int value, {bool compact = false}) {
   if (compact && value.abs() >= 10000) {
     String cut(double v, String unit) {
-      final s = v >= 100 || v == v.roundToDouble() ? v.round().toString() : v.toStringAsFixed(1);
+      final s = v >= 100 || v == v.roundToDouble()
+          ? v.round().toString()
+          : v.toStringAsFixed(1);
       return '$s$unit';
     }
 
@@ -60,7 +62,8 @@ String formatCoins(int value, {bool compact = false}) {
 }
 
 /// Amount plus the Pico coin unit, e.g. "2,000 Pico coin".
-String formatPicoCoins(int value, {bool compact = false}) => '${formatCoins(value, compact: compact)} ${PicoCoin.name}';
+String formatPicoCoins(int value, {bool compact = false}) =>
+    '${formatCoins(value, compact: compact)} ${PicoCoin.name}';
 
 ui.Image? _hallImage;
 bool _hallBakeFailed = false;
@@ -81,15 +84,23 @@ ui.Image? _bakedHall() {
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [Color(0xFF0B1030), Color(0xFF141C4A), Color(0xFF0A0F26), Color(0xFF05070F)],
+        colors: [
+          Color(0xFF0B1030),
+          Color(0xFF141C4A),
+          Color(0xFF0A0F26),
+          Color(0xFF05070F),
+        ],
         stops: [0, 0.38, 0.7, 1],
       ).createShader(rect),
   );
   void glow(Offset c, double r, Color color) => canvas.drawCircle(
-        c,
-        r,
-        Paint()..shader = RadialGradient(colors: [color, color.withValues(alpha: 0)]).createShader(Rect.fromCircle(center: c, radius: r)),
-      );
+    c,
+    r,
+    Paint()
+      ..shader = RadialGradient(
+        colors: [color, color.withValues(alpha: 0)],
+      ).createShader(Rect.fromCircle(center: c, radius: r)),
+  );
   // Lamps and a neon sign somewhere at the back of the room.
   glow(const Offset(400, 120), 330, const Color(0x552F5BFF));
   glow(const Offset(650, 60), 150, const Color(0x55FF2D55));
@@ -99,13 +110,18 @@ ui.Image? _bakedHall() {
   final random = Random(11);
   for (var i = 0; i < 26; i++) {
     final c = Offset(random.nextDouble() * 800, 20 + random.nextDouble() * 190);
-    final hue = [const Color(0xFF7C9BFF), const Color(0xFFFF7A8C), const Color(0xFFFFD08A)][random.nextInt(3)];
+    final hue = [
+      const Color(0xFF7C9BFF),
+      const Color(0xFFFF7A8C),
+      const Color(0xFFFFD08A),
+    ][random.nextInt(3)];
     canvas.drawCircle(
-        c,
-        6 + random.nextDouble() * 18,
-        Paint()
-          ..color = hue.withValues(alpha: 0.03 + random.nextDouble() * 0.04)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3));
+      c,
+      6 + random.nextDouble() * 18,
+      Paint()
+        ..color = hue.withValues(alpha: 0.03 + random.nextDouble() * 0.04)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+    );
   }
   // The far rail and cloth of a table running off the bottom of the screen,
   // lit from above and falling into shadow toward the viewer.
@@ -141,16 +157,24 @@ ui.Image? _bakedHall() {
       ).createShader(const Rect.fromLTWH(136, 256, 528, 12)),
   );
   canvas.drawLine(
-      const Offset(136, 256),
-      const Offset(664, 256),
-      Paint()
-        ..color = const Color(0x886E8CFF)
-        ..strokeWidth = 1);
+    const Offset(136, 256),
+    const Offset(664, 256),
+    Paint()
+      ..color = const Color(0x886E8CFF)
+      ..strokeWidth = 1,
+  );
   for (final x in const [250.0, 400.0, 550.0]) {
-    canvas.drawCircle(Offset(x, 262), 1.6, Paint()..color = const Color(0x99DCE4FF));
+    canvas.drawCircle(
+      Offset(x, 262),
+      1.6,
+      Paint()..color = const Color(0x99DCE4FF),
+    );
   }
   // Two soft spotlight beams from lamps above the table.
-  for (final beam in [(const Offset(300, -40), 130.0, 560.0), (const Offset(520, -40), 150.0, 560.0)]) {
+  for (final beam in [
+    (const Offset(300, -40), 130.0, 560.0),
+    (const Offset(520, -40), 150.0, 560.0),
+  ]) {
     final (top, halfW, len) = beam;
     final path = Path()
       ..moveTo(top.dx - 14, top.dy)
@@ -164,7 +188,11 @@ ui.Image? _bakedHall() {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: const [Color(0x2EFFFFFF), Color(0x12FFFFFF), Color(0x00FFFFFF)],
+          colors: const [
+            Color(0x2EFFFFFF),
+            Color(0x12FFFFFF),
+            Color(0x00FFFFFF),
+          ],
           stops: const [0, 0.5, 1],
         ).createShader(Rect.fromLTWH(top.dx - halfW, top.dy, halfW * 2, len))
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14),
@@ -201,8 +229,12 @@ class _HallPainter extends CustomPainter {
       canvas.drawRect(dest, Paint()..color = DuelColors.ink);
       return;
     }
-    canvas.drawImageRect(image, Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
-        dest, Paint()..filterQuality = FilterQuality.medium);
+    canvas.drawImageRect(
+      image,
+      Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+      dest,
+      Paint()..filterQuality = FilterQuality.medium,
+    );
   }
 
   @override
@@ -216,7 +248,8 @@ class DuelBackdrop extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => CustomPaint(painter: _HallPainter(), child: child);
+  Widget build(BuildContext context) =>
+      CustomPaint(painter: _HallPainter(), child: child);
 }
 
 /// A lobby screen: the hall backdrop with a fixed 1600x900 layout on top.
@@ -229,45 +262,65 @@ class DuelCanvas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => OrientationLock(
-        // Landscape 1600×900 pages not yet moved to the portrait Pool City
-        // chrome keep the device sideways while they are on top.
-        orientation: AppOrientation.landscape,
-        child: Scaffold(
-          backgroundColor: DuelColors.ink,
-          resizeToAvoidBottomInset: false,
-          body: CustomPaint(
-            painter: _HallPainter(),
-            child: SafeArea(
-              child: Center(
-                child: FittedBox(
-                  fit: BoxFit.contain,
-                  child: SizedBox.fromSize(size: size, child: child),
-                ),
-              ),
+    // Landscape 1600×900 pages not yet moved to the portrait Pool City
+    // chrome keep the device sideways while they are on top.
+    orientation: AppOrientation.landscape,
+    child: Scaffold(
+      backgroundColor: DuelColors.ink,
+      resizeToAvoidBottomInset: false,
+      body: CustomPaint(
+        painter: _HallPainter(),
+        child: SafeArea(
+          child: Center(
+            child: FittedBox(
+              fit: BoxFit.contain,
+              child: SizedBox.fromSize(size: size, child: child),
             ),
           ),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 /// Purple glass panel of the Pool City look with a coloured rim; [glow]
 /// lights the rim up. The old navy rims map onto the purple palette so the
 /// many dialogs built on this read as one family.
-BoxDecoration duelPanel({double radius = 10, Color rim = DuelColors.rim, double rimWidth = 2, bool glow = false, Color? fill}) {
+BoxDecoration duelPanel({
+  double radius = 10,
+  Color rim = DuelColors.rim,
+  double rimWidth = 2,
+  bool glow = false,
+  Color? fill,
+}) {
   final base = fill ?? DesignColors.pcPanelDeep;
-  final rimColor = rim == DesignColors.rim || rim == DesignColors.rimLight ? const Color(0xFF8C7CE8) : rim;
+  final rimColor = rim == DesignColors.rim || rim == DesignColors.rimLight
+      ? const Color(0xFF8C7CE8)
+      : rim;
   return BoxDecoration(
     gradient: LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
-      colors: [Color.lerp(base, const Color(0xFF7A5FE6), 0.22)!, base, Color.lerp(base, const Color(0xFF3A2A7A), 0.5)!],
+      colors: [
+        Color.lerp(base, const Color(0xFF7A5FE6), 0.22)!,
+        base,
+        Color.lerp(base, const Color(0xFF3A2A7A), 0.5)!,
+      ],
       stops: const [0, 0.35, 1],
     ),
     borderRadius: BorderRadius.circular(radius),
     border: Border.all(color: rimColor, width: rimWidth),
     boxShadow: [
-      const BoxShadow(color: Color(0xAA000000), blurRadius: 20, offset: Offset(0, 10)),
-      BoxShadow(color: rimColor.withValues(alpha: glow ? 0.6 : 0.25), blurRadius: glow ? 32 : 14, spreadRadius: glow ? 1 : 0),
+      const BoxShadow(
+        color: Color(0xAA000000),
+        blurRadius: 20,
+        offset: Offset(0, 10),
+      ),
+      BoxShadow(
+        color: rimColor.withValues(alpha: glow ? 0.6 : 0.25),
+        blurRadius: glow ? 32 : 14,
+        spreadRadius: glow ? 1 : 0,
+      ),
     ],
   );
 }
@@ -275,7 +328,12 @@ BoxDecoration duelPanel({double radius = 10, Color rim = DuelColors.rim, double 
 /// A sheet of light across the top of a panel: lay it over a rounded box
 /// (same [radius]) to make it read as polished glass. Ignores touches.
 class DuelGloss extends StatelessWidget {
-  const DuelGloss({super.key, this.radius = 22, this.strength = 0.14, this.diagonal = false});
+  const DuelGloss({
+    super.key,
+    this.radius = 22,
+    this.strength = 0.14,
+    this.diagonal = false,
+  });
 
   final double radius;
   final double strength;
@@ -285,27 +343,36 @@ class DuelGloss extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Positioned.fill(
-        child: IgnorePointer(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(radius),
-              gradient: diagonal
-                  ? LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Colors.white.withValues(alpha: strength), Colors.white.withValues(alpha: 0), Colors.white.withValues(alpha: 0), Colors.white.withValues(alpha: strength * 0.4)],
-                      stops: const [0, 0.42, 0.75, 1],
-                    )
-                  : LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.white.withValues(alpha: strength), Colors.white.withValues(alpha: strength * 0.25), Colors.white.withValues(alpha: 0)],
-                      stops: const [0, 0.18, 0.5],
-                    ),
-            ),
-          ),
+    child: IgnorePointer(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(radius),
+          gradient: diagonal
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white.withValues(alpha: strength),
+                    Colors.white.withValues(alpha: 0),
+                    Colors.white.withValues(alpha: 0),
+                    Colors.white.withValues(alpha: strength * 0.4),
+                  ],
+                  stops: const [0, 0.42, 0.75, 1],
+                )
+              : LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.white.withValues(alpha: strength),
+                    Colors.white.withValues(alpha: strength * 0.25),
+                    Colors.white.withValues(alpha: 0),
+                  ],
+                  stops: const [0, 0.18, 0.5],
+                ),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 /// Gold PIKO token used anywhere coins are shown (balance, shop, history).
@@ -316,11 +383,11 @@ class PikoCoinIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Image.asset(
-        PicoCoin.asset,
-        width: size,
-        height: size,
-        filterQuality: FilterQuality.medium,
-      );
+    PicoCoin.asset,
+    width: size,
+    height: size,
+    filterQuality: FilterQuality.medium,
+  );
 }
 
 class DuelLogo extends StatelessWidget {
@@ -330,14 +397,18 @@ class DuelLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Image.asset(
-        'assets/images/pikope_logo.png',
-        height: height,
-        filterQuality: FilterQuality.medium,
-        errorBuilder: (_, _, _) => Text(
-          'PikoPe',
-          style: AppText.label(height * 0.22, color: DuelColors.gold, weight: FontWeight.w900),
-        ),
-      );
+    'assets/images/pikope_logo.png',
+    height: height,
+    filterQuality: FilterQuality.medium,
+    errorBuilder: (_, _, _) => Text(
+      'PikoPe',
+      style: AppText.label(
+        height * 0.22,
+        color: DuelColors.gold,
+        weight: FontWeight.w900,
+      ),
+    ),
+  );
 }
 
 /// The premium currency: a purple casino chip.
@@ -347,7 +418,10 @@ class GemIcon extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) => SizedBox.square(dimension: size, child: CustomPaint(painter: _ChipPainter()));
+  Widget build(BuildContext context) => SizedBox.square(
+    dimension: size,
+    child: CustomPaint(painter: _ChipPainter()),
+  );
 }
 
 class _ChipPainter extends CustomPainter {
@@ -355,7 +429,11 @@ class _ChipPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final c = size.center(Offset.zero);
     final r = size.shortestSide * 0.47;
-    canvas.drawCircle(c + Offset(0, r * 0.08), r, Paint()..color = const Color(0x80000000));
+    canvas.drawCircle(
+      c + Offset(0, r * 0.08),
+      r,
+      Paint()..color = const Color(0x80000000),
+    );
     canvas.drawCircle(
       c,
       r,
@@ -371,23 +449,33 @@ class _ChipPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
     for (var i = 0; i < 8; i++) {
       final a = i * pi / 4;
-      canvas.drawArc(Rect.fromCircle(center: c, radius: r * 0.86), a - 0.16, 0.32, false, dash);
+      canvas.drawArc(
+        Rect.fromCircle(center: c, radius: r * 0.86),
+        a - 0.16,
+        0.32,
+        false,
+        dash,
+      );
     }
     canvas.drawCircle(c, r * 0.62, Paint()..color = const Color(0xFF4521B8));
     canvas.drawCircle(
-        c,
-        r * 0.62,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = r * 0.07
-          ..color = Colors.white.withValues(alpha: 0.85));
+      c,
+      r * 0.62,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = r * 0.07
+        ..color = Colors.white.withValues(alpha: 0.85),
+    );
     final star = Path();
     for (var i = 0; i < 10; i++) {
       final a = -pi / 2 + i * pi / 5;
       final p = c + Offset(cos(a), sin(a)) * (i.isEven ? r * 0.36 : r * 0.16);
       i == 0 ? star.moveTo(p.dx, p.dy) : star.lineTo(p.dx, p.dy);
     }
-    canvas.drawPath(star..close(), Paint()..color = Colors.white.withValues(alpha: 0.9));
+    canvas.drawPath(
+      star..close(),
+      Paint()..color = Colors.white.withValues(alpha: 0.9),
+    );
   }
 
   @override
@@ -411,58 +499,91 @@ class CurrencyPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PressScale(
-        onTap: onAdd,
-        enabled: onAdd != null,
-        scale: 0.96,
-        child: SizedBox(
-          height: 76,
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.centerLeft,
-            children: [
-              Container(
-                height: 50,
-                margin: const EdgeInsets.only(left: 34),
-                padding: const EdgeInsets.only(left: 52, right: 14),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xEE1A2140), Color(0xEE070A16)]),
-                  borderRadius: BorderRadius.circular(25),
-                  border: Border.all(color: DuelColors.rimLight.withValues(alpha: 0.8), width: 1.5),
-                  boxShadow: const [BoxShadow(color: Color(0x88000000), blurRadius: 10, offset: Offset(0, 4))],
+    onTap: onAdd,
+    enabled: onAdd != null,
+    scale: 0.96,
+    child: SizedBox(
+      height: 76,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.centerLeft,
+        children: [
+          Container(
+            height: 50,
+            margin: const EdgeInsets.only(left: 34),
+            padding: const EdgeInsets.only(left: 52, right: 14),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xEE1A2140), Color(0xEE070A16)],
+              ),
+              borderRadius: BorderRadius.circular(25),
+              border: Border.all(
+                color: DuelColors.rimLight.withValues(alpha: 0.8),
+                width: 1.5,
+              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x88000000),
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(minWidth: 88),
-                      child: Text(
-                        amount != null
-                            ? formatCoins(amount!, compact: amount! >= 10000000)
-                            : (placeholderLabel ?? '—'),
-                        style: AppText.label(
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 88),
+                  child: Text(
+                    amount != null
+                        ? formatCoins(amount!, compact: amount! >= 10000000)
+                        : (placeholderLabel ?? '—'),
+                    style:
+                        AppText.label(
                           amount != null ? 23 : 16,
                           color: Colors.white,
                           weight: FontWeight.w800,
-                        ).copyWith(shadows: const [Shadow(color: Color(0x99000000), blurRadius: 3, offset: Offset(0, 1))]),
-                      ),
-                    ),
-                    if (onAdd != null) ...[
-                      const SizedBox(width: 12),
-                      const Icon(Icons.add_rounded, color: Color(0xFFFF8A3C), size: 30),
-                    ],
-                  ],
+                        ).copyWith(
+                          shadows: const [
+                            Shadow(
+                              color: Color(0x99000000),
+                              blurRadius: 3,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                  ),
                 ),
-              ),
-              Positioned(left: 0, child: icon),
-            ],
+                if (onAdd != null) ...[
+                  const SizedBox(width: 12),
+                  const Icon(
+                    Icons.add_rounded,
+                    color: Color(0xFFFF8A3C),
+                    size: 30,
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
-      );
+          Positioned(left: 0, child: icon),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Square icon button of the bottom navigation row.
 class NavTile extends StatelessWidget {
-  const NavTile({super.key, required this.icon, required this.label, required this.onTap, this.active = false, this.badge = false});
+  const NavTile({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.active = false,
+    this.badge = false,
+  });
 
   /// Two crossed cues, for the CUES tile (no stock icon shows that).
   static const cuesIcon = IconData(0);
@@ -495,14 +616,33 @@ class NavTile extends StatelessWidget {
                 children: [
                   Container(
                     decoration: active
-                        ? BoxDecoration(shape: BoxShape.circle, boxShadow: [BoxShadow(color: color.withValues(alpha: 0.45), blurRadius: 26, spreadRadius: 4)])
+                        ? BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: color.withValues(alpha: 0.45),
+                                blurRadius: 26,
+                                spreadRadius: 4,
+                              ),
+                            ],
+                          )
                         : null,
                     child: icon == cuesIcon
-                        ? CustomPaint(size: const Size.square(58), painter: _CrossedCuesPainter(color))
+                        ? CustomPaint(
+                            size: const Size.square(58),
+                            painter: _CrossedCuesPainter(color),
+                          )
                         : Icon(icon, size: 58, color: color),
                   ),
                   const SizedBox(height: 6),
-                  Text(label, style: AppText.label(15, color: color, weight: FontWeight.w700)),
+                  Text(
+                    label,
+                    style: AppText.label(
+                      15,
+                      color: color,
+                      weight: FontWeight.w700,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -511,7 +651,12 @@ class NavTile extends StatelessWidget {
               Positioned(
                 right: 14,
                 top: 14,
-                child: PulseBadge(child: CircleAvatar(radius: 8, backgroundColor: DuelColors.red)),
+                child: PulseBadge(
+                  child: CircleAvatar(
+                    radius: 8,
+                    backgroundColor: DuelColors.red,
+                  ),
+                ),
               ),
           ],
         ),
@@ -523,7 +668,16 @@ class NavTile extends StatelessWidget {
 /// Rectangular gradient button of the Pool City look ("Continue", "Create").
 /// Blue is the primary; callers pass gold / red / grey for other roles.
 class DuelButton extends StatefulWidget {
-  const DuelButton({super.key, required this.label, required this.onPressed, this.color = DesignColors.pcBlueButton, this.width = 280, this.height = 62, this.fontSize = 26, this.icon});
+  const DuelButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.color = DesignColors.pcBlueButton,
+    this.width = 280,
+    this.height = 62,
+    this.fontSize = 26,
+    this.icon,
+  });
 
   final String label;
   final VoidCallback? onPressed;
@@ -567,14 +721,32 @@ class _DuelButtonState extends State<DuelButton> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color.lerp(w.color, Colors.white, 0.18)!, w.color, Color.lerp(w.color, Colors.black, 0.35)!],
+                colors: [
+                  Color.lerp(w.color, Colors.white, 0.18)!,
+                  w.color,
+                  Color.lerp(w.color, Colors.black, 0.35)!,
+                ],
                 stops: const [0, 0.45, 1],
               ),
               borderRadius: BorderRadius.circular(w.height * 0.12),
-              border: Border.all(color: Color.lerp(w.color, Colors.white, 0.45)!.withValues(alpha: 0.8), width: 1.5),
+              border: Border.all(
+                color: Color.lerp(
+                  w.color,
+                  Colors.white,
+                  0.45,
+                )!.withValues(alpha: 0.8),
+                width: 1.5,
+              ),
               boxShadow: [
-                BoxShadow(color: w.color.withValues(alpha: 0.4), blurRadius: 16),
-                const BoxShadow(color: Color(0xAA000000), blurRadius: 10, offset: Offset(0, 6)),
+                BoxShadow(
+                  color: w.color.withValues(alpha: 0.4),
+                  blurRadius: 16,
+                ),
+                const BoxShadow(
+                  color: Color(0xAA000000),
+                  blurRadius: 10,
+                  offset: Offset(0, 6),
+                ),
               ],
             ),
             child: Stack(
@@ -588,11 +760,16 @@ class _DuelButtonState extends State<DuelButton> {
                   child: IgnorePointer(
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(w.height * 0.1)),
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(w.height * 0.1),
+                        ),
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [Colors.white.withValues(alpha: 0.3), Colors.white.withValues(alpha: 0.0)],
+                          colors: [
+                            Colors.white.withValues(alpha: 0.3),
+                            Colors.white.withValues(alpha: 0.0),
+                          ],
                         ),
                       ),
                     ),
@@ -603,21 +780,33 @@ class _DuelButtonState extends State<DuelButton> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (w.icon != null) ...[
-                        Icon(w.icon, color: Colors.white, size: w.fontSize * 1.2),
+                        Icon(
+                          w.icon,
+                          color: Colors.white,
+                          size: w.fontSize * 1.2,
+                        ),
                         SizedBox(width: w.fontSize * 0.4),
                       ],
                       Flexible(
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
-                          child: Text(w.label,
-                              maxLines: 1,
-                              style: TextStyle(
-                                fontFamily: DesignTypography.poolCityFont,
-                                fontSize: w.fontSize,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                                shadows: const [Shadow(color: Color(0xB3000000), blurRadius: 4, offset: Offset(0, 2))],
-                              )),
+                          child: Text(
+                            w.label,
+                            maxLines: 1,
+                            style: TextStyle(
+                              fontFamily: DesignTypography.poolCityFont,
+                              fontSize: w.fontSize,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              shadows: const [
+                                Shadow(
+                                  color: Color(0xB3000000),
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -642,7 +831,11 @@ class DuelTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = AppText.label(size, color: Colors.white, weight: FontWeight.w900).copyWith(letterSpacing: size * 0.02);
+    final style = AppText.label(
+      size,
+      color: Colors.white,
+      weight: FontWeight.w900,
+    ).copyWith(letterSpacing: size * 0.02);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -650,19 +843,33 @@ class DuelTitle extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             // The glow and drop shadow, on an invisible copy of the text.
-            Text(text,
-                textAlign: TextAlign.center,
-                style: style.copyWith(color: Colors.transparent, shadows: const [
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: style.copyWith(
+                color: Colors.transparent,
+                shadows: const [
                   Shadow(color: Color(0xBB3B6CFF), blurRadius: 30),
-                  Shadow(color: Color(0xCC000000), blurRadius: 6, offset: Offset(0, 4)),
-                ])),
+                  Shadow(
+                    color: Color(0xCC000000),
+                    blurRadius: 6,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+            ),
             // Brushed-metal face.
             ShaderMask(
               blendMode: BlendMode.srcIn,
               shaderCallback: (b) => const LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Colors.white, Color(0xFFF2F4FB), Color(0xFFB9C4EE), Color(0xFFEDF0FA)],
+                colors: [
+                  Colors.white,
+                  Color(0xFFF2F4FB),
+                  Color(0xFFB9C4EE),
+                  Color(0xFFEDF0FA),
+                ],
                 stops: [0, 0.45, 0.72, 1],
               ).createShader(b),
               child: Text(text, textAlign: TextAlign.center, style: style),
@@ -671,9 +878,25 @@ class DuelTitle extends StatelessWidget {
         ),
         if (sub != null) ...[
           const SizedBox(height: 4),
-          Text(sub!,
-              textAlign: TextAlign.center,
-              style: AppText.label(size * 0.4, color: Colors.white, weight: FontWeight.w700).copyWith(letterSpacing: 0.6, shadows: const [Shadow(color: Color(0xAA000000), blurRadius: 4, offset: Offset(0, 2))])),
+          Text(
+            sub!,
+            textAlign: TextAlign.center,
+            style:
+                AppText.label(
+                  size * 0.4,
+                  color: Colors.white,
+                  weight: FontWeight.w700,
+                ).copyWith(
+                  letterSpacing: 0.6,
+                  shadows: const [
+                    Shadow(
+                      color: Color(0xAA000000),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+          ),
         ],
       ],
     );
@@ -703,7 +926,10 @@ Future<T?> showDuelDialog<T>(
       transitionBuilder: (context, anim, _, child) {
         final closing = anim.status == AnimationStatus.reverse;
         final scale = Tween<double>(begin: 0.72, end: 1).animate(
-          CurvedAnimation(parent: anim, curve: closing ? Curves.easeIn : Curves.easeOutBack),
+          CurvedAnimation(
+            parent: anim,
+            curve: closing ? Curves.easeIn : Curves.easeOutBack,
+          ),
         );
         return FadeTransition(
           opacity: CurvedAnimation(parent: anim, curve: const Interval(0, 0.6)),
@@ -715,6 +941,9 @@ Future<T?> showDuelDialog<T>(
 /// The dialog canvas: 1080 design units wide (the portrait page width),
 /// fitted to the screen, with [child] centred. Dialogs are laid out in
 /// those units like the pages, so they match the reference's sizes.
+///
+/// On wide desktop / web the scale uses the same phone column as
+/// [PortraitCanvas] so popups are not edge-to-edge oversized.
 class DuelDialogFrame extends StatelessWidget {
   const DuelDialogFrame({super.key, required this.child});
 
@@ -724,50 +953,90 @@ class DuelDialogFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SafeArea(
-        child: LayoutBuilder(
-          builder: (context, c) {
-            final scale = c.maxWidth / canvasWidth;
-            final size = Size(canvasWidth, c.maxHeight / scale);
-            return FittedBox(
-              fit: BoxFit.scaleDown,
-              child: SizedBox.fromSize(
+    child: LayoutBuilder(
+      builder: (context, c) {
+        final columnW = PortraitCanvas.columnWidthFor(c.maxWidth);
+        final scale = columnW / canvasWidth;
+        final size = Size(canvasWidth, c.maxHeight / scale);
+        final framed = FittedBox(
+          fit: BoxFit.scaleDown,
+          child: SizedBox.fromSize(
+            size: size,
+            child: MediaQuery(
+              // Dialogs size themselves from the "screen": give them the canvas.
+              data: MediaQuery.of(context).copyWith(
                 size: size,
-                child: MediaQuery(
-                  // Dialogs size themselves from the "screen": give them the canvas.
-                  data: MediaQuery.of(context).copyWith(size: size, viewInsets: EdgeInsets.zero, padding: EdgeInsets.zero, viewPadding: EdgeInsets.zero),
-                  child: Center(child: child),
-                ),
+                viewInsets: EdgeInsets.zero,
+                padding: EdgeInsets.zero,
+                viewPadding: EdgeInsets.zero,
               ),
-            );
-          },
-        ),
-      );
+              child: Center(child: child),
+            ),
+          ),
+        );
+        if (columnW >= c.maxWidth - 0.5) return framed;
+        return Align(
+          alignment: Alignment.center,
+          child: SizedBox(width: columnW, height: c.maxHeight, child: framed),
+        );
+      },
+    ),
+  );
 }
 
-Future<void> showDuelMessage(BuildContext context, {required String title, required String body, IconData icon = Icons.info_outline_rounded}) =>
-    showDuelDialog<void>(
-      context,
-      builder: (context) => Consumer(
-        builder: (context, ref, _) {
-          final t = ref.watch(stringsProvider);
-          return PcDialog(
-            title: title,
-            actions: [PcButton(label: t.ok, width: 360, onPressed: () => Navigator.of(context).pop())],
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, color: DesignColors.pcGold, size: 90, shadows: const [Shadow(color: Color(0x99000000), blurRadius: 8, offset: Offset(0, 4))]),
-                const SizedBox(height: 24),
-                Text(body, textAlign: TextAlign.center, style: pcText(36, weight: FontWeight.w500).copyWith(height: 1.35)),
+Future<void> showDuelMessage(
+  BuildContext context, {
+  required String title,
+  required String body,
+  IconData icon = Icons.info_outline_rounded,
+}) => showDuelDialog<void>(
+  context,
+  builder: (context) => Consumer(
+    builder: (context, ref, _) {
+      final t = ref.watch(stringsProvider);
+      return PcDialog(
+        title: title,
+        actions: [
+          PcButton(
+            label: t.ok,
+            width: 360,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: DesignColors.pcGold,
+              size: 90,
+              shadows: const [
+                Shadow(
+                  color: Color(0x99000000),
+                  blurRadius: 8,
+                  offset: Offset(0, 4),
+                ),
               ],
             ),
-          );
-        },
-      ),
-    );
+            const SizedBox(height: 24),
+            Text(
+              body,
+              textAlign: TextAlign.center,
+              style: pcText(36, weight: FontWeight.w500).copyWith(height: 1.35),
+            ),
+          ],
+        ),
+      );
+    },
+  ),
+);
 
 /// Wallet shortfall: Buy Coin / Cancel. Returns true if the player chose Buy Coin.
-Future<bool> showNotEnoughBalanceDialog(BuildContext context, {int? need, int? have}) async {
+Future<bool> showNotEnoughBalanceDialog(
+  BuildContext context, {
+  int? need,
+  int? have,
+}) async {
   final result = await showDuelDialog<bool>(
     context,
     barrierColor: DesignColors.dialogOverlayScrim,
@@ -780,15 +1049,32 @@ Future<bool> showNotEnoughBalanceDialog(BuildContext context, {int? need, int? h
         return PcDialog(
           title: t.notEnoughBalance,
           actions: [
-            PcButton(label: t.cancel, style: PcButtonStyle.gray, width: 340, onPressed: () => Navigator.of(dialog).pop(false)),
-            PcButton(label: t.buyCoin, style: PcButtonStyle.gold, width: 400, onPressed: () => Navigator.of(dialog).pop(true)),
+            PcButton(
+              label: t.cancel,
+              style: PcButtonStyle.gray,
+              width: 340,
+              onPressed: () => Navigator.of(dialog).pop(false),
+            ),
+            PcButton(
+              label: t.buyCoin,
+              style: PcButtonStyle.gold,
+              width: 400,
+              onPressed: () => Navigator.of(dialog).pop(true),
+            ),
           ],
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const PikoCoinIcon(size: 120),
               const SizedBox(height: 24),
-              Text(body, textAlign: TextAlign.center, style: pcText(36, weight: FontWeight.w500).copyWith(height: 1.35)),
+              Text(
+                body,
+                textAlign: TextAlign.center,
+                style: pcText(
+                  36,
+                  weight: FontWeight.w500,
+                ).copyWith(height: 1.35),
+              ),
             ],
           ),
         );
@@ -806,7 +1092,8 @@ class CrossedCuesIcon extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) => CustomPaint(size: Size.square(size), painter: _CrossedCuesPainter(color));
+  Widget build(BuildContext context) =>
+      CustomPaint(size: Size.square(size), painter: _CrossedCuesPainter(color));
 }
 
 class _CrossedCuesPainter extends CustomPainter {
@@ -820,18 +1107,30 @@ class _CrossedCuesPainter extends CustomPainter {
     void cue(Offset tip, Offset butt) {
       final v = butt - tip;
       final mid = tip + v * 0.55;
-      canvas.drawLine(tip + v * 0.1, mid, Paint()
-        ..color = color
-        ..strokeWidth = s * 0.075
-        ..strokeCap = StrokeCap.round);
-      canvas.drawLine(mid, butt, Paint()
-        ..color = color
-        ..strokeWidth = s * 0.14
-        ..strokeCap = StrokeCap.round);
-      canvas.drawLine(tip, tip + v * 0.06, Paint()
-        ..color = color
-        ..strokeWidth = s * 0.075
-        ..strokeCap = StrokeCap.round);
+      canvas.drawLine(
+        tip + v * 0.1,
+        mid,
+        Paint()
+          ..color = color
+          ..strokeWidth = s * 0.075
+          ..strokeCap = StrokeCap.round,
+      );
+      canvas.drawLine(
+        mid,
+        butt,
+        Paint()
+          ..color = color
+          ..strokeWidth = s * 0.14
+          ..strokeCap = StrokeCap.round,
+      );
+      canvas.drawLine(
+        tip,
+        tip + v * 0.06,
+        Paint()
+          ..color = color
+          ..strokeWidth = s * 0.075
+          ..strokeCap = StrokeCap.round,
+      );
     }
 
     cue(Offset(s * 0.14, s * 0.14), Offset(s * 0.86, s * 0.86));
