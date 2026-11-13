@@ -281,6 +281,10 @@ class AppStrings {
     'Pay with bKash / Nagad / Rocket or USD crypto.',
     'বিকাশ / নগদ / রকেট অথবা USD ক্রিপ্টো দিয়ে পেমেন্ট করুন।',
   );
+  String get chooseLocalPaymentBody => _t(
+    'Pay with bKash / Nagad / Rocket.',
+    'বিকাশ / নগদ / রকেট দিয়ে পেমেন্ট করুন।',
+  );
   String get bdtCoinParityNotice => _t(
     'Notice: 1 Piko coin = 1 BDT',
     'নোটিশ: ১ পিকো কয়েন = ১ টাকা',

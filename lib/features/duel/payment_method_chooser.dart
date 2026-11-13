@@ -10,7 +10,8 @@ import 'lobby_data.dart';
 
 enum ShopPayMethod { localMfs, crypto }
 
-/// Always shows both MFS + crypto buttons so players can choose.
+/// Shows only the payment methods that are currently available.
+/// Crypto/USD appears only when admin enables NOWPayments.
 Future<ShopPayMethod?> showShopPaymentMethodChooser(
   BuildContext context, {
   required bool localAvailable,
@@ -26,14 +27,17 @@ Future<ShopPayMethod?> showShopPaymentMethodChooser(
     builder: (dialog) => Consumer(
       builder: (context, ref, _) {
         final t = ref.watch(stringsProvider);
+        final showLocal = localAvailable;
+        final showCrypto = cryptoAvailable;
+        final dual = showLocal && showCrypto;
         return PcDialog(
           title: t.choosePaymentMethod,
-          width: 900,
+          width: dual ? 900 : 520,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                t.choosePaymentBody,
+                dual ? t.choosePaymentBody : t.chooseLocalPaymentBody,
                 textAlign: TextAlign.center,
                 style: pcText(
                   28,
@@ -51,35 +55,43 @@ Future<ShopPayMethod?> showShopPaymentMethodChooser(
                   weight: FontWeight.w600,
                 ).copyWith(height: 1.25),
               ),
+              if (showCrypto) ...[
+                const SizedBox(height: 8),
+                Text(
+                  t.usdCoinsNotice(coinsPerUsd),
+                  textAlign: TextAlign.center,
+                  style: pcText(
+                    22,
+                    color: DesignColors.pcTextDim,
+                    weight: FontWeight.w500,
+                  ).copyWith(height: 1.25),
+                ),
+              ],
               const SizedBox(height: 22),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: _PayArtButton(
-                      asset: 'assets/images/payments/pay_mfs_combo.jpg',
-                      label: t.payLocalMfs,
-                      notice: t.payLocalMfsNotice,
-                      enabled: localAvailable,
-                      onTap: () {
-                        if (!localAvailable) return;
-                        Navigator.of(dialog).pop(ShopPayMethod.localMfs);
-                      },
+                  if (showLocal)
+                    Expanded(
+                      child: _PayArtButton(
+                        asset: 'assets/images/payments/pay_mfs_combo.jpg',
+                        label: t.payLocalMfs,
+                        notice: t.payLocalMfsNotice,
+                        onTap: () =>
+                            Navigator.of(dialog).pop(ShopPayMethod.localMfs),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 18),
-                  Expanded(
-                    child: _PayArtButton(
-                      asset: 'assets/images/payments/pay_crypto_wallet.jpg',
-                      label: t.payCryptoUsd,
-                      notice: t.usdCoinsNotice(coinsPerUsd),
-                      enabled: cryptoAvailable,
-                      onTap: () {
-                        if (!cryptoAvailable) return;
-                        Navigator.of(dialog).pop(ShopPayMethod.crypto);
-                      },
+                  if (showLocal && showCrypto) const SizedBox(width: 18),
+                  if (showCrypto)
+                    Expanded(
+                      child: _PayArtButton(
+                        asset: 'assets/images/payments/pay_crypto_wallet.jpg',
+                        label: t.payCryptoUsd,
+                        notice: t.usdCoinsNotice(coinsPerUsd),
+                        onTap: () =>
+                            Navigator.of(dialog).pop(ShopPayMethod.crypto),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ],
@@ -100,82 +112,77 @@ class _PayArtButton extends StatelessWidget {
     required this.asset,
     required this.label,
     required this.notice,
-    required this.enabled,
     required this.onTap,
   });
 
   final String asset;
   final String label;
   final String notice;
-  final bool enabled;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: enabled ? 1 : 0.45,
-      child: PressScale(
-        onTap: enabled ? onTap : null,
-        scale: 0.96,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AspectRatio(
-              aspectRatio: 1,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: const Color(0xFF8C7CE8),
-                    width: 3,
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x99000000),
-                      blurRadius: 16,
-                      offset: Offset(0, 8),
-                    ),
-                  ],
+    return PressScale(
+      onTap: onTap,
+      scale: 0.96,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AspectRatio(
+            aspectRatio: 1,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: const Color(0xFF8C7CE8),
+                  width: 3,
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(15),
-                  child: Image.asset(
-                    asset,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const ColoredBox(
-                      color: Color(0xFF1A1240),
-                      child: Icon(
-                        Icons.payments_rounded,
-                        color: Colors.white70,
-                        size: 64,
-                      ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x99000000),
+                    blurRadius: 16,
+                    offset: Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(15),
+                child: Image.asset(
+                  asset,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => const ColoredBox(
+                    color: Color(0xFF1A1240),
+                    child: Icon(
+                      Icons.payments_rounded,
+                      color: Colors.white70,
+                      size: 64,
                     ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              titleCase(label),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: pcText(26),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              notice,
-              textAlign: TextAlign.center,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: pcText(
-                20,
-                color: DesignColors.pcTextDim,
-                weight: FontWeight.w500,
-              ).copyWith(height: 1.25),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            titleCase(label),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: pcText(26),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            notice,
+            textAlign: TextAlign.center,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: pcText(
+              20,
+              color: DesignColors.pcTextDim,
+              weight: FontWeight.w500,
+            ).copyWith(height: 1.25),
+          ),
+        ],
       ),
     );
   }

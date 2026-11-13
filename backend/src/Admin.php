@@ -1988,7 +1988,7 @@ CSS;
             error_log('[admin/nowpayments] ' . $e->getMessage());
         }
         self::begin('NOWPayments (crypto)', 'nowpayments');
-        self::pageLead('Players pick <b>bKash/Nagad/Rocket</b> or <b>Crypto (USD)</b> on the coin pack popup. 1 Piko coin = 1 BDT; 1 USD ≈ market BDT in coins.');
+        self::pageLead('Crypto is <b>OFF</b> for now — shop shows only bKash/Nagad/Rocket. Enable the switch below when you want USD crypto back. 1 Piko coin = 1 BDT.');
         echo '<section class="section"><h2>Status</h2><div class="stats">';
         echo '<div class="stat"><b>', $ready ? 'ON' : 'OFF', '</b><span>Crypto in app</span></div>';
         echo '<div class="stat"><b>', self::e(NowPayments::maskedApiKey()), '</b><span>API key</span></div>';

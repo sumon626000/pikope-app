@@ -71,8 +71,35 @@ final class NowPayments
 
     public static function publicEnabled(): bool
     {
+        self::ensureSoftLaunchOff();
         $c = self::config();
         return (bool) $c['enabled'] && trim((string) $c['apiKey']) !== '';
+    }
+
+    /**
+     * One-shot: turn crypto OFF in admin settings (keeps API key).
+     * Admin can enable again later from /admin/nowpayments.
+     */
+    public static function ensureSoftLaunchOff(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+        $flag = Db::one("SELECT v FROM settings WHERE k = 'nowpayments_soft_off_v1'");
+        if ($flag !== null) {
+            return;
+        }
+        $c = self::config();
+        if ((bool) $c['enabled']) {
+            self::save(array_merge($c, ['enabled' => false]));
+        }
+        Db::run(
+            "INSERT INTO settings (k, v) VALUES ('nowpayments_soft_off_v1', '1')
+             ON DUPLICATE KEY UPDATE v = VALUES(v)",
+            []
+        );
     }
 
     public static function maskedApiKey(): string
