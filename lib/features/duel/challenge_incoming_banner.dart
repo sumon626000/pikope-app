@@ -108,6 +108,7 @@ class _IncomingTopBannerState extends ConsumerState<_IncomingTopBanner> {
   }
 
   Future<void> _accept() async {
+    if (_busy) return;
     final coins = ref.read(sessionProvider).walletCoins;
     if (_buyIn > 0 && coins < _buyIn) {
       await promptNotEnoughBalance(context, need: _buyIn, have: coins);
@@ -138,6 +139,8 @@ class _IncomingTopBannerState extends ConsumerState<_IncomingTopBanner> {
   }
 
   Future<void> _decline() async {
+    if (_busy) return;
+    setState(() => _busy = true);
     try {
       await ref
           .read(sessionProvider.notifier)

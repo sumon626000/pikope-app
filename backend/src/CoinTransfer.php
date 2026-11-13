@@ -26,13 +26,38 @@ final class CoinTransfer
                 amount INT NOT NULL,
                 fee INT NOT NULL,
                 received INT NOT NULL,
+                idempotency_key VARCHAR(64) NULL,
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 KEY idx_transfer_from (from_user_id, created_at),
                 KEY idx_transfer_to (to_user_id, created_at),
+                UNIQUE KEY uq_transfer_idem (from_user_id, idempotency_key),
                 CONSTRAINT fk_transfer_from FOREIGN KEY (from_user_id) REFERENCES users (id) ON DELETE CASCADE,
                 CONSTRAINT fk_transfer_to FOREIGN KEY (to_user_id) REFERENCES users (id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
         );
+        // Older installs: add column + unique index if missing.
+        try {
+            $col = Db::one(
+                "SELECT COLUMN_NAME FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'coin_transfers' AND COLUMN_NAME = 'idempotency_key'"
+            );
+            if ($col === null) {
+                Db::run('ALTER TABLE coin_transfers ADD COLUMN idempotency_key VARCHAR(64) NULL AFTER received');
+            }
+        } catch (\Throwable $e) {
+            error_log('[transfer] ensure idempotency column: ' . $e->getMessage());
+        }
+        try {
+            $idx = Db::one(
+                "SELECT INDEX_NAME FROM information_schema.STATISTICS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'coin_transfers' AND INDEX_NAME = 'uq_transfer_idem'"
+            );
+            if ($idx === null) {
+                Db::run('ALTER TABLE coin_transfers ADD UNIQUE KEY uq_transfer_idem (from_user_id, idempotency_key)');
+            }
+        } catch (\Throwable $e) {
+            error_log('[transfer] ensure idempotency index: ' . $e->getMessage());
+        }
     }
 
     /** @return array<string,mixed> */
@@ -95,7 +120,7 @@ final class CoinTransfer
     }
 
     /** @return array<string,mixed> */
-    public static function send(int $fromId, string $toGameId, int $amount): array
+    public static function send(int $fromId, string $toGameId, int $amount, ?string $idempotencyKey = null): array
     {
         $c = self::config();
         if (!(bool) $c['enabled']) {
@@ -106,6 +131,7 @@ final class CoinTransfer
         if ($amount < $min || $amount > $max) {
             throw ApiError::badRequest("Transfer between $min and $max Pico coin.", 'bad_amount');
         }
+        $key = self::normalizeIdempotencyKey($idempotencyKey);
         $target = self::lookupProfile($toGameId, $fromId);
         if ($target === null) {
             AdminAlert::signal('transfer_abuse', 'Invalid transfer target ID', "gameId=$toGameId", $fromId);
@@ -124,29 +150,84 @@ final class CoinTransfer
         // DDL must not run inside Db::transaction (MySQL implicit commit breaks commit()).
         self::ensureTable();
 
-        $payload = Db::transaction(static function () use ($fromId, $toId, $amount, $fee, $total): array {
-            Economy::move($fromId, -$total, 'transfer_out');
-            Economy::move($toId, $amount, 'transfer_in');
-            Db::run(
-                'INSERT INTO coin_transfers (from_user_id, to_user_id, amount, fee, received) VALUES (?, ?, ?, ?, ?)',
-                [$fromId, $toId, $amount, $fee, $amount]
-            );
+        // Replay: same client key → prior result (no second debit).
+        if ($key !== null) {
+            $prior = self::findByIdempotency($fromId, $key);
+            if ($prior !== null) {
+                return self::responseFromRow($prior, $fromId, $toGameId, $amount, $fee);
+            }
+        }
+
+        $payload = Db::transaction(static function () use ($fromId, $toId, $amount, $fee, $total, $key): array {
+            // Lock both wallets in id order to avoid deadlocks / double-spend races.
+            $first = min($fromId, $toId);
+            $second = max($fromId, $toId);
+            Db::one('SELECT id FROM users WHERE id = ? FOR UPDATE', [$first]);
+            if ($second !== $first) {
+                Db::one('SELECT id FROM users WHERE id = ? FOR UPDATE', [$second]);
+            }
+
+            if ($key !== null) {
+                $existing = Db::one(
+                    'SELECT id FROM coin_transfers WHERE from_user_id = ? AND idempotency_key = ?',
+                    [$fromId, $key]
+                );
+                if ($existing !== null) {
+                    $row = self::loadJoinedRow((int) $existing['id']);
+                    return [
+                        'row' => $row,
+                        'fromId' => $fromId,
+                        'toId' => $toId,
+                        'toName' => (string) ($row['to_name'] ?? ''),
+                        'transferId' => (int) $existing['id'],
+                        'replay' => true,
+                    ];
+                }
+            }
+
+            try {
+                Db::run(
+                    'INSERT INTO coin_transfers (from_user_id, to_user_id, amount, fee, received, idempotency_key)
+                     VALUES (?, ?, ?, ?, ?, ?)',
+                    [$fromId, $toId, $amount, $fee, $amount, $key]
+                );
+            } catch (\PDOException $e) {
+                if (($e->errorInfo[1] ?? 0) === 1062 && $key !== null) {
+                    $existing = Db::one(
+                        'SELECT id FROM coin_transfers WHERE from_user_id = ? AND idempotency_key = ?',
+                        [$fromId, $key]
+                    );
+                    if ($existing !== null) {
+                        $row = self::loadJoinedRow((int) $existing['id']);
+                        if ($row === null) {
+                            throw new \RuntimeException('Transfer row missing after idempotency hit');
+                        }
+                        return [
+                            'row' => $row,
+                            'fromId' => $fromId,
+                            'toId' => $toId,
+                            'toName' => (string) ($row['to_name'] ?? ''),
+                            'transferId' => (int) $existing['id'],
+                            'replay' => true,
+                        ];
+                    }
+                }
+                throw $e;
+            }
             $id = Db::lastId();
-            $row = Db::one(
-                'SELECT t.*, fu.display_name AS from_name, fu.referral_code AS from_code,
-                        tu.display_name AS to_name, tu.referral_code AS to_code
-                 FROM coin_transfers t
-                 JOIN users fu ON fu.id = t.from_user_id
-                 JOIN users tu ON tu.id = t.to_user_id
-                 WHERE t.id = ?',
-                [$id]
-            );
+            Economy::move($fromId, -$total, 'transfer_out:' . $id);
+            Economy::move($toId, $amount, 'transfer_in:' . $id);
+            $row = self::loadJoinedRow($id);
             if ($row === null) {
                 throw new \RuntimeException('Transfer row missing after insert');
             }
             $toName = (string) ($row['to_name'] ?? '');
             return ['row' => $row, 'fromId' => $fromId, 'toId' => $toId, 'toName' => $toName, 'transferId' => $id];
         });
+
+        if (($payload['replay'] ?? false) === true) {
+            return self::responseFromRow($payload['row'], $fromId, $toGameId, $amount, $fee);
+        }
 
         $senderName = (string) ($payload['row']['from_name'] ?? 'Player');
         try {
@@ -267,6 +348,78 @@ final class CoinTransfer
             throw ApiError::badRequest('Game ID must be 6 digits.', 'bad_game_id');
         }
         return $d;
+    }
+
+    private static function normalizeIdempotencyKey(?string $raw): ?string
+    {
+        if ($raw === null) {
+            return null;
+        }
+        $key = trim($raw);
+        if ($key === '') {
+            return null;
+        }
+        if (strlen($key) < 8 || strlen($key) > 64 || !preg_match('/^[A-Za-z0-9._:-]+$/', $key)) {
+            throw ApiError::badRequest('Invalid idempotency key.', 'bad_idempotency');
+        }
+        return $key;
+    }
+
+    /** @return array<string,mixed>|null */
+    private static function findByIdempotency(int $fromId, string $key): ?array
+    {
+        $row = Db::one(
+            'SELECT id FROM coin_transfers WHERE from_user_id = ? AND idempotency_key = ?',
+            [$fromId, $key]
+        );
+        if ($row === null) {
+            return null;
+        }
+        return self::loadJoinedRow((int) $row['id']);
+    }
+
+    /** @return array<string,mixed>|null */
+    private static function loadJoinedRow(int $id): ?array
+    {
+        return Db::one(
+            'SELECT t.*, fu.display_name AS from_name, fu.referral_code AS from_code,
+                    tu.display_name AS to_name, tu.referral_code AS to_code
+             FROM coin_transfers t
+             JOIN users fu ON fu.id = t.from_user_id
+             JOIN users tu ON tu.id = t.to_user_id
+             WHERE t.id = ?',
+            [$id]
+        );
+    }
+
+    /**
+     * @param array<string,mixed> $row
+     * @return array<string,mixed>
+     */
+    private static function responseFromRow(
+        array $row,
+        int $fromId,
+        string $toGameId,
+        int $amount,
+        int $fee
+    ): array {
+        try {
+            $transfer = self::publicRow($row, $fromId);
+        } catch (\Throwable $e) {
+            $transfer = [
+                'id' => (int) ($row['id'] ?? 0),
+                'amount' => $amount,
+                'fee' => $fee,
+                'received' => $amount,
+                'toName' => (string) ($row['to_name'] ?? ''),
+                'toGameId' => self::normalizeGameId($toGameId),
+                'direction' => 'sent',
+            ];
+        }
+        return [
+            'transfer' => $transfer,
+            'user' => self::senderSnapshot($fromId),
+        ];
     }
 
     /** @param array<string,mixed> $raw */

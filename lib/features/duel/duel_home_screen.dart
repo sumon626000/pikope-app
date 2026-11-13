@@ -1626,6 +1626,7 @@ class _DailyBonusDialogState extends ConsumerState<_DailyBonusDialog> {
   int _celebrate = 0;
 
   Future<void> _claim() async {
+    if (_busy) return;
     setState(() => _busy = true);
     try {
       final reward = await ref.read(lobbyProvider.notifier).claimDaily();

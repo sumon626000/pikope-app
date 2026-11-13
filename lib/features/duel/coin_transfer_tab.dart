@@ -123,6 +123,7 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab>
   }
 
   Future<void> _send() async {
+    if (_busy) return;
     final t = ref.read(stringsProvider);
     final session = ref.read(sessionProvider);
     if (session.isGuest) {
@@ -160,6 +161,12 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab>
       return;
     }
     final name = _profile?['name'] as String? ?? digits;
+    // Lock before confirm so double-tap cannot open two dialogs / two sends.
+    setState(() {
+      _busy = true;
+      _error = null;
+      _success = null;
+    });
     final ok = await showDuelDialog<bool>(
       context,
       barrierDismissible: false,
@@ -196,13 +203,11 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab>
         ),
       ),
     );
-    if (ok != true || !mounted) return;
+    if (ok != true || !mounted) {
+      if (mounted) setState(() => _busy = false);
+      return;
+    }
 
-    setState(() {
-      _busy = true;
-      _error = null;
-      _success = null;
-    });
     try {
       final transfer = await ref
           .read(sessionProvider.notifier)

@@ -324,9 +324,11 @@ CREATE TABLE IF NOT EXISTS coin_transfers (
   amount INT NOT NULL,
   fee INT NOT NULL,
   received INT NOT NULL,
+  idempotency_key VARCHAR(64) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_transfer_from (from_user_id, created_at),
   KEY idx_transfer_to (to_user_id, created_at),
+  UNIQUE KEY uq_transfer_idem (from_user_id, idempotency_key),
   CONSTRAINT fk_transfer_from FOREIGN KEY (from_user_id) REFERENCES users (id) ON DELETE CASCADE,
   CONSTRAINT fk_transfer_to FOREIGN KEY (to_user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

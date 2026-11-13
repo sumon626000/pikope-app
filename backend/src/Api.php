@@ -96,7 +96,10 @@ final class Api
             $method === 'POST' && $path === '/redeem/cancel' => self::throttled('redeem', 20, 3600, self::redeemCancel(...)),
             $method === 'GET' && $path === '/transfer/lookup' => self::transferLookup(),
             $method === 'GET' && $path === '/transfer/history' => self::transferHistory(),
-            $method === 'POST' && $path === '/transfer/send' => self::throttled('transfer', 30, 3600, self::transferSend(...)),
+            $method === 'POST' && $path === '/transfer/send' => self::throttled('transfer', 15, 3600, static function (): array {
+                RateLimit::hit('transfer-burst:' . Auth::user()['id'], 2, 15);
+                return self::transferSend();
+            }),
             $method === 'POST' && $path === '/deposit/request' => self::throttled('deposit', 15, 3600, self::depositRequest(...)),
             $method === 'POST' && $path === '/deposit/zinipay/start' => self::throttled('zini', 20, 3600, self::ziniPayStart(...)),
             $method === 'POST' && $path === '/deposit/zinipay/finish' => self::throttled('zini', 40, 3600, self::ziniPayFinish(...)),
@@ -566,7 +569,8 @@ final class Api
         return CoinTransfer::send(
             (int) Auth::user()['id'],
             Http::str('gameId', 6),
-            self::int(Http::body(), 'amount')
+            self::int(Http::body(), 'amount'),
+            Http::str('idempotencyKey', 64, false) ?: null
         );
     }
 

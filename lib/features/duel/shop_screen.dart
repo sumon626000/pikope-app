@@ -300,8 +300,12 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     super.dispose();
   }
 
+  String? _freePackBusyId;
+
   Future<void> _buyFreePack(CoinShopPack pack) async {
+    if (_freePackBusyId != null) return;
     final t = ref.read(stringsProvider);
+    setState(() => _freePackBusyId = pack.id);
     try {
       final received = await ref
           .read(lobbyProvider.notifier)
@@ -322,6 +326,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
           icon: Icons.error_outline_rounded,
         );
       }
+    } finally {
+      if (mounted) setState(() => _freePackBusyId = null);
     }
   }
 
@@ -705,6 +711,7 @@ class _ManualDepositSheetState extends ConsumerState<_ManualDepositSheet> {
   }
 
   Future<void> _submit() async {
+    if (_busy) return;
     final t = ref.read(stringsProvider);
     final cfg = widget.config;
     final bdt = _bdt;
@@ -1109,6 +1116,7 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
   }
 
   Future<void> _submit() async {
+    if (_busy) return;
     final t = ref.read(stringsProvider);
     if (!await requireRegisteredAccount(context, ref)) return;
     if (!mounted) return;

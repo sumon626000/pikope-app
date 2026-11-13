@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -268,26 +269,51 @@ class SessionNotifier extends Notifier<SessionState> {
   Future<Map<String, dynamic>> sendCoinTransfer({
     required String gameId,
     required int amount,
+    String? idempotencyKey,
   }) async {
     await ensureSignedIn();
     final code = gameId.replaceAll(RegExp(r'\D'), '');
+    final key = idempotencyKey ?? _newIdempotencyKey();
     Map<String, dynamic> r;
     try {
       r = await _api.post('/transfer/send', {
         'gameId': code,
         'amount': amount,
+        'idempotencyKey': key,
       });
     } on ApiException catch (e) {
       if (e.status >= 500 || e.code == 'server_error') {
-        final recovered = await _recoverRecentCoinTransfer(code, amount);
-        if (recovered != null) {
-          return recovered;
+        // Same key replay: server returns prior transfer if the debit already landed.
+        try {
+          r = await _api.post('/transfer/send', {
+            'gameId': code,
+            'amount': amount,
+            'idempotencyKey': key,
+          });
+        } on ApiException {
+          final recovered = await _recoverRecentCoinTransfer(code, amount);
+          if (recovered != null) {
+            return recovered;
+          }
+          rethrow;
         }
+      } else {
+        rethrow;
       }
-      rethrow;
     }
     _applyTransferResponseUser(r['user']);
     return _transferMap(r['transfer']);
+  }
+
+  static String _newIdempotencyKey() {
+    final r = Random.secure();
+    final buf = StringBuffer('t');
+    for (var i = 0; i < 20; i++) {
+      buf.write(r.nextInt(36).toRadixString(36));
+    }
+    buf.write('-');
+    buf.write(DateTime.now().toUtc().microsecondsSinceEpoch.toRadixString(36));
+    return buf.toString();
   }
 
   void _applyTransferResponseUser(Object? user) {
