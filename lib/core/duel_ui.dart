@@ -1062,32 +1062,37 @@ Future<bool> showNotEnoughBalanceDialog(
             : t.notEnoughBalanceHint;
         return PcDialog(
           title: t.notEnoughBalance,
-          actions: [
-            PcButton(
-              label: t.cancel,
-              style: PcButtonStyle.gray,
-              width: 340,
-              onPressed: () => Navigator.of(dialog).pop(false),
-            ),
-            PcButton(
-              label: t.buyCoin,
-              style: PcButtonStyle.gold,
-              width: 400,
-              onPressed: () => Navigator.of(dialog).pop(true),
-            ),
-          ],
+          width: 820,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const PikoCoinIcon(size: 120),
-              const SizedBox(height: 24),
+              const PikoCoinIcon(size: 96),
+              const SizedBox(height: 20),
               Text(
                 body,
                 textAlign: TextAlign.center,
                 style: pcText(
-                  36,
+                  30,
                   weight: FontWeight.w500,
                 ).copyWith(height: 1.35),
+              ),
+              const SizedBox(height: 28),
+              PcButton(
+                label: t.buyCoin,
+                style: PcButtonStyle.gold,
+                width: 640,
+                height: 84,
+                fontSize: 34,
+                onPressed: () => Navigator.of(dialog).pop(true),
+              ),
+              const SizedBox(height: 14),
+              PcButton(
+                label: t.cancel,
+                style: PcButtonStyle.gray,
+                width: 640,
+                height: 76,
+                fontSize: 30,
+                onPressed: () => Navigator.of(dialog).pop(false),
               ),
             ],
           ),

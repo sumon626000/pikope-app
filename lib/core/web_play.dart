@@ -39,7 +39,8 @@ class WebLandscapeGate extends ConsumerStatefulWidget {
   ConsumerState<WebLandscapeGate> createState() => _WebLandscapeGateState();
 }
 
-class _WebLandscapeGateState extends ConsumerState<WebLandscapeGate> with WidgetsBindingObserver {
+class _WebLandscapeGateState extends ConsumerState<WebLandscapeGate>
+    with WidgetsBindingObserver {
   bool _fullscreenHintDismissed = false;
 
   @override
@@ -90,34 +91,52 @@ class _WebLandscapeGateState extends ConsumerState<WebLandscapeGate> with Widget
     final landscape = _landscapeViewport(context);
     final t = ref.watch(stringsProvider);
 
+    // Soft gate: still show the match (letterboxed) with a thin rotate tip —
+    // hard-blocking felt worse than APK auto-rotate.
     if (!landscape) {
-      return ColoredBox(
-        color: DuelColors.ink,
-        child: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.screen_rotation_rounded, color: DuelColors.gold, size: 56),
-                  const SizedBox(height: 20),
-                  Text(
-                    t.webPlayLandscapeHint,
-                    textAlign: TextAlign.center,
-                    style: AppText.label(18, color: Colors.white, weight: FontWeight.w900),
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          widget.child,
+          Positioned(
+            left: 12,
+            right: 12,
+            top: 0,
+            child: SafeArea(
+              bottom: false,
+              child: Material(
+                color: const Color(0xEE12182E),
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    t.webPortraitPlayHint,
-                    textAlign: TextAlign.center,
-                    style: AppText.label(14, color: DuelColors.silver, weight: FontWeight.w600),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.screen_rotation_rounded,
+                        color: DuelColors.gold,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          t.webPlayLandscapeHint,
+                          style: AppText.label(
+                            13,
+                            color: Colors.white,
+                            weight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
+        ],
       );
     }
 
@@ -154,25 +173,44 @@ class _WebLandscapeGateState extends ConsumerState<WebLandscapeGate> with Widget
               child: GestureDetector(
                 onTap: _onUserGestureForFullscreen,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   decoration: duelPanel(radius: 12, rim: DuelColors.gold),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.fullscreen_rounded, color: DuelColors.gold, size: 22),
+                      const Icon(
+                        Icons.fullscreen_rounded,
+                        color: DuelColors.gold,
+                        size: 22,
+                      ),
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
                           t.webFullscreenTap,
                           textAlign: TextAlign.center,
-                          style: AppText.label(13, color: Colors.white, weight: FontWeight.w800),
+                          style: AppText.label(
+                            13,
+                            color: Colors.white,
+                            weight: FontWeight.w800,
+                          ),
                         ),
                       ),
                       IconButton(
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        icon: const Icon(Icons.close_rounded, color: DuelColors.dim, size: 18),
-                        onPressed: () => setState(() => _fullscreenHintDismissed = true),
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: DuelColors.dim,
+                          size: 18,
+                        ),
+                        onPressed: () =>
+                            setState(() => _fullscreenHintDismissed = true),
                       ),
                     ],
                   ),

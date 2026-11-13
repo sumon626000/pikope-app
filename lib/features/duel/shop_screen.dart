@@ -148,10 +148,16 @@ class _CoinPackGrid extends StatelessWidget {
     return SizedBox(height: cardH, child: card);
   }
 
-  Widget _rowCells(List<CoinShopPack> slice, double cardH, {bool stretch = false}) {
+  Widget _rowCells(
+    List<CoinShopPack> slice,
+    double cardH, {
+    bool stretch = false,
+  }) {
     final gapW = compact ? 6.0 : _gap;
     return Row(
-      crossAxisAlignment: stretch ? CrossAxisAlignment.stretch : CrossAxisAlignment.start,
+      crossAxisAlignment: stretch
+          ? CrossAxisAlignment.stretch
+          : CrossAxisAlignment.start,
       children: [
         for (var i = 0; i < slice.length; i++) ...[
           if (i > 0) SizedBox(width: gapW),
@@ -179,11 +185,17 @@ class _CoinPackGrid extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Flexible(
-            child: SizedBox(height: tileH, child: _rowCells(packs.sublist(0, 3), cardH, stretch: true)),
+            child: SizedBox(
+              height: tileH,
+              child: _rowCells(packs.sublist(0, 3), cardH, stretch: true),
+            ),
           ),
           SizedBox(height: gapH),
           Flexible(
-            child: SizedBox(height: tileH, child: _rowCells(packs.sublist(3, 6), cardH, stretch: true)),
+            child: SizedBox(
+              height: tileH,
+              child: _rowCells(packs.sublist(3, 6), cardH, stretch: true),
+            ),
           ),
         ],
       );
@@ -215,7 +227,10 @@ class _CoinPackGrid extends StatelessWidget {
             for (var r = 0; r < rowSlices.length; r++) ...[
               if (r > 0) SizedBox(height: compact ? 6 : _gap),
               Flexible(
-                child: SizedBox(height: tileH, child: _rowCells(rowSlices[r], cardH, stretch: true)),
+                child: SizedBox(
+                  height: tileH,
+                  child: _rowCells(rowSlices[r], cardH, stretch: true),
+                ),
               ),
             ],
           ],
@@ -335,16 +350,27 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     }
 
     if (cfg.manualEnabled && cfg.agents.isNotEmpty) {
+      // Cap width on desktop / tablet so the sheet is not edge-to-edge.
       await showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
-        backgroundColor: const Color(0xFF141A2E),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        backgroundColor: Colors.transparent,
+        constraints: BoxConstraints(
+          maxWidth: PortraitWebLayout.phoneColumnMaxWidth + 24,
         ),
-        builder: (ctx) => Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
-          child: _ManualDepositSheet(config: cfg, pack: pack),
+        builder: (ctx) => Align(
+          alignment: Alignment.bottomCenter,
+          child: Material(
+            color: const Color(0xFF141A2E),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.viewInsetsOf(ctx).bottom,
+              ),
+              child: _ManualDepositSheet(config: cfg, pack: pack),
+            ),
+          ),
         ),
       );
       return;
@@ -464,7 +490,15 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
           if (global > 0)
             Padding(
               padding: const EdgeInsets.fromLTRB(22, 0, 22, 10),
-              child: Text(t.shopSub(global), textAlign: TextAlign.center, style: pcText(26, color: DesignColors.pcGold, weight: FontWeight.w500)),
+              child: Text(
+                t.shopSub(global),
+                textAlign: TextAlign.center,
+                style: pcText(
+                  26,
+                  color: DesignColors.pcGold,
+                  weight: FontWeight.w500,
+                ),
+              ),
             ),
           Expanded(child: _shopBody(context, lobby, t, data, phone: false)),
         ],
@@ -475,10 +509,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
 
 /// Scrollable tab body; outer TabBarView already provides the panel chrome.
 class _ShopTabScroll extends StatelessWidget {
-  const _ShopTabScroll({
-    required this.child,
-    this.fitViewport = false,
-  });
+  const _ShopTabScroll({required this.child, this.fitViewport = false});
 
   final Widget child;
   final bool fitViewport;
@@ -533,8 +564,10 @@ class _BuyTab extends ConsumerWidget {
             : _CoinPackGrid.columnsForWidth(constraints.maxWidth);
         final tutorials = data.coinTutorials;
         final hasTutorial = youtubeVideoId(tutorials.deposit) != null;
-        final tutorialReserve =
-            ShopPhoneLayout.tutorialBlockHeight(context, visible: hasTutorial);
+        final tutorialReserve = ShopPhoneLayout.tutorialBlockHeight(
+          context,
+          visible: hasTutorial,
+        );
         final scrollPad = phone ? 20.0 : 28.0;
         final gap = ShopPhoneLayout.gridGap(context);
         final rowCount = packs.length == 6 && cols == 3
@@ -883,7 +916,11 @@ class _RedeemBalanceCard extends StatelessWidget {
             amount,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppText.label(fontSize, color: accent, weight: FontWeight.w900),
+            style: AppText.label(
+              fontSize,
+              color: accent,
+              weight: FontWeight.w900,
+            ),
           ),
         ],
       ),
@@ -1181,18 +1218,18 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
               },
             )
           : Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _redeemTabFields(
-            t: t,
-            cfg: cfg,
-            redeemCap: redeemCap,
-            input: input,
-            phone: false,
-            scrollable: true,
-          ),
-        ],
-      ),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _redeemTabFields(
+                  t: t,
+                  cfg: cfg,
+                  redeemCap: redeemCap,
+                  input: input,
+                  phone: false,
+                  scrollable: true,
+                ),
+              ],
+            ),
     );
   }
 
@@ -1207,194 +1244,191 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
     final mainBalance = ref.watch(sessionProvider).walletCoins;
     final redeemAvailable = ref.watch(sessionProvider).redeemableCoins;
     final body = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          CoinTutorialVideoFrame(
-            youtubeUrl: widget.tutorialUrl,
-            title: t.coinTutorialRedeemTitle,
-            tapHint: t.coinTutorialTapPlay,
-            compact: phone,
-          ),
-          FutureBuilder<List<Map<String, dynamic>>>(
-            future: _pending,
-            builder: (context, snap) {
-              final rows = snap.data ?? const [];
-              if (rows.isEmpty) return const SizedBox.shrink();
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    t.redeemPendingTitle,
-                    style: AppText.label(
-                      phone ? 12 : 22,
-                      color: DuelColors.silver,
-                      weight: FontWeight.w900,
-                    ),
-                  ),
-                  SizedBox(height: phone ? 4 : 10),
-                  for (final r in rows)
-                    _PendingRedeemRow(
-                      row: r,
-                      onCancelled: () => setState(_reloadPending),
-                    ),
-                  SizedBox(height: phone ? 6 : 20),
-                ],
-              );
-            },
-          ),
-          if (!phone)
-            Text(
-              t.cashOutTitle,
-              style: AppText.label(
-                36,
-                color: DuelColors.gold,
-                weight: FontWeight.w900,
-              ),
-            ),
-          if (!phone) const SizedBox(height: 16),
-          if (phone)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        CoinTutorialVideoFrame(
+          youtubeUrl: widget.tutorialUrl,
+          title: t.coinTutorialRedeemTitle,
+          tapHint: t.coinTutorialTapPlay,
+          compact: phone,
+        ),
+        FutureBuilder<List<Map<String, dynamic>>>(
+          future: _pending,
+          builder: (context, snap) {
+            final rows = snap.data ?? const [];
+            if (rows.isEmpty) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: _RedeemBalanceCard(
-                    title: t.mainBalanceShort,
-                    amount: formatCoins(mainBalance),
-                    accent: DuelColors.silver,
-                    compact: true,
+                Text(
+                  t.redeemPendingTitle,
+                  style: AppText.label(
+                    phone ? 12 : 22,
+                    color: DuelColors.silver,
+                    weight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: _RedeemBalanceCard(
-                    title: t.redeemAvailableShort,
-                    amount: formatCoins(redeemAvailable),
-                    accent: DuelColors.gold,
-                    compact: true,
+                SizedBox(height: phone ? 4 : 10),
+                for (final r in rows)
+                  _PendingRedeemRow(
+                    row: r,
+                    onCancelled: () => setState(_reloadPending),
                   ),
-                ),
+                SizedBox(height: phone ? 6 : 20),
               ],
-            )
-          else ...[
-            _RedeemBalanceCard(
-              title: t.mainBalanceTitle,
-              amount: formatCoins(mainBalance),
-              accent: DuelColors.silver,
-            ),
-            const SizedBox(height: 12),
-            _RedeemBalanceCard(
-              title: t.redeemAvailableTitle,
-              amount: formatCoins(redeemAvailable),
-              accent: DuelColors.gold,
-            ),
-          ],
-          SizedBox(height: phone ? 4 : 14),
+            );
+          },
+        ),
+        if (!phone)
           Text(
-            t.redeemWinOnlyHint,
-            maxLines: phone ? 2 : null,
-            overflow: phone ? TextOverflow.ellipsis : null,
-            style: AppText.label(phone ? 9 : 18, color: DuelColors.dim),
-          ),
-          if (!phone) ...[
-            const SizedBox(height: 10),
-            Text(
-              t.redeemRateHint(cfg.coinPerBdt),
-              style: AppText.label(18, color: DuelColors.dim),
-            ),
-          ],
-          SizedBox(height: phone ? 6 : 22),
-          TextField(
-            controller: _coins,
-            style: input,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: pcFieldDecoration(
-              label: t.coinAmountLabel,
-              hint: redeemCap >= cfg.minCoins
-                  ? '${cfg.minCoins} – ${formatCoins(redeemCap)}'
-                  : t.notEnoughRedeemable,
-              phone: phone,
-              accent: DuelColors.gold,
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-          SizedBox(height: phone ? 4 : 10),
-          Text(
-            t.youReceiveBdt(_bdt),
+            t.cashOutTitle,
             style: AppText.label(
-              phone ? 13 : 26,
-              color: DuelColors.silver,
-              weight: FontWeight.w800,
+              36,
+              color: DuelColors.gold,
+              weight: FontWeight.w900,
             ),
           ),
-          if (!phone) ...[
-            const SizedBox(height: 18),
-            Text(
-              t.walletType,
-              style: AppText.label(20, color: DuelColors.dim),
-            ),
-            const SizedBox(height: 10),
-          ],
-          Wrap(
-            spacing: phone ? 4 : 12,
-            runSpacing: phone ? 2 : 12,
+        if (!phone) const SizedBox(height: 16),
+        if (phone)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final p in cfg.providers)
-                ChoiceChip(
-                  visualDensity: VisualDensity.compact,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  label: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: phone ? 6 : 8,
-                      vertical: phone ? 0 : 8,
-                    ),
-                    child: Text(
-                      p.label,
-                      style: AppText.label(
-                        phone ? 10 : 22,
-                        weight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  selected: _provider == p.id,
-                  onSelected: _busy
-                      ? null
-                      : (_) => setState(() => _provider = p.id),
+              Expanded(
+                child: _RedeemBalanceCard(
+                  title: t.mainBalanceShort,
+                  amount: formatCoins(mainBalance),
+                  accent: DuelColors.silver,
+                  compact: true,
                 ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _RedeemBalanceCard(
+                  title: t.redeemAvailableShort,
+                  amount: formatCoins(redeemAvailable),
+                  accent: DuelColors.gold,
+                  compact: true,
+                ),
+              ),
             ],
+          )
+        else ...[
+          _RedeemBalanceCard(
+            title: t.mainBalanceTitle,
+            amount: formatCoins(mainBalance),
+            accent: DuelColors.silver,
           ),
-          SizedBox(height: phone ? 6 : 16),
-          TextField(
-            controller: _wallet,
-            style: input,
-            keyboardType: TextInputType.phone,
-            maxLength: 14,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: pcFieldDecoration(
-              label: t.walletNumber,
-              hint: '01XXXXXXXXX',
-              phone: phone,
-              accent: DuelColors.silver,
-            ),
-          ),
-          if (_error != null) ...[
-            SizedBox(height: phone ? 4 : 10),
-            Text(
-              _error!,
-              style: AppText.label(phone ? 11 : 22, color: DuelColors.red),
-            ),
-          ],
-          SizedBox(height: phone ? 8 : 24),
-          GameButton(
-            label: _busy
-                ? t.sending
-                : (phone ? t.submitRedeemShort : t.submitRedeem),
-            height: phone ? 36 : 88,
-            fontSize: phone ? 12 : 26,
-            onPressed: _busy ? null : _submit,
+          const SizedBox(height: 12),
+          _RedeemBalanceCard(
+            title: t.redeemAvailableTitle,
+            amount: formatCoins(redeemAvailable),
+            accent: DuelColors.gold,
           ),
         ],
-      );
+        SizedBox(height: phone ? 4 : 14),
+        Text(
+          t.redeemWinOnlyHint,
+          maxLines: phone ? 2 : null,
+          overflow: phone ? TextOverflow.ellipsis : null,
+          style: AppText.label(phone ? 9 : 18, color: DuelColors.dim),
+        ),
+        if (!phone) ...[
+          const SizedBox(height: 10),
+          Text(
+            t.redeemRateHint(cfg.coinPerBdt),
+            style: AppText.label(18, color: DuelColors.dim),
+          ),
+        ],
+        SizedBox(height: phone ? 6 : 22),
+        TextField(
+          controller: _coins,
+          style: input,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: pcFieldDecoration(
+            label: t.coinAmountLabel,
+            hint: redeemCap >= cfg.minCoins
+                ? '${cfg.minCoins} – ${formatCoins(redeemCap)}'
+                : t.notEnoughRedeemable,
+            phone: phone,
+            accent: DuelColors.gold,
+          ),
+          onChanged: (_) => setState(() {}),
+        ),
+        SizedBox(height: phone ? 4 : 10),
+        Text(
+          t.youReceiveBdt(_bdt),
+          style: AppText.label(
+            phone ? 13 : 26,
+            color: DuelColors.silver,
+            weight: FontWeight.w800,
+          ),
+        ),
+        if (!phone) ...[
+          const SizedBox(height: 18),
+          Text(t.walletType, style: AppText.label(20, color: DuelColors.dim)),
+          const SizedBox(height: 10),
+        ],
+        Wrap(
+          spacing: phone ? 4 : 12,
+          runSpacing: phone ? 2 : 12,
+          children: [
+            for (final p in cfg.providers)
+              ChoiceChip(
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                label: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: phone ? 6 : 8,
+                    vertical: phone ? 0 : 8,
+                  ),
+                  child: Text(
+                    p.label,
+                    style: AppText.label(
+                      phone ? 10 : 22,
+                      weight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                selected: _provider == p.id,
+                onSelected: _busy
+                    ? null
+                    : (_) => setState(() => _provider = p.id),
+              ),
+          ],
+        ),
+        SizedBox(height: phone ? 6 : 16),
+        TextField(
+          controller: _wallet,
+          style: input,
+          keyboardType: TextInputType.phone,
+          maxLength: 14,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: pcFieldDecoration(
+            label: t.walletNumber,
+            hint: '01XXXXXXXXX',
+            phone: phone,
+            accent: DuelColors.silver,
+          ),
+        ),
+        if (_error != null) ...[
+          SizedBox(height: phone ? 4 : 10),
+          Text(
+            _error!,
+            style: AppText.label(phone ? 11 : 22, color: DuelColors.red),
+          ),
+        ],
+        SizedBox(height: phone ? 8 : 24),
+        GameButton(
+          label: _busy
+              ? t.sending
+              : (phone ? t.submitRedeemShort : t.submitRedeem),
+          height: phone ? 36 : 88,
+          fontSize: phone ? 12 : 26,
+          onPressed: _busy ? null : _submit,
+        ),
+      ],
+    );
     if (scrollable) return body;
     return Expanded(
       child: SingleChildScrollView(
@@ -1625,7 +1659,10 @@ class _ActivityRow extends ConsumerWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppText.label(phone ? 12 : 17, weight: FontWeight.w800),
+                  style: AppText.label(
+                    phone ? 12 : 17,
+                    weight: FontWeight.w800,
+                  ),
                 ),
                 Text(
                   sub,
@@ -1649,7 +1686,10 @@ class _ActivityRow extends ConsumerWidget {
             ),
           ],
           SizedBox(width: phone ? 6 : 12),
-          Text(time, style: AppText.label(phone ? 10 : 13, color: DuelColors.dim)),
+          Text(
+            time,
+            style: AppText.label(phone ? 10 : 13, color: DuelColors.dim),
+          ),
         ],
       ),
     );
@@ -1677,7 +1717,9 @@ class _CoinPackCard extends ConsumerWidget {
         final w = constraints.maxWidth;
         final h = constraints.maxHeight;
         final bonus = pack.discountPercent;
-        final price = pack.free ? titleCase(t.claimNow) : '৳ ${formatCoins(pack.coins)}';
+        final price = pack.free
+            ? titleCase(t.claimNow)
+            : '৳ ${formatCoins(pack.coins)}';
         final btnH = (h * 0.2).clamp(22.0, 36.0);
         return GestureDetector(
           onTap: () {
@@ -1690,32 +1732,57 @@ class _CoinPackCard extends ConsumerWidget {
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFF6A56D8), Color(0xFF3F2E9A), Color(0xFF34257F)],
+                colors: [
+                  Color(0xFF6A56D8),
+                  Color(0xFF3F2E9A),
+                  Color(0xFF34257F),
+                ],
               ),
               border: Border.all(
-                color: isBestValue ? _ShopUi.bestBorder : const Color(0xFF9C8CF0),
+                color: isBestValue
+                    ? _ShopUi.bestBorder
+                    : const Color(0xFF9C8CF0),
                 width: isBestValue ? 2 : 1.2,
               ),
-              boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 6, offset: Offset(0, 3))],
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x66000000),
+                  blurRadius: 6,
+                  offset: Offset(0, 3),
+                ),
+              ],
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(3),
               child: Stack(
                 children: [
-                  const Positioned.fill(child: CustomPaint(painter: _PackStripePainter())),
+                  const Positioned.fill(
+                    child: CustomPaint(painter: _PackStripePainter()),
+                  ),
                   Padding(
-                    padding: EdgeInsets.fromLTRB(w * 0.05, h * 0.04, w * 0.05, w * 0.05),
+                    padding: EdgeInsets.fromLTRB(
+                      w * 0.05,
+                      h * 0.04,
+                      w * 0.05,
+                      w * 0.05,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         FittedBox(
                           fit: BoxFit.scaleDown,
-                          child: Text(formatCoins(pack.depositReceiveCoins), maxLines: 1, style: pcText((w * 0.12).clamp(12.0, 18.0))),
+                          child: Text(
+                            formatCoins(pack.depositReceiveCoins),
+                            maxLines: 1,
+                            style: pcText((w * 0.12).clamp(12.0, 18.0)),
+                          ),
                         ),
                         Expanded(
                           child: Padding(
                             padding: EdgeInsets.symmetric(vertical: h * 0.03),
-                            child: FittedBox(child: _ShopUi.packCoinArt(pack.coins, 80)),
+                            child: FittedBox(
+                              child: _ShopUi.packCoinArt(pack.coins, 80),
+                            ),
                           ),
                         ),
                         Container(
@@ -1726,14 +1793,25 @@ class _CoinPackCard extends ConsumerWidget {
                             gradient: const LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [Color(0xFFFFCB45), Color(0xFFF0A51A), Color(0xFFD98A0C)],
+                              colors: [
+                                Color(0xFFFFCB45),
+                                Color(0xFFF0A51A),
+                                Color(0xFFD98A0C),
+                              ],
                             ),
                             borderRadius: BorderRadius.circular(3),
-                            border: Border.all(color: const Color(0xFFFFE08A), width: 1),
+                            border: Border.all(
+                              color: const Color(0xFFFFE08A),
+                              width: 1,
+                            ),
                           ),
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
-                            child: Text(price, maxLines: 1, style: pcText((btnH * 0.5).clamp(11.0, 16.0))),
+                            child: Text(
+                              price,
+                              maxLines: 1,
+                              style: pcText((btnH * 0.5).clamp(11.0, 16.0)),
+                            ),
                           ),
                         ),
                       ],
@@ -1751,13 +1829,28 @@ class _CoinPackCard extends ConsumerWidget {
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            gradient: const RadialGradient(colors: [Color(0xFFFF5A5A), Color(0xFFD81E2C)]),
-                            border: Border.all(color: const Color(0xFFFF9A9A), width: 1),
-                            boxShadow: const [BoxShadow(color: Color(0x88000000), blurRadius: 4, offset: Offset(0, 2))],
+                            gradient: const RadialGradient(
+                              colors: [Color(0xFFFF5A5A), Color(0xFFD81E2C)],
+                            ),
+                            border: Border.all(
+                              color: const Color(0xFFFF9A9A),
+                              width: 1,
+                            ),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x88000000),
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
                           ),
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
-                            child: Text('More\n$bonus%', textAlign: TextAlign.center, style: pcText(10).copyWith(height: 1.05)),
+                            child: Text(
+                              'More\n$bonus%',
+                              textAlign: TextAlign.center,
+                              style: pcText(10).copyWith(height: 1.05),
+                            ),
                           ),
                         ),
                       ),

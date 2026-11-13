@@ -160,9 +160,9 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
               ),
             ).withOpacity(isOwned && !equipped ? 0 : 1),
             art: SizedBox(
-              width: 940,
-              height: 150,
-              child: CueStickPreview(cueId: cue.id, stroke: 26),
+              width: 860,
+              height: 140,
+              child: CueStickPreview(cueId: cue.id, stroke: 24),
             ),
             info: ItemStats([
               (t.navCues, rarity.label, rarity.colors.first),

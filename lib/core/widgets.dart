@@ -401,10 +401,11 @@ class DesignCanvas extends StatelessWidget {
       child: SafeArea(
         child: LayoutBuilder(
           builder: (context, c) {
-            // Match tables fill the viewport; leftover menu canvases cap
-            // on wide desktop so they do not stretch edge-to-edge.
+            // Wide desktop: cap both menu and table canvases (tables stay larger).
             final host = size == tableSize
-                ? Size(c.maxWidth, c.maxHeight)
+                ? PortraitWebLayout.landscapeTableHost(
+                    Size(c.maxWidth, c.maxHeight),
+                  )
                 : PortraitWebLayout.landscapeMenuHost(
                     Size(c.maxWidth, c.maxHeight),
                   );

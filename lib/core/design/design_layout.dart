@@ -22,6 +22,10 @@ abstract final class PortraitWebLayout {
   static const landscapeMenuMaxWidth = 960.0;
   static const landscapeMenuMaxHeight = 540.0;
 
+  /// Pool / match table canvases (1950×900) — capped on ultrawide desktop.
+  static const landscapeTableMaxWidth = 1280.0;
+  static const landscapeTableMaxHeight = 590.0;
+
   /// Width used to scale the 1080 design canvas for [viewportWidth].
   static double columnWidthFor(double viewportWidth) {
     if (viewportWidth >= wideBreakpoint) {
@@ -44,6 +48,15 @@ abstract final class PortraitWebLayout {
     return Size(
       math.min(landscapeMenuMaxWidth, viewport.width),
       math.min(landscapeMenuMaxHeight, viewport.height),
+    );
+  }
+
+  /// Host box for pool / match tables on wide desktop (still larger than menus).
+  static Size landscapeTableHost(Size viewport) {
+    if (viewport.width < wideBreakpoint) return viewport;
+    return Size(
+      math.min(landscapeTableMaxWidth, viewport.width),
+      math.min(landscapeTableMaxHeight, viewport.height),
     );
   }
 }

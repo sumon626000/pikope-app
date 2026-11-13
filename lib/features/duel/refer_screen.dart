@@ -105,9 +105,6 @@ class _ReferScreenState extends ConsumerState<ReferScreen> {
                 style: AppText.label(18, color: DuelColors.red),
               ),
       );
-      if (phone) {
-        return DuelPage(title: t.referTitle, sub: t.referSub, legacyScale: 2.5, child: loading);
-      }
       return DuelPage(title: t.referTitle, sub: t.referSub, child: loading);
     }
 
@@ -123,15 +120,11 @@ class _ReferScreenState extends ConsumerState<ReferScreen> {
       onApply: _apply,
     );
 
-    if (phone) {
-      return DuelPage(title: t.referTitle, sub: t.referSub, legacyScale: 2.5, child: content);
-    }
-
     return DuelPage(
       title: t.referTitle,
       sub: t.referSub,
-      expanded: true,
-      contentTop: 198,
+      expanded: !phone,
+      contentTop: phone ? null : 198,
       child: content,
     );
   }
@@ -321,7 +314,6 @@ class ReferScreenContent extends StatelessWidget {
     return 0;
   }
 }
-
 
 class _IdCard extends StatelessWidget {
   const _IdCard({

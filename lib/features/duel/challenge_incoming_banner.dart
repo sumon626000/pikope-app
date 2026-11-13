@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_theme.dart';
+import '../../core/design/design_layout.dart';
 import '../../core/duel_ui.dart';
 import '../../core/widgets.dart';
 import '../../data/api_client.dart';
@@ -11,7 +12,11 @@ import 'challenge_flow.dart';
 import 'not_enough_balance.dart';
 
 /// Compact top banner (not a full-screen dialog) for an incoming 1v1 invite.
-Future<void> showIncomingChallengeBanner(BuildContext context, WidgetRef ref, Map<String, dynamic> ch) async {
+Future<void> showIncomingChallengeBanner(
+  BuildContext context,
+  WidgetRef ref,
+  Map<String, dynamic> ch,
+) async {
   await showGeneralDialog<void>(
     context: context,
     useRootNavigator: true,
@@ -20,9 +25,16 @@ Future<void> showIncomingChallengeBanner(BuildContext context, WidgetRef ref, Ma
     barrierColor: Colors.black45,
     transitionDuration: const Duration(milliseconds: 320),
     transitionBuilder: (context, animation, _, child) {
-      final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic);
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
       return SlideTransition(
-        position: Tween<Offset>(begin: const Offset(0, -1.08), end: Offset.zero).animate(curved),
+        position: Tween<Offset>(
+          begin: const Offset(0, -1.08),
+          end: Offset.zero,
+        ).animate(curved),
         child: FadeTransition(opacity: curved, child: child),
       );
     },
@@ -103,14 +115,20 @@ class _IncomingTopBannerState extends ConsumerState<_IncomingTopBanner> {
     }
     setState(() => _busy = true);
     try {
-      final room = await ref.read(sessionProvider.notifier).acceptChallenge(widget.ch['id'] as int);
+      final room = await ref
+          .read(sessionProvider.notifier)
+          .acceptChallenge(widget.ch['id'] as int);
       if (!mounted) return;
       Navigator.of(context).pop();
       await openChallengeRoom(context, ref, room);
     } on ApiException catch (e) {
       if (!mounted) return;
       if (isNotEnoughCoins(e)) {
-        await promptNotEnoughBalance(context, need: _buyIn > 0 ? _buyIn : null, have: ref.read(sessionProvider).walletCoins);
+        await promptNotEnoughBalance(
+          context,
+          need: _buyIn > 0 ? _buyIn : null,
+          have: ref.read(sessionProvider).walletCoins,
+        );
         return;
       }
       setState(() => _error = e.message);
@@ -121,7 +139,9 @@ class _IncomingTopBannerState extends ConsumerState<_IncomingTopBanner> {
 
   Future<void> _decline() async {
     try {
-      await ref.read(sessionProvider.notifier).declineChallenge(widget.ch['id'] as int);
+      await ref
+          .read(sessionProvider.notifier)
+          .declineChallenge(widget.ch['id'] as int);
     } on ApiException {
       // ignore
     }
@@ -139,13 +159,22 @@ class _IncomingTopBannerState extends ConsumerState<_IncomingTopBanner> {
       color: Colors.transparent,
       child: Container(
         width: double.infinity,
-        constraints: const BoxConstraints(maxWidth: 560, minHeight: 132),
+        constraints: const BoxConstraints(
+          maxWidth: PortraitWebLayout.phoneColumnMaxWidth,
+          minHeight: 132,
+        ),
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
         decoration: BoxDecoration(
           color: const Color(0xFF12182E),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: DuelColors.gold, width: 2),
-          boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 16, offset: Offset(0, 6))],
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x66000000),
+              blurRadius: 16,
+              offset: Offset(0, 6),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -160,26 +189,49 @@ class _IncomingTopBannerState extends ConsumerState<_IncomingTopBanner> {
                   padding: const EdgeInsets.all(2),
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(colors: [Color(0xFF5C8BFF), Color(0xFFFF3B4E)]),
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF5C8BFF), Color(0xFFFF3B4E)],
+                    ),
                   ),
-                  child: ClipOval(child: AvatarImage(_from['avatar'] as String, size: 48)),
+                  child: ClipOval(
+                    child: AvatarImage(_from['avatar'] as String, size: 48),
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(t.challengeTitle, style: AppText.label(13, color: DuelColors.gold, weight: FontWeight.w900)),
+                      Text(
+                        t.challengeTitle,
+                        style: AppText.label(
+                          13,
+                          color: DuelColors.gold,
+                          weight: FontWeight.w900,
+                        ),
+                      ),
                       const SizedBox(height: 2),
-                      Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.label(17, weight: FontWeight.w900)),
-                      Text(t.challengesYou(title), style: AppText.label(12, color: DuelColors.silver)),
+                      Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.label(17, weight: FontWeight.w900),
+                      ),
+                      Text(
+                        t.challengesYou(title),
+                        style: AppText.label(12, color: DuelColors.silver),
+                      ),
                     ],
                   ),
                 ),
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   onPressed: _busy ? null : _decline,
-                  icon: const Icon(Icons.close_rounded, color: DuelColors.silver, size: 22),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: DuelColors.silver,
+                    size: 22,
+                  ),
                 ),
               ],
             ),
@@ -190,22 +242,50 @@ class _IncomingTopBannerState extends ConsumerState<_IncomingTopBanner> {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 _detailChip(Icons.sports_esports_rounded, title),
-                if (level != null) _detailChip(Icons.table_bar_rounded, t.challengeTableLevel(level)),
+                if (level != null)
+                  _detailChip(
+                    Icons.table_bar_rounded,
+                    t.challengeTableLevel(level),
+                  ),
                 if (_stake > 0) ...[
                   const PikoCoinIcon(size: 20),
-                  Text(t.playStakeWin(_stake, formatCoins(_prize)), style: AppText.label(13, color: DuelColors.gold, weight: FontWeight.w800)),
+                  Text(
+                    t.playStakeWin(_stake, formatCoins(_prize)),
+                    style: AppText.label(
+                      13,
+                      color: DuelColors.gold,
+                      weight: FontWeight.w800,
+                    ),
+                  ),
                 ] else
-                  Text(t.friendlyNoStake, style: AppText.label(12, color: DuelColors.dim)),
-                if ((widget.ch['expiresIn'] as int?) != null && (widget.ch['expiresIn'] as int) > 0)
-                  _detailChip(Icons.timer_outlined, t.challengeExpiresSec(widget.ch['expiresIn'] as int)),
+                  Text(
+                    t.friendlyNoStake,
+                    style: AppText.label(12, color: DuelColors.dim),
+                  ),
+                if ((widget.ch['expiresIn'] as int?) != null &&
+                    (widget.ch['expiresIn'] as int) > 0)
+                  _detailChip(
+                    Icons.timer_outlined,
+                    t.challengeExpiresSec(widget.ch['expiresIn'] as int),
+                  ),
               ],
             ),
             if (_shortBalance) ...[
               const SizedBox(height: 6),
-              Text(t.notEnoughBalance, style: AppText.label(12, color: DuelColors.red, weight: FontWeight.w800)),
+              Text(
+                t.notEnoughBalance,
+                style: AppText.label(
+                  12,
+                  color: DuelColors.red,
+                  weight: FontWeight.w800,
+                ),
+              ),
             ] else if (_error != null) ...[
               const SizedBox(height: 6),
-              Text(_error!.toUpperCase(), style: AppText.label(11, color: DuelColors.red)),
+              Text(
+                _error!.toUpperCase(),
+                style: AppText.label(11, color: DuelColors.red),
+              ),
             ],
             const SizedBox(height: 10),
             Row(
@@ -240,13 +320,23 @@ class _IncomingTopBannerState extends ConsumerState<_IncomingTopBanner> {
   Widget _detailChip(IconData icon, String label) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: const Color(0xFF1E2640), borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E2640),
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: DuelColors.silver),
           const SizedBox(width: 4),
-          Text(label, style: AppText.label(11, color: DuelColors.silver, weight: FontWeight.w700)),
+          Text(
+            label,
+            style: AppText.label(
+              11,
+              color: DuelColors.silver,
+              weight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );

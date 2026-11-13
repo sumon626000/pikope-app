@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -74,12 +73,10 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
         transitionDuration: const Duration(milliseconds: 250),
       ),
     );
-    // Browser F5: same account token in storage → auto rejoin seated match.
-    if (kIsWeb) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        unawaited(resumeActiveOnlineMatch(ref));
-      });
-    }
+    // Cold start / F5: same account token in storage → auto rejoin seated match.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(resumeActiveOnlineMatch(ref));
+    });
   }
 
   Future<void> _restoreRegisteredSession() async {

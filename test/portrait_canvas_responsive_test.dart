@@ -48,6 +48,20 @@ void main() {
     expect(desk.height, PortraitWebLayout.landscapeMenuMaxHeight);
   });
 
+  test('PortraitWebLayout landscapeTableHost caps desktop wider than menu', () {
+    expect(
+      PortraitWebLayout.landscapeTableHost(const Size(390, 844)),
+      const Size(390, 844),
+    );
+    final desk = PortraitWebLayout.landscapeTableHost(const Size(1920, 1080));
+    expect(desk.width, PortraitWebLayout.landscapeTableMaxWidth);
+    expect(desk.height, PortraitWebLayout.landscapeTableMaxHeight);
+    expect(
+      PortraitWebLayout.landscapeTableMaxWidth,
+      greaterThan(PortraitWebLayout.landscapeMenuMaxWidth),
+    );
+  });
+
   testWidgets('PortraitCanvas centers column on 1280x800 desktop', (
     tester,
   ) async {
