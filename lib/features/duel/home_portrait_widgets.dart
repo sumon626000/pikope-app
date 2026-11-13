@@ -571,6 +571,9 @@ class HomeWalletBar extends StatelessWidget {
     required this.onAdd,
   });
 
+  /// Gem chip + count — off for now (coins-only wallet). Flip when gem shop ships.
+  static const showGems = false;
+
   final int? coins;
   final int? gems;
   final String placeholder;
@@ -601,7 +604,7 @@ class HomeWalletBar extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (gems != null) ...[
+          if (showGems && gems != null) ...[
             _WalletCell(
               icon: const GemIcon(size: 74),
               text: formatCoins(gems!, compact: gems! >= 10000000),
