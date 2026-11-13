@@ -73,7 +73,11 @@ class PortraitCanvas extends StatelessWidget {
   static const wideBreakpoint = 700.0;
 
   /// Max logical width of the phone column on desktop / large web.
-  static const phoneColumnMaxWidth = 480.0;
+  static const phoneColumnMaxWidth = 420.0;
+
+  /// Popups on desktop: slightly narrower than the home column so they feel
+  /// like modals, not a second full phone screen.
+  static const dialogColumnMaxWidth = 360.0;
 
   final double minHeight;
 
@@ -84,6 +88,14 @@ class PortraitCanvas extends StatelessWidget {
   static double columnWidthFor(double viewportWidth) {
     if (viewportWidth >= wideBreakpoint) {
       return min(phoneColumnMaxWidth, viewportWidth);
+    }
+    return viewportWidth;
+  }
+
+  /// Width used to scale dialogs / choosers (tighter on desktop web).
+  static double dialogColumnWidthFor(double viewportWidth) {
+    if (viewportWidth >= wideBreakpoint) {
+      return min(dialogColumnMaxWidth, viewportWidth);
     }
     return viewportWidth;
   }

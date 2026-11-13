@@ -53,7 +53,8 @@ class DuelHomeScreen extends ConsumerStatefulWidget {
   ConsumerState<DuelHomeScreen> createState() => _DuelHomeScreenState();
 }
 
-class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBindingObserver {
+class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen>
+    with WidgetsBindingObserver {
   Timer? _refresh;
   Timer? _pushPoll;
 
@@ -63,7 +64,8 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
     WidgetsBinding.instance.addObserver(this);
     // Wallet and "players online" stay current while the lobby is open.
     _refresh = Timer.periodic(const Duration(seconds: 20), (_) {
-      if (ModalRoute.of(context)?.isCurrent ?? false) ref.read(lobbyProvider.notifier).refresh();
+      if (ModalRoute.of(context)?.isCurrent ?? false)
+        ref.read(lobbyProvider.notifier).refresh();
     });
     _pushPoll = Timer.periodic(const Duration(seconds: 25), (_) => _pollPush());
     _pollPush();
@@ -100,7 +102,8 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
     if (api == null || !ref.read(sessionProvider).signedIn) return;
     try {
       final poll = await PushService.pollInbox(api);
-      if (mounted) ref.read(notificationUnreadProvider.notifier).set(poll.unread);
+      if (mounted)
+        ref.read(notificationUnreadProvider.notifier).set(poll.unread);
       if (poll.walletChanged) {
         await ref.read(sessionProvider.notifier).refresh();
         if (mounted) ref.read(lobbyProvider.notifier).refresh();
@@ -112,7 +115,9 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
 
   /// Anything opened from here may change coins or leave a match running.
   Future<void> _open(Widget screen) async {
-    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => screen));
     if (mounted) _reload();
   }
 
@@ -128,45 +133,59 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
   }
 
   /// A dialog with one big button per choice.
-  Future<void> _chooser({required String title, required String body, required List<(String, Color, VoidCallback)> choices}) =>
-      showDuelDialog<void>(
-        context,
-        barrierColor: DesignAuth.overlayScrim,
-        builder: (dialog) => PcDialog(
-          title: title,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(body, textAlign: TextAlign.center, style: pcText(32, color: DesignColors.pcTextDim, weight: FontWeight.w500).copyWith(height: 1.35)),
-              const SizedBox(height: 28),
-              for (final (label, color, go) in choices)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 18),
-                  child: PcButton(
-                    label: label,
-                    width: 760,
-                    style: pcStyleFor(color),
-                    onPressed: () {
-                      Navigator.of(dialog).pop();
-                      go();
-                    },
-                  ),
-                ),
-            ],
+  Future<void> _chooser({
+    required String title,
+    required String body,
+    required List<(String, Color, VoidCallback)> choices,
+  }) => showDuelDialog<void>(
+    context,
+    barrierColor: DesignAuth.overlayScrim,
+    builder: (dialog) => PcDialog(
+      title: title,
+      width: 820,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            body,
+            textAlign: TextAlign.center,
+            style: pcText(
+              28,
+              color: DesignColors.pcTextDim,
+              weight: FontWeight.w500,
+            ).copyWith(height: 1.3),
           ),
-        ),
-      );
+          const SizedBox(height: 20),
+          for (final (label, color, go) in choices)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: PcButton(
+                label: label,
+                width: 640,
+                height: 84,
+                fontSize: 36,
+                style: pcStyleFor(color),
+                onPressed: () {
+                  Navigator.of(dialog).pop();
+                  go();
+                },
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
 
   static const _poolColor = DuelColors.green;
   static const _ludoColor = DesignColors.ludoAccent;
   static const _carromColor = DesignColors.carromAccent;
 
   static DuelMode _friendsDuelMode(AppGame game) => switch (game) {
-        AppGame.poker => DuelMode.poker,
-        AppGame.eightBall => DuelMode.eight,
-        AppGame.nineBall => DuelMode.nine,
-        AppGame.tenBall => DuelMode.ten,
-      };
+    AppGame.poker => DuelMode.poker,
+    AppGame.eightBall => DuelMode.eight,
+    AppGame.nineBall => DuelMode.nine,
+    AppGame.tenBall => DuelMode.ten,
+  };
 
   void _practiceLudoPick() {
     final t = ref.read(stringsProvider);
@@ -174,8 +193,16 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
       title: t.ludoTitle,
       body: t.practiceSubLudo,
       choices: [
-        (t.twoPlayers, _ludoColor, () => launchLudoPractice(context, ref, players: 2)),
-        (t.fourPlayers, _ludoColor, () => launchLudoPractice(context, ref, players: 4)),
+        (
+          t.twoPlayers,
+          _ludoColor,
+          () => launchLudoPractice(context, ref, players: 2),
+        ),
+        (
+          t.fourPlayers,
+          _ludoColor,
+          () => launchLudoPractice(context, ref, players: 4),
+        ),
       ],
     );
   }
@@ -186,7 +213,11 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
       title: t.practiceTitle,
       body: t.practiceChooserBody,
       choices: [
-        (t.poolTitle, _poolColor, () => showPoolPracticeDialog(context, open: _open)),
+        (
+          t.poolTitle,
+          _poolColor,
+          () => showPoolPracticeDialog(context, open: _open),
+        ),
         (t.ludoTitle, _ludoColor, _practiceLudoPick),
         (t.carromTitle, _carromColor, () => launchCarromPractice(context, ref)),
       ],
@@ -202,9 +233,27 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
       body: t.friendsBody,
       choices: [
         (t.poolTitle, _poolColor, _friendsPool),
-        (t.ludoPlayers(2), _ludoColor, () => _open(const BetLevelScreen(mode: DuelMode.ludo2, friendsRoom: true))),
-        (t.ludoPlayers(4), _ludoColor, () => _open(const BetLevelScreen(mode: DuelMode.ludo4, friendsRoom: true))),
-        (t.carromTitle, _carromColor, () => _open(const BetLevelScreen(mode: DuelMode.carrom, friendsRoom: true))),
+        (
+          t.ludoPlayers(2),
+          _ludoColor,
+          () => _open(
+            const BetLevelScreen(mode: DuelMode.ludo2, friendsRoom: true),
+          ),
+        ),
+        (
+          t.ludoPlayers(4),
+          _ludoColor,
+          () => _open(
+            const BetLevelScreen(mode: DuelMode.ludo4, friendsRoom: true),
+          ),
+        ),
+        (
+          t.carromTitle,
+          _carromColor,
+          () => _open(
+            const BetLevelScreen(mode: DuelMode.carrom, friendsRoom: true),
+          ),
+        ),
       ],
     );
   }
@@ -219,7 +268,9 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
           (
             t.appGameTitle(game),
             game == AppGame.poker ? DuelColors.purple : DuelColors.blue,
-            () => _open(BetLevelScreen(mode: _friendsDuelMode(game), friendsRoom: true)),
+            () => _open(
+              BetLevelScreen(mode: _friendsDuelMode(game), friendsRoom: true),
+            ),
           ),
       ],
     );
@@ -237,7 +288,12 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
 
   void _missions() {
     final t = ref.read(stringsProvider);
-    showDuelMessage(context, title: t.missions, body: t.missionsBody, icon: Icons.flag_rounded);
+    showDuelMessage(
+      context,
+      title: t.missions,
+      body: t.missionsBody,
+      icon: Icons.flag_rounded,
+    );
   }
 
   Future<void> _profile() async {
@@ -336,7 +392,8 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
                                     icon: Icons.query_stats_rounded,
                                     iconColor: const Color(0xFF9CC2FF),
                                     size: 84,
-                                    onTap: () => _openRegistered(const HistoryScreen()),
+                                    onTap: () =>
+                                        _openRegistered(const HistoryScreen()),
                                   ),
                                 ],
                               ),
@@ -351,14 +408,17 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
                                     iconColor: const Color(0xFF8FD3FF),
                                     label: t.navChallenge,
                                     count: challengePending,
-                                    onTap: () => _openRegistered(const ChallengeScreen()),
+                                    onTap: () => _openRegistered(
+                                      const ChallengeScreen(),
+                                    ),
                                   ),
                                   const SizedBox(height: 4),
                                   HomeRoundButton(
                                     icon: Icons.card_giftcard_rounded,
                                     iconColor: const Color(0xFFFF9A2E),
                                     label: t.refer,
-                                    onTap: () => _openRegistered(const ReferScreen()),
+                                    onTap: () =>
+                                        _openRegistered(const ReferScreen()),
                                   ),
                                 ],
                               ),
@@ -368,11 +428,20 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
                               child: RankBlock(
                                 registered: registered,
                                 tier: session.rankTier,
-                                rankName: registered ? session.rankName : t.browseProfileTitle,
+                                rankName: registered
+                                    ? session.rankName
+                                    : t.browseProfileTitle,
                                 position: registered ? '${session.level}' : '—',
                                 avatar: settings.avatar,
-                                name: registered ? settings.name : titleCase(t.browseProfileSub),
-                                coins: coins == null ? '—' : formatCoins(coins, compact: coins >= 10000000),
+                                name: registered
+                                    ? settings.name
+                                    : titleCase(t.browseProfileSub),
+                                coins: coins == null
+                                    ? '—'
+                                    : formatCoins(
+                                        coins,
+                                        compact: coins >= 10000000,
+                                      ),
                                 onTap: () => _open(const LeaderboardScreen()),
                               ),
                             ),
@@ -387,14 +456,21 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
                             width: heroLeftW,
                             height: 350,
                             slantRight: true,
-                            colors: const [DesignColors.pcTileOrange, DesignColors.pcTileOrangeDeep],
+                            colors: const [
+                              DesignColors.pcTileOrange,
+                              DesignColors.pcTileOrangeDeep,
+                            ],
                             label: t.playPool,
                             artInsets: const EdgeInsets.fromLTRB(26, 4, 70, 96),
                             art: const Stack(
                               clipBehavior: Clip.none,
                               children: [
                                 Positioned.fill(child: RackArt()),
-                                Positioned(right: -50, bottom: -56, child: TapHandHint(size: 170)),
+                                Positioned(
+                                  right: -50,
+                                  bottom: -56,
+                                  child: TapHandHint(size: 170),
+                                ),
                               ],
                             ),
                             onTap: () => _open(const PoolHubScreen()),
@@ -403,9 +479,17 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
                             width: heroRightW,
                             height: 350,
                             slantRight: false,
-                            colors: const [DesignColors.pcTilePink, DesignColors.pcTilePinkDeep],
+                            colors: const [
+                              DesignColors.pcTilePink,
+                              DesignColors.pcTilePinkDeep,
+                            ],
                             label: t.playLudo,
-                            artInsets: const EdgeInsets.fromLTRB(40, 10, 40, 92),
+                            artInsets: const EdgeInsets.fromLTRB(
+                              40,
+                              10,
+                              40,
+                              92,
+                            ),
                             art: const FloatBob(child: LudoHeroArt()),
                             crown: true,
                             onTap: () => _open(const LudoLobbyScreen()),
@@ -422,26 +506,61 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
                             SmallTile(
                               width: smallW - 4,
                               height: 250,
-                              colors: const [DesignColors.pcTileTeal, DesignColors.pcTileTealDeep],
+                              colors: const [
+                                DesignColors.pcTileTeal,
+                                DesignColors.pcTileTealDeep,
+                              ],
                               label: t.carromTitle,
                               onTap: () => _open(const CarromLobbyScreen()),
-                              child: const FloatBob(amplitude: 5, period: Duration(milliseconds: 3100), child: CarromArt(transparent: true)),
+                              child: const FloatBob(
+                                amplitude: 5,
+                                period: Duration(milliseconds: 3100),
+                                child: CarromArt(transparent: true),
+                              ),
                             ),
                             SmallTile(
                               width: smallW - 4,
                               height: 250,
-                              colors: const [DesignColors.pcTileBlue, DesignColors.pcTileBlueDeep],
+                              colors: const [
+                                DesignColors.pcTileBlue,
+                                DesignColors.pcTileBlueDeep,
+                              ],
                               label: t.navFriends,
                               onTap: _friends,
-                              child: const Icon(Icons.groups_rounded, color: Colors.white, size: 136, shadows: [Shadow(color: Color(0x99000000), blurRadius: 10, offset: Offset(0, 4))]),
+                              child: const Icon(
+                                Icons.groups_rounded,
+                                color: Colors.white,
+                                size: 136,
+                                shadows: [
+                                  Shadow(
+                                    color: Color(0x99000000),
+                                    blurRadius: 10,
+                                    offset: Offset(0, 4),
+                                  ),
+                                ],
+                              ),
                             ),
                             SmallTile(
                               width: smallW - 4,
                               height: 250,
-                              colors: const [DesignColors.pcTileGreen, DesignColors.pcTileGreenDeep],
+                              colors: const [
+                                DesignColors.pcTileGreen,
+                                DesignColors.pcTileGreenDeep,
+                              ],
                               label: t.practice,
                               onTap: _practice,
-                              child: const Icon(Icons.smart_toy_rounded, color: Colors.white, size: 136, shadows: [Shadow(color: Color(0x99000000), blurRadius: 10, offset: Offset(0, 4))]),
+                              child: const Icon(
+                                Icons.smart_toy_rounded,
+                                color: Colors.white,
+                                size: 136,
+                                shadows: [
+                                  Shadow(
+                                    color: Color(0x99000000),
+                                    blurRadius: 10,
+                                    offset: Offset(0, 4),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -465,7 +584,11 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
                                   icon: PulseBadge(
                                     minScale: 0.94,
                                     maxScale: 1.12,
-                                    child: const Icon(Icons.play_circle_fill_rounded, color: DuelColors.gold, size: 48),
+                                    child: const Icon(
+                                      Icons.play_circle_fill_rounded,
+                                      color: DuelColors.gold,
+                                      size: 48,
+                                    ),
                                   ),
                                   rim: DuelColors.gold,
                                   glow: true,
@@ -476,10 +599,20 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
                                         child: FittedBox(
                                           fit: BoxFit.scaleDown,
                                           alignment: Alignment.centerLeft,
-                                          child: Text(titleCase(t.rejoinMatch), style: pcText(44, color: DuelColors.gold)),
+                                          child: Text(
+                                            titleCase(t.rejoinMatch),
+                                            style: pcText(
+                                              44,
+                                              color: DuelColors.gold,
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                      const Icon(Icons.arrow_forward_rounded, color: DuelColors.gold, size: 56),
+                                      const Icon(
+                                        Icons.arrow_forward_rounded,
+                                        color: DuelColors.gold,
+                                        size: 56,
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -488,40 +621,109 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
                                 width: 748,
                                 title: t.dailyBonus,
                                 timer: daily == null
-                                    ? Text(lobbyError ? titleCase(t.offline) : '...', style: pcText(28, color: lobbyError ? DuelColors.red : DesignColors.pcGold))
+                                    ? Text(
+                                        lobbyError
+                                            ? titleCase(t.offline)
+                                            : '...',
+                                        style: pcText(
+                                          28,
+                                          color: lobbyError
+                                              ? DuelColors.red
+                                              : DesignColors.pcGold,
+                                        ),
+                                      )
                                     : dailyReady
-                                        ? Text(titleCase(t.claimNow), style: pcText(28, color: const Color(0xFF4DF08A)))
-                                        : _Countdown(from: data!.fetchedAt, seconds: daily.secondsToNext, size: 28, color: DesignColors.pcGold),
+                                    ? Text(
+                                        titleCase(t.claimNow),
+                                        style: pcText(
+                                          28,
+                                          color: const Color(0xFF4DF08A),
+                                        ),
+                                      )
+                                    : _Countdown(
+                                        from: data!.fetchedAt,
+                                        seconds: daily.secondsToNext,
+                                        size: 28,
+                                        color: DesignColors.pcGold,
+                                      ),
                                 boxes: [
                                   if (daily == null || daily.rewards.isEmpty)
                                     // Offline / loading: the ladder's shape with empty boxes.
                                     for (var i = 0; i < 3; i++)
                                       LadderBox(
-                                        art: const Opacity(opacity: 0.45, child: PikoCoinIcon(size: 62)),
+                                        art: const Opacity(
+                                          opacity: 0.45,
+                                          child: PikoCoinIcon(size: 62),
+                                        ),
                                         count: '—',
                                         caption: titleCase(t.dayLabel(i + 1)),
                                       )
                                   else
-                                    for (var i = max(0, min(daily.day, daily.rewards.length - 3)); i < min(daily.rewards.length, max(0, min(daily.day, daily.rewards.length - 3)) + 3); i++)
+                                    for (
+                                      var i = max(
+                                        0,
+                                        min(
+                                          daily.day,
+                                          daily.rewards.length - 3,
+                                        ),
+                                      );
+                                      i <
+                                          min(
+                                            daily.rewards.length,
+                                            max(
+                                                  0,
+                                                  min(
+                                                    daily.day,
+                                                    daily.rewards.length - 3,
+                                                  ),
+                                                ) +
+                                                3,
+                                          );
+                                      i++
+                                    )
                                       LadderBox(
-                                        art: daily.rewards[i].gems > 0 ? const GemIcon(size: 62) : const PikoCoinIcon(size: 62),
-                                        count: formatCoins(daily.rewards[i].gems > 0 ? daily.rewards[i].gems : daily.rewards[i].coins, compact: true),
+                                        art: daily.rewards[i].gems > 0
+                                            ? const GemIcon(size: 62)
+                                            : const PikoCoinIcon(size: 62),
+                                        count: formatCoins(
+                                          daily.rewards[i].gems > 0
+                                              ? daily.rewards[i].gems
+                                              : daily.rewards[i].coins,
+                                          compact: true,
+                                        ),
                                         caption: titleCase(t.dayLabel(i + 1)),
                                         highlight: daily.rewards[i].gems > 0,
-                                        done: i < daily.day || (i == daily.day && !dailyReady),
+                                        done:
+                                            i < daily.day ||
+                                            (i == daily.day && !dailyReady),
                                       ),
                                 ],
-                                progress: daily == null || daily.rewards.isEmpty ? 0 : (daily.day + (dailyReady ? 0 : 1)) / daily.rewards.length,
-                                footnote: data == null ? null : '${titleCase(t.online)} ${formatCoins(data.online)}',
-                                onTap: data == null ? _reload : () => _daily(data.daily),
+                                progress: daily == null || daily.rewards.isEmpty
+                                    ? 0
+                                    : (daily.day + (dailyReady ? 0 : 1)) /
+                                          daily.rewards.length,
+                                footnote: data == null
+                                    ? null
+                                    : '${titleCase(t.online)} ${formatCoins(data.online)}',
+                                onTap: data == null
+                                    ? _reload
+                                    : () => _daily(data.daily),
                               ),
                       ),
                       if (lobbyError)
                         Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
-                            lobby.error is ApiException ? t.maybeApi((lobby.error as ApiException).message) : t.offlineServer,
-                            style: pcText(22, color: DuelColors.red, weight: FontWeight.w500),
+                            lobby.error is ApiException
+                                ? t.maybeApi(
+                                    (lobby.error as ApiException).message,
+                                  )
+                                : t.offlineServer,
+                            style: pcText(
+                              22,
+                              color: DuelColors.red,
+                              weight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       SizedBox(height: roomy ? 60 : 30),
@@ -531,11 +733,32 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
               ),
               HomeBottomNav(
                 items: [
-                  HomeNavItem(icon: Icons.smart_toy_rounded, label: t.practice, onTap: _practice),
-                  HomeNavItem(icon: Icons.leaderboard_rounded, label: t.navRankings, onTap: () => _open(const LeaderboardScreen())),
-                  HomeNavItem(icon: Icons.home_rounded, label: t.navHome, active: true, onTap: _reload),
-                  HomeNavItem(icon: Icons.backpack_rounded, label: t.navItems, onTap: () => _openRegistered(const ItemsScreen())),
-                  HomeNavItem(icon: Icons.shopping_cart_rounded, label: t.navShop, onTap: () => _openRegistered(const ShopScreen())),
+                  HomeNavItem(
+                    icon: Icons.smart_toy_rounded,
+                    label: t.practice,
+                    onTap: _practice,
+                  ),
+                  HomeNavItem(
+                    icon: Icons.leaderboard_rounded,
+                    label: t.navRankings,
+                    onTap: () => _open(const LeaderboardScreen()),
+                  ),
+                  HomeNavItem(
+                    icon: Icons.home_rounded,
+                    label: t.navHome,
+                    active: true,
+                    onTap: _reload,
+                  ),
+                  HomeNavItem(
+                    icon: Icons.backpack_rounded,
+                    label: t.navItems,
+                    onTap: () => _openRegistered(const ItemsScreen()),
+                  ),
+                  HomeNavItem(
+                    icon: Icons.shopping_cart_rounded,
+                    label: t.navShop,
+                    onTap: () => _openRegistered(const ShopScreen()),
+                  ),
                 ],
               ),
             ],
@@ -548,7 +771,12 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
 
 /// Ticks down to the next daily bonus.
 class _Countdown extends StatefulWidget {
-  const _Countdown({required this.from, required this.seconds, this.size = 14, this.color = DesignColors.pcTextDim});
+  const _Countdown({
+    required this.from,
+    required this.seconds,
+    this.size = 14,
+    this.color = DesignColors.pcTextDim,
+  });
 
   final DateTime from;
   final int seconds;
@@ -560,7 +788,10 @@ class _Countdown extends StatefulWidget {
 }
 
 class _CountdownState extends State<_Countdown> {
-  late final Timer _timer = Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
+  late final Timer _timer = Timer.periodic(
+    const Duration(seconds: 1),
+    (_) => setState(() {}),
+  );
 
   @override
   void initState() {
@@ -576,14 +807,24 @@ class _CountdownState extends State<_Countdown> {
 
   @override
   Widget build(BuildContext context) {
-    final left = max(0, widget.seconds - DateTime.now().difference(widget.from).inSeconds);
+    final left = max(
+      0,
+      widget.seconds - DateTime.now().difference(widget.from).inSeconds,
+    );
     String two(int v) => v.toString().padLeft(2, '0');
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.timer_outlined, color: widget.color, size: widget.size * 1.1),
+        Icon(
+          Icons.timer_outlined,
+          color: widget.color,
+          size: widget.size * 1.1,
+        ),
         const SizedBox(width: 4),
-        Text('${two(left ~/ 3600)}:${two(left % 3600 ~/ 60)}:${two(left % 60)}', style: pcText(widget.size, color: widget.color)),
+        Text(
+          '${two(left ~/ 3600)}:${two(left % 3600 ~/ 60)}:${two(left % 60)}',
+          style: pcText(widget.size, color: widget.color),
+        ),
       ],
     );
   }
@@ -592,7 +833,15 @@ class _CountdownState extends State<_Countdown> {
 /// Tall game card of the landscape hubs (pool hub). Not used on the home any
 /// more, kept for [PoolHubScreen].
 class GameCard extends ConsumerWidget {
-  const GameCard({super.key, required this.width, required this.color, required this.title, required this.sub, required this.art, required this.onPlay});
+  const GameCard({
+    super.key,
+    required this.width,
+    required this.color,
+    required this.title,
+    required this.sub,
+    required this.art,
+    required this.onPlay,
+  });
 
   final double width;
   final Color color;
@@ -605,79 +854,136 @@ class GameCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
     return PressScale(
-        onTap: onPlay,
-        scale: 0.97,
-        child: Container(
-          width: width,
-          height: 448,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: color, width: 2.5),
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color.lerp(color, Colors.black, 0.55)!, Color.lerp(color, Colors.black, 0.9)!, const Color(0xFF05060C)],
-              stops: const [0, 0.55, 1],
-            ),
-            boxShadow: [
-              BoxShadow(color: color.withValues(alpha: 0.55), blurRadius: 34, spreadRadius: 1),
-              const BoxShadow(color: Color(0xBB000000), blurRadius: 18, offset: Offset(0, 12)),
+      onTap: onPlay,
+      scale: 0.97,
+      child: Container(
+        width: width,
+        height: 448,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: color, width: 2.5),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color.lerp(color, Colors.black, 0.55)!,
+              Color.lerp(color, Colors.black, 0.9)!,
+              const Color(0xFF05060C),
             ],
+            stops: const [0, 0.55, 1],
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: Stack(
-              children: [
-                Positioned(left: 0, right: 0, top: 0, height: 258, child: art),
-                // Fade the artwork into the caption.
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: 170,
-                  height: 100,
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.55),
+              blurRadius: 34,
+              spreadRadius: 1,
+            ),
+            const BoxShadow(
+              color: Color(0xBB000000),
+              blurRadius: 18,
+              offset: Offset(0, 12),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: Stack(
+            children: [
+              Positioned(left: 0, right: 0, top: 0, height: 258, child: art),
+              // Fade the artwork into the caption.
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 170,
+                height: 100,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        const Color(0x00000000),
+                        Color.lerp(color, Colors.black, 0.88)!,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 22,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style:
+                          AppText.label(
+                            40,
+                            color: Colors.white,
+                            weight: FontWeight.w900,
+                          ).copyWith(
+                            height: 1.0,
+                            letterSpacing: 1,
+                            shadows: [
+                              Shadow(
+                                color: color.withValues(alpha: 0.8),
+                                blurRadius: 16,
+                              ),
+                              const Shadow(
+                                color: Color(0xAA000000),
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                    ),
+                    if (sub != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        sub!,
+                        textAlign: TextAlign.center,
+                        style: AppText.label(
+                          15,
+                          color: Colors.white,
+                          weight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    DuelButton(
+                      label: t.playNow,
+                      color: color,
+                      width: width - 28,
+                      height: 54,
+                      fontSize: 22,
+                      onPressed: onPlay,
+                    ),
+                  ],
+                ),
+              ),
+              // Polished glass over the whole card and a light inner trim.
+              const DuelGloss(radius: 15, strength: 0.18, diagonal: true),
+              Positioned.fill(
+                child: IgnorePointer(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [const Color(0x00000000), Color.lerp(color, Colors.black, 0.88)!],
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.16),
+                        width: 1.2,
                       ),
                     ),
                   ),
                 ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 22,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(title,
-                          textAlign: TextAlign.center,
-                          style: AppText.label(40, color: Colors.white, weight: FontWeight.w900).copyWith(height: 1.0, letterSpacing: 1, shadows: [Shadow(color: color.withValues(alpha: 0.8), blurRadius: 16), const Shadow(color: Color(0xAA000000), blurRadius: 4, offset: Offset(0, 2))])),
-                      if (sub != null) ...[
-                        const SizedBox(height: 6),
-                        Text(sub!, textAlign: TextAlign.center, style: AppText.label(15, color: Colors.white, weight: FontWeight.w700)),
-                      ],
-                      const SizedBox(height: 14),
-                      DuelButton(label: t.playNow, color: color, width: width - 28, height: 54, fontSize: 22, onPressed: onPlay),
-                    ],
-                  ),
-                ),
-                // Polished glass over the whole card and a light inner trim.
-                const DuelGloss(radius: 15, strength: 0.18, diagonal: true),
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.white.withValues(alpha: 0.16), width: 1.2)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    );
   }
 }
 
@@ -686,7 +992,8 @@ class BilliardArt extends StatelessWidget {
   const BilliardArt({super.key});
 
   @override
-  Widget build(BuildContext context) => const CustomPaint(painter: _BilliardArtPainter());
+  Widget build(BuildContext context) =>
+      const CustomPaint(painter: _BilliardArtPainter());
 }
 
 class _BilliardArtPainter extends CustomPainter {
@@ -710,10 +1017,15 @@ class _BilliardArtPainter extends CustomPainter {
     canvas.translate(w * 0.5, h * 0.62);
     canvas.rotate(-0.12);
     canvas.drawRRect(
-        RRect.fromRectAndRadius(Rect.fromLTWH(-w * 0.7, -5, w * 1.4, 10), const Radius.circular(5)),
-        Paint()
-          ..shader = const LinearGradient(colors: [Color(0xFF6B3519), Color(0xFFE9C98F), Color(0xFFF7E3BD)])
-              .createShader(Rect.fromLTWH(-w * 0.7, -5, w * 1.4, 10)));
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(-w * 0.7, -5, w * 1.4, 10),
+        const Radius.circular(5),
+      ),
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFF6B3519), Color(0xFFE9C98F), Color(0xFFF7E3BD)],
+        ).createShader(Rect.fromLTWH(-w * 0.7, -5, w * 1.4, 10)),
+    );
     canvas.restore();
     paintBall(canvas, Offset(w * 0.13, h * 0.45), 24, 4);
     paintBall(canvas, Offset(w * 0.45, h * 0.18), 15, 1);
@@ -732,24 +1044,50 @@ class PokerArt extends StatelessWidget {
   const PokerArt({super.key});
 
   @override
-  Widget build(BuildContext context) => const CustomPaint(painter: _PokerArtPainter());
+  Widget build(BuildContext context) =>
+      const CustomPaint(painter: _PokerArtPainter());
 }
 
 class _PokerArtPainter extends CustomPainter {
   const _PokerArtPainter();
 
-  void _card(Canvas canvas, Offset c, double angle, String rank, String suit, bool red) {
+  void _card(
+    Canvas canvas,
+    Offset c,
+    double angle,
+    String rank,
+    String suit,
+    bool red,
+  ) {
     canvas.save();
     canvas.translate(c.dx, c.dy);
     canvas.rotate(angle);
     const size = Size(92, 128);
-    final r = RRect.fromRectAndRadius(Rect.fromCenter(center: Offset.zero, width: size.width, height: size.height), const Radius.circular(9));
-    canvas.drawRRect(r.shift(const Offset(3, 5)), Paint()..color = const Color(0x80000000));
+    final r = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: Offset.zero,
+        width: size.width,
+        height: size.height,
+      ),
+      const Radius.circular(9),
+    );
+    canvas.drawRRect(
+      r.shift(const Offset(3, 5)),
+      Paint()..color = const Color(0x80000000),
+    );
     canvas.drawRRect(r, Paint()..color = const Color(0xFFF6F3EA));
     final color = red ? const Color(0xFFD12B3C) : const Color(0xFF15171C);
     void text(String s, double fontSize, Offset at, {String? family}) {
       final tp = TextPainter(
-        text: TextSpan(text: s, style: TextStyle(fontFamily: family ?? AppText.card, fontSize: fontSize, color: color, height: 1)),
+        text: TextSpan(
+          text: s,
+          style: TextStyle(
+            fontFamily: family ?? AppText.card,
+            fontSize: fontSize,
+            color: color,
+            height: 1,
+          ),
+        ),
         textDirection: TextDirection.ltr,
       )..layout();
       tp.paint(canvas, at - Offset(tp.width / 2, tp.height / 2));
@@ -765,14 +1103,18 @@ class _PokerArtPainter extends CustomPainter {
     for (var i = 0; i < count; i++) {
       final c = base - Offset(0, i * 9.0);
       final oval = Rect.fromCenter(center: c, width: 74, height: 30);
-      canvas.drawOval(oval.shift(const Offset(0, 8)), Paint()..color = Color.lerp(color, Colors.black, 0.6)!);
+      canvas.drawOval(
+        oval.shift(const Offset(0, 8)),
+        Paint()..color = Color.lerp(color, Colors.black, 0.6)!,
+      );
       canvas.drawOval(oval, Paint()..color = color);
       canvas.drawOval(
-          oval.deflate(7),
-          Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2
-            ..color = Colors.white.withValues(alpha: 0.75));
+        oval.deflate(7),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..color = Colors.white.withValues(alpha: 0.75),
+      );
     }
   }
 
@@ -812,7 +1154,8 @@ class CarromArt extends StatelessWidget {
   final int themeIndex;
 
   @override
-  Widget build(BuildContext context) => CustomPaint(painter: _CarromArtPainter(transparent, themeIndex));
+  Widget build(BuildContext context) =>
+      CustomPaint(painter: _CarromArtPainter(transparent, themeIndex));
 }
 
 class _CarromArtPainter extends CustomPainter {
@@ -840,8 +1183,12 @@ class _CarromArtPainter extends CustomPainter {
     Color(0xFF90B8D4), // Diamond: ocean blue felt
   ];
   static const _lines = [
-    Color(0xFF9A7850), Color(0xFFA2613B), Color(0xFF6A8080),
-    Color(0xFF8A6010), Color(0xFF7A5890), Color(0xFF3A6888),
+    Color(0xFF9A7850),
+    Color(0xFFA2613B),
+    Color(0xFF6A8080),
+    Color(0xFF8A6010),
+    Color(0xFF7A5890),
+    Color(0xFF3A6888),
   ];
 
   @override
@@ -853,42 +1200,114 @@ class _CarromArtPainter extends CustomPainter {
 
     final rect = Offset.zero & size;
     if (!transparent) {
-      canvas.drawRect(rect, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF4A1414), Color(0xFF1A0808)]).createShader(rect));
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..shader = const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF4A1414), Color(0xFF1A0808)],
+          ).createShader(rect),
+      );
     }
     final b = size.shortestSide * (transparent ? 0.96 : 0.82);
-    final left = (size.width - b) / 2, top = (size.height - b) / 2 + (transparent ? 0 : size.height * 0.04);
+    final left = (size.width - b) / 2,
+        top = (size.height - b) / 2 + (transparent ? 0 : size.height * 0.04);
     final board = Rect.fromLTWH(left, top, b, b);
     if (transparent) {
-      canvas.drawRRect(RRect.fromRectAndRadius(board.shift(Offset(0, b * 0.04)), Radius.circular(b * 0.05)), Paint()
-        ..color = const Color(0x88000000)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, b * 0.03));
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          board.shift(Offset(0, b * 0.04)),
+          Radius.circular(b * 0.05),
+        ),
+        Paint()
+          ..color = const Color(0x88000000)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, b * 0.03),
+      );
     }
-    canvas.drawRRect(RRect.fromRectAndRadius(board, Radius.circular(b * 0.05)), Paint()..color = frameColor);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(board, Radius.circular(b * 0.05)),
+      Paint()..color = frameColor,
+    );
     final f = b * 0.06;
     final field = board.deflate(f);
     canvas.drawRect(field, Paint()..color = clothColor);
-    final line = Paint()..style = PaintingStyle.stroke..strokeWidth = 1.5..color = lineColor;
+    final line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..color = lineColor;
     final u = field.width;
     for (final s in const [0.16, 0.84]) {
-      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTRB(field.left + u * 0.19, field.top + u * (s - 0.03), field.left + u * 0.81, field.top + u * (s + 0.03)), Radius.circular(u * 0.03)), line);
-      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTRB(field.left + u * (s - 0.03), field.top + u * 0.19, field.left + u * (s + 0.03), field.top + u * 0.81), Radius.circular(u * 0.03)), line);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTRB(
+            field.left + u * 0.19,
+            field.top + u * (s - 0.03),
+            field.left + u * 0.81,
+            field.top + u * (s + 0.03),
+          ),
+          Radius.circular(u * 0.03),
+        ),
+        line,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTRB(
+            field.left + u * (s - 0.03),
+            field.top + u * 0.19,
+            field.left + u * (s + 0.03),
+            field.top + u * 0.81,
+          ),
+          Radius.circular(u * 0.03),
+        ),
+        line,
+      );
     }
     canvas.drawCircle(field.center, u * 0.17, line);
-    for (final c in [field.topLeft, field.topRight, field.bottomLeft, field.bottomRight]) {
-      canvas.drawCircle(c + Offset(c.dx < field.center.dx ? u * 0.04 : -u * 0.04, c.dy < field.center.dy ? u * 0.04 : -u * 0.04), u * 0.05, Paint()..color = const Color(0xFF111111));
+    for (final c in [
+      field.topLeft,
+      field.topRight,
+      field.bottomLeft,
+      field.bottomRight,
+    ]) {
+      canvas.drawCircle(
+        c +
+            Offset(
+              c.dx < field.center.dx ? u * 0.04 : -u * 0.04,
+              c.dy < field.center.dy ? u * 0.04 : -u * 0.04,
+            ),
+        u * 0.05,
+        Paint()..color = const Color(0xFF111111),
+      );
     }
     final r = u * 0.03;
-    canvas.drawCircle(field.center, r, Paint()..color = const Color(0xFFE53935));
+    canvas.drawCircle(
+      field.center,
+      r,
+      Paint()..color = const Color(0xFFE53935),
+    );
     for (var k = 0; k < 6; k++) {
       final a = -3.14159 / 2 + k * 3.14159 / 3;
       final p = field.center + Offset(2.1 * r * cos(a), 2.1 * r * sin(a));
-      canvas.drawCircle(p, r, Paint()..color = k.isEven ? const Color(0xFF2C2F33) : const Color(0xFFEFE3D2));
+      canvas.drawCircle(
+        p,
+        r,
+        Paint()
+          ..color = k.isEven
+              ? const Color(0xFF2C2F33)
+              : const Color(0xFFEFE3D2),
+      );
     }
-    canvas.drawCircle(Offset(field.center.dx, field.top + u * 0.84), r * 1.35, Paint()..color = const Color(0xFFE53935));
+    canvas.drawCircle(
+      Offset(field.center.dx, field.top + u * 0.84),
+      r * 1.35,
+      Paint()..color = const Color(0xFFE53935),
+    );
   }
 
   @override
-  bool shouldRepaint(_CarromArtPainter old) => old.transparent != transparent || old.themeIndex != themeIndex;
+  bool shouldRepaint(_CarromArtPainter old) =>
+      old.transparent != transparent || old.themeIndex != themeIndex;
 }
 
 /// A mini Ludo board for the game card. [transparent] skips the wooden
@@ -900,7 +1319,8 @@ class LudoArt extends StatelessWidget {
   final int themeIndex;
 
   @override
-  Widget build(BuildContext context) => CustomPaint(painter: _LudoArtPainter(transparent, themeIndex));
+  Widget build(BuildContext context) =>
+      CustomPaint(painter: _LudoArtPainter(transparent, themeIndex));
 }
 
 class _LudoArtPainter extends CustomPainter {
@@ -928,8 +1348,12 @@ class _LudoArtPainter extends CustomPainter {
     Color(0xFFABC4EE), // Diamond: periwinkle
   ];
   static const _gridColors = [
-    Color(0xFF99BB88), Color(0xFFBBAA88), Color(0xFF9AAABB),
-    Color(0xFFCCCCCC), Color(0xFF9A80CC), Color(0xFF8AAAD8),
+    Color(0xFF99BB88),
+    Color(0xFFBBAA88),
+    Color(0xFF9AAABB),
+    Color(0xFFCCCCCC),
+    Color(0xFF9A80CC),
+    Color(0xFF8AAAD8),
   ];
 
   @override
@@ -944,7 +1368,8 @@ class _LudoArtPainter extends CustomPainter {
     final top = (size.height - b) / 2 + (transparent ? 0 : size.height * 0.04);
     final s = b / LudoBoard.n;
 
-    Rect cellRect(int col, int row) => Rect.fromLTWH(left + col * s, top + row * s, s, s);
+    Rect cellRect(int col, int row) =>
+        Rect.fromLTWH(left + col * s, top + row * s, s, s);
     Offset at(double gx, double gy) => Offset(left + gx * s, top + gy * s);
 
     if (!transparent) {
@@ -959,7 +1384,10 @@ class _LudoArtPainter extends CustomPainter {
       );
     } else {
       canvas.drawRRect(
-        RRect.fromRectAndRadius(Rect.fromLTWH(left, top + s * 0.6, b, b), Radius.circular(s * 0.1)),
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(left, top + s * 0.6, b, b),
+          Radius.circular(s * 0.1),
+        ),
         Paint()
           ..color = const Color(0x88000000)
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, s * 0.6),
@@ -967,7 +1395,10 @@ class _LudoArtPainter extends CustomPainter {
     }
 
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(left, top, b, b), Radius.circular(s * 0.1)),
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(left, top, b, b),
+        Radius.circular(s * 0.1),
+      ),
       Paint()..color = fieldColor,
     );
 
@@ -983,7 +1414,10 @@ class _LudoArtPainter extends CustomPainter {
 
     for (var colour = 0; colour < 4; colour++) {
       for (final c in LudoBoard.homeColumn[colour]) {
-        canvas.drawRect(cellRect(c[0], c[1]), Paint()..color = LudoBoard.colours[colour].withValues(alpha: 0.80));
+        canvas.drawRect(
+          cellRect(c[0], c[1]),
+          Paint()..color = LudoBoard.colours[colour].withValues(alpha: 0.80),
+        );
         canvas.drawRect(cellRect(c[0], c[1]), grid);
       }
     }
@@ -991,7 +1425,11 @@ class _LudoArtPainter extends CustomPainter {
     final mid = at(7.5, 7.5);
     final corners = [at(6, 6), at(9, 6), at(9, 9), at(6, 9)];
     void tri(Offset a, Offset b2, Color col) => canvas.drawPath(
-      Path()..moveTo(mid.dx, mid.dy)..lineTo(a.dx, a.dy)..lineTo(b2.dx, b2.dy)..close(),
+      Path()
+        ..moveTo(mid.dx, mid.dy)
+        ..lineTo(a.dx, a.dy)
+        ..lineTo(b2.dx, b2.dy)
+        ..close(),
       Paint()..color = col,
     );
     tri(corners[0], corners[1], LudoBoard.colours[2]);
@@ -1001,7 +1439,12 @@ class _LudoArtPainter extends CustomPainter {
 
     for (var colour = 0; colour < 4; colour++) {
       final y = LudoBoard.yardRect[colour];
-      final rect = Rect.fromLTWH(left + y[0] * s, top + y[1] * s, y[2] * s, y[2] * s);
+      final rect = Rect.fromLTWH(
+        left + y[0] * s,
+        top + y[1] * s,
+        y[2] * s,
+        y[2] * s,
+      );
       final col = LudoBoard.colours[colour];
       canvas.drawRect(rect, Paint()..color = col);
       final inner = Rect.fromLTWH(rect.left + s, rect.top + s, s * 4, s * 4);
@@ -1023,7 +1466,10 @@ class _LudoArtPainter extends CustomPainter {
     }
 
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(left, top, b, b), Radius.circular(s * 0.1)),
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(left, top, b, b),
+        Radius.circular(s * 0.1),
+      ),
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2
@@ -1032,12 +1478,22 @@ class _LudoArtPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_LudoArtPainter old) => old.transparent != transparent || old.themeIndex != themeIndex;
+  bool shouldRepaint(_LudoArtPainter old) =>
+      old.transparent != transparent || old.themeIndex != themeIndex;
 }
 
 /// Wide banner of the landscape hubs (pool hub). Kept for [PoolHubScreen].
 class HomeBanner extends StatelessWidget {
-  const HomeBanner({super.key, required this.title, required this.sub, required this.colors, required this.rim, required this.titleColor, required this.icon, required this.onTap});
+  const HomeBanner({
+    super.key,
+    required this.title,
+    required this.sub,
+    required this.colors,
+    required this.rim,
+    required this.titleColor,
+    required this.icon,
+    required this.onTap,
+  });
 
   final String title;
   final String sub;
@@ -1049,44 +1505,81 @@ class HomeBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PressScale(
-        onTap: onTap,
-        scale: 0.97,
-        child: Container(
-          width: 366,
-          height: 160,
-          padding: const EdgeInsets.fromLTRB(22, 14, 14, 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: rim, width: 2),
-            gradient: LinearGradient(begin: Alignment.centerLeft, end: Alignment.centerRight, colors: colors),
-            boxShadow: [
-              const BoxShadow(color: Color(0xAA000000), blurRadius: 16, offset: Offset(0, 8)),
-              BoxShadow(color: rim.withValues(alpha: 0.35), blurRadius: 22),
-            ],
-          ),
-          child: Stack(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(title, style: AppText.label(26, color: titleColor, weight: FontWeight.w900).copyWith(height: 1.05, shadows: [Shadow(color: titleColor.withValues(alpha: 0.6), blurRadius: 14)])),
-                        const SizedBox(height: 8),
-                        Text(sub, style: AppText.label(12, color: Colors.white, weight: FontWeight.w700)),
-                      ],
-                    ),
-                  ),
-                  icon,
-                ],
-              ),
-              const Positioned(left: -22, right: -14, top: -14, bottom: -14, child: Stack(children: [DuelGloss(radius: 18, strength: 0.16)])),
-            ],
-          ),
+    onTap: onTap,
+    scale: 0.97,
+    child: Container(
+      width: 366,
+      height: 160,
+      padding: const EdgeInsets.fromLTRB(22, 14, 14, 14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: rim, width: 2),
+        gradient: LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: colors,
         ),
-      );
+        boxShadow: [
+          const BoxShadow(
+            color: Color(0xAA000000),
+            blurRadius: 16,
+            offset: Offset(0, 8),
+          ),
+          BoxShadow(color: rim.withValues(alpha: 0.35), blurRadius: 22),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style:
+                          AppText.label(
+                            26,
+                            color: titleColor,
+                            weight: FontWeight.w900,
+                          ).copyWith(
+                            height: 1.05,
+                            shadows: [
+                              Shadow(
+                                color: titleColor.withValues(alpha: 0.6),
+                                blurRadius: 14,
+                              ),
+                            ],
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      sub,
+                      style: AppText.label(
+                        12,
+                        color: Colors.white,
+                        weight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              icon,
+            ],
+          ),
+          const Positioned(
+            left: -22,
+            right: -14,
+            top: -14,
+            bottom: -14,
+            child: Stack(children: [DuelGloss(radius: 18, strength: 0.16)]),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// The bonus ladder: one reward a day, bigger each day in a row.
@@ -1114,7 +1607,8 @@ class _DailyBonusDialogState extends ConsumerState<_DailyBonusDialog> {
       setState(() {
         _available = false;
         _celebrate++;
-        _note = '+${formatPicoCoins(reward.coins)}${reward.gems > 0 ? '  +${reward.gems} GEMS' : ''}';
+        _note =
+            '+${formatPicoCoins(reward.coins)}${reward.gems > 0 ? '  +${reward.gems} GEMS' : ''}';
       });
     } on ApiException catch (e) {
       if (mounted) setState(() => _note = e.message.toUpperCase());
@@ -1157,26 +1651,69 @@ class _DailyBonusDialogState extends ConsumerState<_DailyBonusDialog> {
                 scale: 0.9,
                 child: const Padding(
                   padding: EdgeInsets.all(10),
-                  child: Icon(Icons.close_rounded, color: Colors.white, size: 76, shadows: [Shadow(color: Color(0xCC000000), blurRadius: 8, offset: Offset(0, 3))]),
+                  child: Icon(
+                    Icons.close_rounded,
+                    color: Colors.white,
+                    size: 76,
+                    shadows: [
+                      Shadow(
+                        color: Color(0xCC000000),
+                        blurRadius: 8,
+                        offset: Offset(0, 3),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
             Container(
               padding: const EdgeInsets.fromLTRB(30, 26, 30, 34),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFD6E6FF), Color(0xFFA9C6FA), Color(0xFF8FB0F2)]),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFFD6E6FF),
+                    Color(0xFFA9C6FA),
+                    Color(0xFF8FB0F2),
+                  ],
+                ),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(14),
+                ),
                 border: Border.all(color: Colors.white, width: 4),
-                boxShadow: const [BoxShadow(color: Color(0xCC000000), blurRadius: 30, offset: Offset(0, 14))],
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0xCC000000),
+                    blurRadius: 30,
+                    offset: Offset(0, 14),
+                  ),
+                ],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   FittedBox(
                     fit: BoxFit.scaleDown,
-                    child: Text(t.dailyBonus.toUpperCase(), style: pcText(104, color: const Color(0xFF2D46B8), shadow: false).copyWith(letterSpacing: 2)),
+                    child: Text(
+                      t.dailyBonus.toUpperCase(),
+                      style: pcText(
+                        104,
+                        color: const Color(0xFF2D46B8),
+                        shadow: false,
+                      ).copyWith(letterSpacing: 2),
+                    ),
                   ),
-                  Text(t.dailyBonusGrow, textAlign: TextAlign.center, style: pcText(28, color: const Color(0xFF34407A), weight: FontWeight.w500, shadow: false)),
+                  Text(
+                    t.dailyBonusGrow,
+                    textAlign: TextAlign.center,
+                    style: pcText(
+                      28,
+                      color: const Color(0xFF34407A),
+                      weight: FontWeight.w500,
+                      shadow: false,
+                    ),
+                  ),
                   const SizedBox(height: 22),
                   if (n > 0)
                     PopCelebration(
@@ -1191,12 +1728,29 @@ class _DailyBonusDialogState extends ConsumerState<_DailyBonusDialog> {
                                 runSpacing: gap,
                                 children: [
                                   for (var i = 0; i < small; i++)
-                                    _DayCell(day: i + 1, coins: d.rewards[i].coins, gems: d.rewards[i].gems, state: _stateOf(i), width: cell, height: cellH, label: t.dayLabel(i + 1)),
+                                    _DayCell(
+                                      day: i + 1,
+                                      coins: d.rewards[i].coins,
+                                      gems: d.rewards[i].gems,
+                                      state: _stateOf(i),
+                                      width: cell,
+                                      height: cellH,
+                                      label: t.dayLabel(i + 1),
+                                    ),
                                 ],
                               ),
                             ),
                           if (small > 0) const SizedBox(width: 20),
-                          _DayCell(day: n, coins: d.rewards[n - 1].coins, gems: d.rewards[n - 1].gems, state: _stateOf(n - 1), width: bigW, height: bigH, label: t.dayLabel(n), big: true),
+                          _DayCell(
+                            day: n,
+                            coins: d.rewards[n - 1].coins,
+                            gems: d.rewards[n - 1].gems,
+                            state: _stateOf(n - 1),
+                            width: bigW,
+                            height: bigH,
+                            label: t.dayLabel(n),
+                            big: true,
+                          ),
                         ],
                       ),
                     ),
@@ -1206,8 +1760,14 @@ class _DailyBonusDialogState extends ConsumerState<_DailyBonusDialog> {
             Container(
               padding: const EdgeInsets.fromLTRB(30, 26, 30, 30),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF5B4BD6), Color(0xFF3A2FA6)]),
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF5B4BD6), Color(0xFF3A2FA6)],
+                ),
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(14),
+                ),
                 border: Border.all(color: const Color(0xFF8C7CE8), width: 3),
               ),
               child: Column(
@@ -1216,12 +1776,28 @@ class _DailyBonusDialogState extends ConsumerState<_DailyBonusDialog> {
                   if (_note != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 18),
-                      child: Text(_note!, textAlign: TextAlign.center, style: pcText(36, color: const Color(0xFF4DF08A))),
+                      child: Text(
+                        _note!,
+                        textAlign: TextAlign.center,
+                        style: pcText(36, color: const Color(0xFF4DF08A)),
+                      ),
                     ),
                   if (_available)
-                    PcButton(label: _busy ? '...' : t.claim, style: PcButtonStyle.gold, width: 460, height: 110, fontSize: 46, onPressed: _busy ? null : _claim)
+                    PcButton(
+                      label: _busy ? '...' : t.claim,
+                      style: PcButtonStyle.gold,
+                      width: 460,
+                      height: 110,
+                      fontSize: 46,
+                      onPressed: _busy ? null : _claim,
+                    )
                   else
-                    PcButton(label: t.close, style: PcButtonStyle.blue, width: 360, onPressed: () => Navigator.of(context).pop()),
+                    PcButton(
+                      label: t.close,
+                      style: PcButtonStyle.blue,
+                      width: 360,
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
                 ],
               ),
             ),
@@ -1235,7 +1811,16 @@ class _DailyBonusDialogState extends ConsumerState<_DailyBonusDialog> {
 /// One day of the bonus calendar: number in the corner, the reward art,
 /// the amount along the bottom; a tick once collected, a gold rim today.
 class _DayCell extends StatelessWidget {
-  const _DayCell({required this.day, required this.coins, required this.gems, required this.state, required this.width, required this.height, required this.label, this.big = false});
+  const _DayCell({
+    required this.day,
+    required this.coins,
+    required this.gems,
+    required this.state,
+    required this.width,
+    required this.height,
+    required this.label,
+    this.big = false,
+  });
 
   final int day;
   final int coins;
@@ -1259,22 +1844,49 @@ class _DayCell extends StatelessWidget {
           end: Alignment.bottomCenter,
           colors: premium
               ? const [Color(0xFF8E4CF0), Color(0xFF4B1FA8)]
-              : (day <= 2 ? const [Color(0xFFF7C24A), Color(0xFFD98A12)] : const [Color(0xFF3D7BE8), Color(0xFF1E3FA8)]),
+              : (day <= 2
+                    ? const [Color(0xFFF7C24A), Color(0xFFD98A12)]
+                    : const [Color(0xFF3D7BE8), Color(0xFF1E3FA8)]),
         ),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: today ? DesignColors.pcGold : Colors.white.withValues(alpha: 0.55), width: today ? 4 : 2.5),
+        border: Border.all(
+          color: today
+              ? DesignColors.pcGold
+              : Colors.white.withValues(alpha: 0.55),
+          width: today ? 4 : 2.5,
+        ),
         boxShadow: [
-          const BoxShadow(color: Color(0x88000000), blurRadius: 8, offset: Offset(0, 4)),
-          if (today) BoxShadow(color: DesignColors.pcGold.withValues(alpha: 0.5), blurRadius: 18),
+          const BoxShadow(
+            color: Color(0x88000000),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+          if (today)
+            BoxShadow(
+              color: DesignColors.pcGold.withValues(alpha: 0.5),
+              blurRadius: 18,
+            ),
         ],
       ),
       child: Stack(
         children: [
-          Positioned(left: 12, top: 6, child: Text(day.toString().padLeft(2, '0'), style: pcText(big ? 44 : 34, color: Colors.white.withValues(alpha: 0.7)))),
+          Positioned(
+            left: 12,
+            top: 6,
+            child: Text(
+              day.toString().padLeft(2, '0'),
+              style: pcText(
+                big ? 44 : 34,
+                color: Colors.white.withValues(alpha: 0.7),
+              ),
+            ),
+          ),
           Center(
             child: Opacity(
               opacity: done ? 0.4 : 1,
-              child: gems > 0 ? GemIcon(size: big ? 150 : 96) : PikoCoinIcon(size: big ? 150 : 96),
+              child: gems > 0
+                  ? GemIcon(size: big ? 150 : 96)
+                  : PikoCoinIcon(size: big ? 150 : 96),
             ),
           ),
           Positioned(
@@ -1284,13 +1896,22 @@ class _DayCell extends StatelessWidget {
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                gems > 0 ? '${formatCoins(coins, compact: true)}  +$gems' : formatCoins(coins, compact: true),
+                gems > 0
+                    ? '${formatCoins(coins, compact: true)}  +$gems'
+                    : formatCoins(coins, compact: true),
                 style: pcText(big ? 34 : 28),
               ),
             ),
           ),
           if (done)
-            const Center(child: Icon(Icons.check_circle_rounded, color: Color(0xFF4DF08A), size: 80, shadows: [Shadow(color: Color(0xCC000000), blurRadius: 8)])),
+            const Center(
+              child: Icon(
+                Icons.check_circle_rounded,
+                color: Color(0xFF4DF08A),
+                size: 80,
+                shadows: [Shadow(color: Color(0xCC000000), blurRadius: 8)],
+              ),
+            ),
         ],
       ),
     );

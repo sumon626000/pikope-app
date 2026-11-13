@@ -1308,20 +1308,23 @@ Future<T?> showPcDialog<T>(
     insetPadding: EdgeInsets.zero,
     child: LayoutBuilder(
       builder: (context, c) {
-        final columnW = PortraitCanvas.columnWidthFor(c.maxWidth);
+        final columnW = PortraitCanvas.dialogColumnWidthFor(c.maxWidth);
+        final frameH = c.maxHeight * 0.9;
         final scale = columnW / PortraitCanvas.width;
         final framed = FittedBox(
           fit: BoxFit.scaleDown,
           child: SizedBox(
             width: PortraitCanvas.width,
-            height: c.maxHeight / scale,
+            height: frameH / scale,
             child: Center(child: builder(context)),
           ),
         );
-        if (columnW >= c.maxWidth - 0.5) return framed;
+        if (columnW >= c.maxWidth - 0.5) {
+          return SizedBox(width: c.maxWidth, height: frameH, child: framed);
+        }
         return Align(
           alignment: Alignment.center,
-          child: SizedBox(width: columnW, height: c.maxHeight, child: framed),
+          child: SizedBox(width: columnW, height: frameH, child: framed),
         );
       },
     ),

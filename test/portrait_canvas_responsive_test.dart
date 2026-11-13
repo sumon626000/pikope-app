@@ -25,6 +25,18 @@ void main() {
     );
   });
 
+  test('PortraitCanvas dialogColumnWidthFor: tighter than home on desktop', () {
+    expect(PortraitCanvas.dialogColumnWidthFor(390), 390);
+    expect(
+      PortraitCanvas.dialogColumnWidthFor(1280),
+      PortraitCanvas.dialogColumnMaxWidth,
+    );
+    expect(
+      PortraitCanvas.dialogColumnMaxWidth,
+      lessThan(PortraitCanvas.phoneColumnMaxWidth),
+    );
+  });
+
   testWidgets('PortraitCanvas centers column on 1280x800 desktop', (
     tester,
   ) async {
@@ -85,10 +97,10 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('dlg'), findsOneWidget);
 
-    // Constraining phone column must exist on wide desktop.
+    // Constraining dialog column must exist on wide desktop.
     final column = tester
         .widgetList<SizedBox>(find.byType(SizedBox))
-        .where((s) => s.width == PortraitCanvas.phoneColumnMaxWidth)
+        .where((s) => s.width == PortraitCanvas.dialogColumnMaxWidth)
         .toList();
     expect(column, isNotEmpty);
   });

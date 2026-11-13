@@ -955,9 +955,10 @@ class DuelDialogFrame extends StatelessWidget {
   Widget build(BuildContext context) => SafeArea(
     child: LayoutBuilder(
       builder: (context, c) {
-        final columnW = PortraitCanvas.columnWidthFor(c.maxWidth);
+        final columnW = PortraitCanvas.dialogColumnWidthFor(c.maxWidth);
+        final frameH = c.maxHeight * 0.9;
         final scale = columnW / canvasWidth;
-        final size = Size(canvasWidth, c.maxHeight / scale);
+        final size = Size(canvasWidth, frameH / scale);
         final framed = FittedBox(
           fit: BoxFit.scaleDown,
           child: SizedBox.fromSize(
@@ -974,10 +975,12 @@ class DuelDialogFrame extends StatelessWidget {
             ),
           ),
         );
-        if (columnW >= c.maxWidth - 0.5) return framed;
+        if (columnW >= c.maxWidth - 0.5) {
+          return SizedBox(width: c.maxWidth, height: frameH, child: framed);
+        }
         return Align(
           alignment: Alignment.center,
-          child: SizedBox(width: columnW, height: c.maxHeight, child: framed),
+          child: SizedBox(width: columnW, height: frameH, child: framed),
         );
       },
     ),
