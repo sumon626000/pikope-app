@@ -132,7 +132,7 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen>
     if (mounted) _reload();
   }
 
-  /// A dialog with one big button per choice.
+  /// A dialog with choices in one compact row (2–3) or a tidy 2-column wrap.
   Future<void> _chooser({
     required String title,
     required String body,
@@ -140,40 +140,67 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen>
   }) => showDuelDialog<void>(
     context,
     barrierColor: DesignAuth.overlayScrim,
-    builder: (dialog) => PcDialog(
-      title: title,
-      width: 820,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            body,
-            textAlign: TextAlign.center,
-            style: pcText(
-              28,
-              color: DesignColors.pcTextDim,
-              weight: FontWeight.w500,
-            ).copyWith(height: 1.3),
-          ),
-          const SizedBox(height: 20),
-          for (final (label, color, go) in choices)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: PcButton(
-                label: label,
-                width: 640,
-                height: 84,
-                fontSize: 36,
-                style: pcStyleFor(color),
-                onPressed: () {
-                  Navigator.of(dialog).pop();
-                  go();
-                },
+    builder: (dialog) {
+      PcButton button(String label, Color color, VoidCallback go) => PcButton(
+        label: label,
+        width: double.infinity,
+        height: 96,
+        fontSize: choices.length >= 3 ? 30 : 34,
+        style: pcStyleFor(color),
+        onPressed: () {
+          Navigator.of(dialog).pop();
+          go();
+        },
+      );
+      final Widget choiceRow;
+      if (choices.length <= 3) {
+        choiceRow = Row(
+          children: [
+            for (var i = 0; i < choices.length; i++) ...[
+              if (i > 0) const SizedBox(width: 14),
+              Expanded(
+                child: button(choices[i].$1, choices[i].$2, choices[i].$3),
               ),
+            ],
+          ],
+        );
+      } else {
+        choiceRow = LayoutBuilder(
+          builder: (context, c) {
+            const gap = 14.0;
+            final cell = (c.maxWidth - gap) / 2;
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
+                for (final (label, color, go) in choices)
+                  SizedBox(width: cell, child: button(label, color, go)),
+              ],
+            );
+          },
+        );
+      }
+      return PcDialog(
+        title: title,
+        width: 900,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              body,
+              textAlign: TextAlign.center,
+              style: pcText(
+                28,
+                color: DesignColors.pcTextDim,
+                weight: FontWeight.w500,
+              ).copyWith(height: 1.3),
             ),
-        ],
-      ),
-    ),
+            const SizedBox(height: 28),
+            choiceRow,
+          ],
+        ),
+      );
+    },
   );
 
   static const _poolColor = DuelColors.green;
