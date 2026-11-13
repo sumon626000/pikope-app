@@ -22,7 +22,11 @@ import 'shop_tab_insets.dart';
 
 /// Send Pico coin to another player by 6-digit game ID (registered only).
 class CoinTransferTab extends ConsumerStatefulWidget {
-  const CoinTransferTab({super.key, required this.config, this.tutorialUrl = ''});
+  const CoinTransferTab({
+    super.key,
+    required this.config,
+    this.tutorialUrl = '',
+  });
 
   final CoinTransferConfig config;
   final String tutorialUrl;
@@ -31,7 +35,8 @@ class CoinTransferTab extends ConsumerStatefulWidget {
   ConsumerState<CoinTransferTab> createState() => _CoinTransferTabState();
 }
 
-class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with AutomaticKeepAliveClientMixin {
+class _CoinTransferTabState extends ConsumerState<CoinTransferTab>
+    with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
   final _gameId = TextEditingController();
@@ -47,7 +52,10 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
   @override
   void initState() {
     super.initState();
-    _walletPoll = Timer.periodic(const Duration(seconds: 12), (_) => _pollWalletInbox());
+    _walletPoll = Timer.periodic(
+      const Duration(seconds: 12),
+      (_) => _pollWalletInbox(),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) => _pollWalletInbox());
   }
 
@@ -77,7 +85,8 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
     }
   }
 
-  int? get _amountInt => int.tryParse(_amount.text.replaceAll(RegExp(r'\D'), ''));
+  int? get _amountInt =>
+      int.tryParse(_amount.text.replaceAll(RegExp(r'\D'), ''));
 
   int _feeFor(int amount) => (amount * widget.config.feePercent) ~/ 100;
 
@@ -94,7 +103,9 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
     setState(() => _lookupBusy = true);
     _lookupDebounce = Timer(const Duration(milliseconds: 400), () async {
       try {
-        final p = await ref.read(sessionProvider.notifier).lookupTransferTarget(digits);
+        final p = await ref
+            .read(sessionProvider.notifier)
+            .lookupTransferTarget(digits);
         if (!mounted) return;
         setState(() {
           _profile = p;
@@ -129,7 +140,12 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
       return;
     }
     if (amount < widget.config.minCoins || amount > widget.config.maxCoins) {
-      setState(() => _error = t.redeemRange(formatCoins(widget.config.minCoins), formatCoins(widget.config.maxCoins)));
+      setState(
+        () => _error = t.redeemRange(
+          formatCoins(widget.config.minCoins),
+          formatCoins(widget.config.maxCoins),
+        ),
+      );
       return;
     }
     final eligible = _profile?['eligible'] as bool? ?? false;
@@ -149,11 +165,35 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
       barrierDismissible: false,
       builder: (ctx) => PcDialog(
         title: t.transferConfirmTitle,
-        actions: [
-          PcButton(label: t.cancel, style: PcButtonStyle.gray, width: 300, onPressed: () => Navigator.of(ctx).pop(false)),
-          PcButton(label: t.transferSendBtn, style: PcButtonStyle.gold, width: 400, onPressed: () => Navigator.of(ctx).pop(true)),
-        ],
-        child: Text(t.transferConfirmBody(name, amount, fee, total), textAlign: TextAlign.center, style: pcText(36, weight: FontWeight.w500).copyWith(height: 1.35)),
+        width: 820,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              t.transferConfirmBody(name, amount, fee, total),
+              textAlign: TextAlign.center,
+              style: pcText(30, weight: FontWeight.w500).copyWith(height: 1.35),
+            ),
+            const SizedBox(height: 28),
+            PcButton(
+              label: t.transferSendBtn,
+              style: PcButtonStyle.gold,
+              width: 640,
+              height: 84,
+              fontSize: 34,
+              onPressed: () => Navigator.of(ctx).pop(true),
+            ),
+            const SizedBox(height: 14),
+            PcButton(
+              label: t.cancel,
+              style: PcButtonStyle.gray,
+              width: 640,
+              height: 76,
+              fontSize: 30,
+              onPressed: () => Navigator.of(ctx).pop(false),
+            ),
+          ],
+        ),
       ),
     );
     if (ok != true || !mounted) return;
@@ -164,7 +204,9 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
       _success = null;
     });
     try {
-      final transfer = await ref.read(sessionProvider.notifier).sendCoinTransfer(gameId: digits, amount: amount);
+      final transfer = await ref
+          .read(sessionProvider.notifier)
+          .sendCoinTransfer(gameId: digits, amount: amount);
       final recipient = transfer['toName'] as String? ?? name;
       if (mounted) {
         _amount.clear();
@@ -177,7 +219,8 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
       try {
         await ref.read(lobbyProvider.notifier).refresh();
       } catch (_) {}
-      final dialogCtx = rootNavigatorKey.currentContext ?? (mounted ? context : null);
+      final dialogCtx =
+          rootNavigatorKey.currentContext ?? (mounted ? context : null);
       if (dialogCtx != null && dialogCtx.mounted) {
         try {
           await showDuelMessage(
@@ -201,7 +244,16 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
     final t = ref.watch(stringsProvider);
     final cfg = widget.config;
     if (!cfg.enabled) {
-      return Center(child: Text(t.transferOff, style: AppText.label(22, color: DuelColors.dim, weight: FontWeight.w800)));
+      return Center(
+        child: Text(
+          t.transferOff,
+          style: AppText.label(
+            22,
+            color: DuelColors.dim,
+            weight: FontWeight.w800,
+          ),
+        ),
+      );
     }
     final amount = _amountInt ?? 0;
     final fee = amount > 0 ? _feeFor(amount) : 0;
@@ -223,12 +275,20 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
             if (!phone) ...[
               Text(
                 t.tabTransfer,
-                style: AppText.label(40, color: DuelColors.gold, weight: FontWeight.w900),
+                style: AppText.label(
+                  40,
+                  color: DuelColors.gold,
+                  weight: FontWeight.w900,
+                ),
               ),
               const SizedBox(height: 8),
             ],
             Text(
-              t.transferFeeHint(cfg.feePercent, formatCoins(fee), formatCoins(total)),
+              t.transferFeeHint(
+                cfg.feePercent,
+                formatCoins(fee),
+                formatCoins(total),
+              ),
               maxLines: phone ? 2 : null,
               overflow: phone ? TextOverflow.ellipsis : null,
               style: AppText.label(phone ? 10 : 18, color: DuelColors.dim),
@@ -362,7 +422,11 @@ class _ProfilePreview extends ConsumerWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1A2140),
         borderRadius: BorderRadius.circular(compact ? 10 : 16),
-        border: Border.all(color: eligible ? DuelColors.green.withValues(alpha: 0.5) : DuelColors.red.withValues(alpha: 0.5)),
+        border: Border.all(
+          color: eligible
+              ? DuelColors.green.withValues(alpha: 0.5)
+              : DuelColors.red.withValues(alpha: 0.5),
+        ),
       ),
       child: Row(
         children: [
@@ -376,16 +440,25 @@ class _ProfilePreview extends ConsumerWidget {
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppText.label(compact ? 13 : 24, weight: FontWeight.w900),
+                  style: AppText.label(
+                    compact ? 13 : 24,
+                    weight: FontWeight.w900,
+                  ),
                 ),
                 Text(
                   'ID $gameId',
-                  style: AppText.label(compact ? 10 : 18, color: DuelColors.dim),
+                  style: AppText.label(
+                    compact ? 10 : 18,
+                    color: DuelColors.dim,
+                  ),
                 ),
                 if (!eligible)
                   Text(
                     t.transferNotEligible,
-                    style: AppText.label(compact ? 9 : 16, color: DuelColors.red),
+                    style: AppText.label(
+                      compact ? 9 : 16,
+                      color: DuelColors.red,
+                    ),
                   ),
               ],
             ),

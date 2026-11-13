@@ -19,9 +19,10 @@ Future<void> showNoticesDialog(BuildContext context, WidgetRef ref) {
     context,
     builder: (dialog) => PcDialog(
       title: t.noticesTitle,
+      width: 820,
       scroll: false,
-      maxBodyHeight: 1500,
-      child: SizedBox(height: 1300, child: NoticesList(notices: notices)),
+      maxBodyHeight: 900,
+      child: SizedBox(height: 720, child: NoticesList(notices: notices)),
     ),
   );
 }
@@ -34,7 +35,9 @@ class NoticesScreen extends ConsumerStatefulWidget {
 }
 
 class _NoticesScreenState extends ConsumerState<NoticesScreen> {
-  late final Future<List<Map<String, dynamic>>> _notices = ref.read(sessionProvider.notifier).notices();
+  late final Future<List<Map<String, dynamic>>> _notices = ref
+      .read(sessionProvider.notifier)
+      .notices();
 
   @override
   Widget build(BuildContext context) {
@@ -60,14 +63,22 @@ class NoticesList extends ConsumerWidget {
       builder: (context, snap) {
         if (snap.hasError) {
           final offline = snap.error is ApiException;
-          return Center(child: PcEmptyState(message: offline ? titleCase(t.offlineServer) : t.noticesLoadFail));
+          return Center(
+            child: PcEmptyState(
+              message: offline ? titleCase(t.offlineServer) : t.noticesLoadFail,
+            ),
+          );
         }
         final items = snap.data;
         if (items == null) {
-          return const Center(child: CircularProgressIndicator(color: Colors.white));
+          return const Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          );
         }
         if (items.isEmpty) {
-          return Center(child: PcEmptyState(message: titleCase(t.noticesEmpty)));
+          return Center(
+            child: PcEmptyState(message: titleCase(t.noticesEmpty)),
+          );
         }
         return ListView.builder(
           padding: const EdgeInsets.symmetric(vertical: 10),
@@ -96,13 +107,33 @@ class _NoticeCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(banner ? Icons.campaign_rounded : Icons.mail_rounded, color: banner ? DesignColors.pcGold : Colors.white, size: 44),
+              Icon(
+                banner ? Icons.campaign_rounded : Icons.mail_rounded,
+                color: banner ? DesignColors.pcGold : Colors.white,
+                size: 44,
+              ),
               const SizedBox(width: 14),
-              Expanded(child: Text(titleCase(notice['title'] as String), style: pcText(34, color: banner ? DesignColors.pcGold : Colors.white))),
+              Expanded(
+                child: Text(
+                  titleCase(notice['title'] as String),
+                  style: pcText(
+                    34,
+                    color: banner ? DesignColors.pcGold : Colors.white,
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(notice['body'] as String, style: pcText(28, color: const Color(0xFFE6E2FF), weight: FontWeight.w500, shadow: false).copyWith(height: 1.4)),
+          Text(
+            notice['body'] as String,
+            style: pcText(
+              28,
+              color: const Color(0xFFE6E2FF),
+              weight: FontWeight.w500,
+              shadow: false,
+            ).copyWith(height: 1.4),
+          ),
         ],
       ),
     );

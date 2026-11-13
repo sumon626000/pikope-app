@@ -67,17 +67,17 @@ class PortraitCanvas extends StatelessWidget {
     this.minHeight = 1800,
   });
 
-  static const width = 1080.0;
+  static const width = PortraitWebLayout.designWidth;
 
   /// Above this viewport width, use a centered phone column instead of full bleed.
-  static const wideBreakpoint = 700.0;
+  static const wideBreakpoint = PortraitWebLayout.wideBreakpoint;
 
   /// Max logical width of the phone column on desktop / large web.
-  static const phoneColumnMaxWidth = 420.0;
+  static const phoneColumnMaxWidth = PortraitWebLayout.phoneColumnMaxWidth;
 
   /// Popups on desktop: slightly narrower than the home column so they feel
   /// like modals, not a second full phone screen.
-  static const dialogColumnMaxWidth = 360.0;
+  static const dialogColumnMaxWidth = PortraitWebLayout.dialogColumnMaxWidth;
 
   final double minHeight;
 
@@ -85,20 +85,12 @@ class PortraitCanvas extends StatelessWidget {
   final Widget Function(BuildContext context, double height) builder;
 
   /// Width used to scale the 1080 design canvas for [viewportWidth].
-  static double columnWidthFor(double viewportWidth) {
-    if (viewportWidth >= wideBreakpoint) {
-      return min(phoneColumnMaxWidth, viewportWidth);
-    }
-    return viewportWidth;
-  }
+  static double columnWidthFor(double viewportWidth) =>
+      PortraitWebLayout.columnWidthFor(viewportWidth);
 
   /// Width used to scale dialogs / choosers (tighter on desktop web).
-  static double dialogColumnWidthFor(double viewportWidth) {
-    if (viewportWidth >= wideBreakpoint) {
-      return min(dialogColumnMaxWidth, viewportWidth);
-    }
-    return viewportWidth;
-  }
+  static double dialogColumnWidthFor(double viewportWidth) =>
+      PortraitWebLayout.dialogColumnWidthFor(viewportWidth);
 
   @override
   Widget build(BuildContext context) => Scaffold(

@@ -18,9 +18,10 @@ Future<void> showNotificationsDialog(BuildContext context, WidgetRef ref) {
     context,
     builder: (dialog) => PcDialog(
       title: t.notificationsTitle,
+      width: 820,
       scroll: false,
-      maxBodyHeight: 1500,
-      child: const SizedBox(height: 1300, child: NotificationsList()),
+      maxBodyHeight: 900,
+      child: const SizedBox(height: 720, child: NotificationsList()),
     ),
   );
 }
@@ -31,7 +32,10 @@ class NotificationsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
-    return DuelPage(title: t.notificationsTitle, child: const NotificationsList());
+    return DuelPage(
+      title: t.notificationsTitle,
+      child: const NotificationsList(),
+    );
   }
 }
 
@@ -72,7 +76,13 @@ class _NotificationsListState extends ConsumerState<NotificationsList> {
       children: [
         Align(
           alignment: Alignment.centerRight,
-          child: PcButton(label: t.markAllRead, style: PcButtonStyle.gray, height: 70, fontSize: 26, onPressed: _markAllRead),
+          child: PcButton(
+            label: t.markAllRead,
+            style: PcButtonStyle.gray,
+            height: 70,
+            fontSize: 26,
+            onPressed: _markAllRead,
+          ),
         ),
         const SizedBox(height: 14),
         Expanded(
@@ -81,14 +91,26 @@ class _NotificationsListState extends ConsumerState<NotificationsList> {
             builder: (context, snap) {
               if (snap.hasError) {
                 final offline = snap.error is ApiException;
-                return Center(child: PcEmptyState(message: offline ? titleCase(t.offlineServer) : t.notificationsLoadFail));
+                return Center(
+                  child: PcEmptyState(
+                    message: offline
+                        ? titleCase(t.offlineServer)
+                        : t.notificationsLoadFail,
+                  ),
+                );
               }
               final items = snap.data;
               if (items == null) {
-                return const Center(child: CircularProgressIndicator(color: Colors.white));
+                return const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                );
               }
               if (items.isEmpty) {
-                return Center(child: PcEmptyState(message: titleCase(t.notificationsEmptyList)));
+                return Center(
+                  child: PcEmptyState(
+                    message: titleCase(t.notificationsEmptyList),
+                  ),
+                );
               }
               return ListView.builder(
                 padding: const EdgeInsets.symmetric(vertical: 6),
@@ -121,13 +143,35 @@ class _NotificationCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(read ? Icons.notifications_none_rounded : Icons.notifications_active_rounded, color: read ? DesignColors.pcTextDim : DesignColors.pcGold, size: 44),
+              Icon(
+                read
+                    ? Icons.notifications_none_rounded
+                    : Icons.notifications_active_rounded,
+                color: read ? DesignColors.pcTextDim : DesignColors.pcGold,
+                size: 44,
+              ),
               const SizedBox(width: 14),
-              Expanded(child: Text(titleCase(item['title'] as String), style: pcText(34, color: read ? Colors.white : DesignColors.pcGold))),
+              Expanded(
+                child: Text(
+                  titleCase(item['title'] as String),
+                  style: pcText(
+                    34,
+                    color: read ? Colors.white : DesignColors.pcGold,
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(item['body'] as String, style: pcText(28, color: const Color(0xFFE6E2FF), weight: FontWeight.w500, shadow: false).copyWith(height: 1.4)),
+          Text(
+            item['body'] as String,
+            style: pcText(
+              28,
+              color: const Color(0xFFE6E2FF),
+              weight: FontWeight.w500,
+              shadow: false,
+            ).copyWith(height: 1.4),
+          ),
         ],
       ),
     );

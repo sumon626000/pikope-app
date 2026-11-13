@@ -7,6 +7,7 @@ import 'app_state.dart';
 import 'app_theme.dart';
 import 'brand.dart';
 import 'audio_service.dart';
+import 'design/design_layout.dart';
 import 'orientation.dart';
 
 /// Resolves an avatar reference: `asset:<name>` is bundled artwork,
@@ -89,12 +90,23 @@ class FramedTile extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color.lerp(frameColor, Colors.white, 0.3)!, Color.lerp(frameColor, Colors.black, 0.25)!],
+          colors: [
+            Color.lerp(frameColor, Colors.white, 0.3)!,
+            Color.lerp(frameColor, Colors.black, 0.25)!,
+          ],
         ),
         borderRadius: BorderRadius.circular(radius),
         boxShadow: [
-          const BoxShadow(color: Colors.black54, blurRadius: 10, offset: Offset(0, 4)),
-          if (glow) BoxShadow(color: frameColor.withValues(alpha: 0.65), blurRadius: size * 0.28),
+          const BoxShadow(
+            color: Colors.black54,
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+          if (glow)
+            BoxShadow(
+              color: frameColor.withValues(alpha: 0.65),
+              blurRadius: size * 0.28,
+            ),
         ],
       ),
       child: ClipRRect(
@@ -115,6 +127,7 @@ class CoinsTile extends StatelessWidget {
 
   final int coins;
   final double size;
+
   /// Larger coin art and prize digits (in-match pot display).
   final bool emphasis;
 
@@ -128,10 +141,20 @@ class CoinsTile extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset(PicoCoin.asset, height: coinH, filterQuality: FilterQuality.medium),
+          Image.asset(
+            PicoCoin.asset,
+            height: coinH,
+            filterQuality: FilterQuality.medium,
+          ),
           FittedBox(
-            child: Text('$coins',
-                style: AppText.label(digits, color: AppColors.gold, weight: FontWeight.w900)),
+            child: Text(
+              '$coins',
+              style: AppText.label(
+                digits,
+                color: AppColors.gold,
+                weight: FontWeight.w900,
+              ),
+            ),
           ),
         ],
       ),
@@ -186,7 +209,9 @@ class _GameButtonState extends State<GameButton> {
     final w = widget;
     final enabled = w.onPressed != null;
     final color = w.color;
-    final fg = color.computeLuminance() > 0.4 ? const Color(0xFF10131A) : Colors.white;
+    final fg = color.computeLuminance() > 0.4
+        ? const Color(0xFF10131A)
+        : Colors.white;
     // Pool City buttons are flat-cornered slabs, not pills.
     final radius = BorderRadius.circular(6);
     final lip = w.height * 0.06;
@@ -219,7 +244,11 @@ class _GameButtonState extends State<GameButton> {
                     color: Color.lerp(color, Colors.black, 0.45),
                     borderRadius: radius,
                     boxShadow: const [
-                      BoxShadow(color: Color(0x99000000), blurRadius: 12, offset: Offset(0, 6)),
+                      BoxShadow(
+                        color: Color(0x99000000),
+                        blurRadius: 12,
+                        offset: Offset(0, 6),
+                      ),
                     ],
                   ),
                 ),
@@ -237,11 +266,18 @@ class _GameButtonState extends State<GameButton> {
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [Color.lerp(color, Colors.white, 0.28)!, color, Color.lerp(color, Colors.black, 0.12)!],
+                      colors: [
+                        Color.lerp(color, Colors.white, 0.28)!,
+                        color,
+                        Color.lerp(color, Colors.black, 0.12)!,
+                      ],
                       stops: const [0, 0.55, 1],
                     ),
                     borderRadius: radius,
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.45), width: 2),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.45),
+                      width: 2,
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -254,9 +290,15 @@ class _GameButtonState extends State<GameButton> {
                       Flexible(
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
-                          child: Text(w.label,
-                              maxLines: 1,
-                              style: AppText.label(w.fontSize, color: fg, weight: FontWeight.w700).copyWith(fontFamily: 'Rubik')),
+                          child: Text(
+                            w.label,
+                            maxLines: 1,
+                            style: AppText.label(
+                              w.fontSize,
+                              color: fg,
+                              weight: FontWeight.w700,
+                            ).copyWith(fontFamily: 'Rubik'),
+                          ),
                         ),
                       ),
                     ],
@@ -278,7 +320,8 @@ class RoomBackground extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => CustomPaint(painter: _RoomPainter(), child: child);
+  Widget build(BuildContext context) =>
+      CustomPaint(painter: _RoomPainter(), child: child);
 }
 
 ui.Image? _roomImage;
@@ -351,18 +394,33 @@ class DesignCanvas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => OrientationLock(
-        // Match screens are landscape (pool tables; Ludo / Carrom until their
-        // portrait layouts land).
-        orientation: AppOrientation.landscape,
-        child: RoomBackground(
-          child: SafeArea(
-            child: Center(
-              child: FittedBox(
-                fit: BoxFit.contain,
-                child: SizedBox.fromSize(size: size, child: child),
+    // Match screens are landscape (pool tables; Ludo / Carrom until their
+    // portrait layouts land).
+    orientation: AppOrientation.landscape,
+    child: RoomBackground(
+      child: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, c) {
+            // Match tables fill the viewport; leftover menu canvases cap
+            // on wide desktop so they do not stretch edge-to-edge.
+            final host = size == tableSize
+                ? Size(c.maxWidth, c.maxHeight)
+                : PortraitWebLayout.landscapeMenuHost(
+                    Size(c.maxWidth, c.maxHeight),
+                  );
+            return Center(
+              child: SizedBox(
+                width: host.width,
+                height: host.height,
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: SizedBox.fromSize(size: size, child: child),
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
-      );
+      ),
+    ),
+  );
 }

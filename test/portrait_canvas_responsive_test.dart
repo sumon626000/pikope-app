@@ -1,3 +1,4 @@
+import 'package:billiard_poker/core/design/design_layout.dart';
 import 'package:billiard_poker/core/duel_ui.dart';
 import 'package:billiard_poker/features/duel/home_portrait_widgets.dart';
 import 'package:flutter/material.dart';
@@ -35,6 +36,16 @@ void main() {
       PortraitCanvas.dialogColumnMaxWidth,
       lessThan(PortraitCanvas.phoneColumnMaxWidth),
     );
+  });
+
+  test('PortraitWebLayout landscapeMenuHost caps desktop', () {
+    expect(
+      PortraitWebLayout.landscapeMenuHost(const Size(390, 844)),
+      const Size(390, 844),
+    );
+    final desk = PortraitWebLayout.landscapeMenuHost(const Size(1280, 800));
+    expect(desk.width, PortraitWebLayout.landscapeMenuMaxWidth);
+    expect(desk.height, PortraitWebLayout.landscapeMenuMaxHeight);
   });
 
   testWidgets('PortraitCanvas centers column on 1280x800 desktop', (

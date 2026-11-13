@@ -1,4 +1,52 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+
+/// Phone-column caps for portrait Pool City on wide desktop / web.
+///
+/// Shared by [PortraitCanvas], dialog frames, and leftover landscape menu
+/// canvases so oversized edge-to-edge UI stays consistent.
+abstract final class PortraitWebLayout {
+  static const designWidth = 1080.0;
+
+  /// Above this viewport width, use a centered phone column instead of full bleed.
+  static const wideBreakpoint = 700.0;
+
+  /// Max logical width of the phone column on desktop / large web.
+  static const phoneColumnMaxWidth = 420.0;
+
+  /// Popups on desktop: slightly narrower than the home column.
+  static const dialogColumnMaxWidth = 360.0;
+
+  /// Legacy landscape menu canvases (1600×900) on wide desktop.
+  static const landscapeMenuMaxWidth = 960.0;
+  static const landscapeMenuMaxHeight = 540.0;
+
+  /// Width used to scale the 1080 design canvas for [viewportWidth].
+  static double columnWidthFor(double viewportWidth) {
+    if (viewportWidth >= wideBreakpoint) {
+      return math.min(phoneColumnMaxWidth, viewportWidth);
+    }
+    return viewportWidth;
+  }
+
+  /// Width used to scale dialogs / choosers (tighter on desktop web).
+  static double dialogColumnWidthFor(double viewportWidth) {
+    if (viewportWidth >= wideBreakpoint) {
+      return math.min(dialogColumnMaxWidth, viewportWidth);
+    }
+    return viewportWidth;
+  }
+
+  /// Host box for landscape menu pages; full viewport below the breakpoint.
+  static Size landscapeMenuHost(Size viewport) {
+    if (viewport.width < wideBreakpoint) return viewport;
+    return Size(
+      math.min(landscapeMenuMaxWidth, viewport.width),
+      math.min(landscapeMenuMaxHeight, viewport.height),
+    );
+  }
+}
 
 /// Canvas, breakpoints, and component dimensions (1600×900 lobby space unless noted).
 abstract final class DesignLayout {
@@ -65,7 +113,8 @@ abstract final class DesignBreakpoints {
   }
 
   static bool tabletOrWider(BuildContext context) =>
-      MediaQuery.sizeOf(context).shortestSide >= DesignLayout.tabletMinShortSide;
+      MediaQuery.sizeOf(context).shortestSide >=
+      DesignLayout.tabletMinShortSide;
 
   static bool desktopWide(BuildContext context) =>
       MediaQuery.sizeOf(context).width >= DesignLayout.desktopMinWidth;

@@ -31,7 +31,11 @@ class CuesScreen extends ConsumerStatefulWidget {
 class _CuesScreenState extends ConsumerState<CuesScreen> {
   String? _busy;
 
-  Future<void> _run(String id, Future<void> Function() action, {String? done}) async {
+  Future<void> _run(
+    String id,
+    Future<void> Function() action, {
+    String? done,
+  }) async {
     setState(() => _busy = id);
     try {
       await action();
@@ -39,10 +43,16 @@ class _CuesScreenState extends ConsumerState<CuesScreen> {
     } on ApiException catch (e) {
       if (mounted) {
         final t = ref.read(stringsProvider);
-        showDuelMessage(context,
-            title: e.code.startsWith('not_enough') ? e.message.toUpperCase() : t.notDone,
-            body: e.code.startsWith('not_enough') ? t.notEnoughCueBody : t.maybeApi(e.message),
-            icon: Icons.lock_rounded);
+        showDuelMessage(
+          context,
+          title: e.code.startsWith('not_enough')
+              ? e.message.toUpperCase()
+              : t.notDone,
+          body: e.code.startsWith('not_enough')
+              ? t.notEnoughCueBody
+              : t.maybeApi(e.message),
+          icon: Icons.lock_rounded,
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = null);
@@ -56,21 +66,49 @@ class _CuesScreenState extends ConsumerState<CuesScreen> {
       barrierColor: const Color(0xB3000000),
       builder: (dialog) => PcDialog(
         title: t.buyCue(cue.name),
-        actions: [
-          PcButton(label: t.cancel, style: PcButtonStyle.gray, width: 300, onPressed: () => Navigator.of(dialog).pop(false)),
-          PcButton(label: t.buy, style: PcButtonStyle.gold, width: 360, onPressed: () => Navigator.of(dialog).pop(true)),
-        ],
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        width: 820,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const PikoCoinIcon(size: 90),
-            const SizedBox(width: 16),
-            Text(formatCoins(cue.price), style: pcText(54, color: DesignColors.pcGold)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const PikoCoinIcon(size: 72),
+                const SizedBox(width: 14),
+                Text(
+                  formatCoins(cue.price),
+                  style: pcText(48, color: DesignColors.pcGold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 28),
+            PcButton(
+              label: t.buy,
+              style: PcButtonStyle.gold,
+              width: 640,
+              height: 84,
+              fontSize: 34,
+              onPressed: () => Navigator.of(dialog).pop(true),
+            ),
+            const SizedBox(height: 14),
+            PcButton(
+              label: t.cancel,
+              style: PcButtonStyle.gray,
+              width: 640,
+              height: 76,
+              fontSize: 30,
+              onPressed: () => Navigator.of(dialog).pop(false),
+            ),
           ],
         ),
       ),
     );
-    if (yes == true) await _run(cue.id, () => ref.read(lobbyProvider.notifier).buyCue(cue.id), done: 'bought');
+    if (yes == true)
+      await _run(
+        cue.id,
+        () => ref.read(lobbyProvider.notifier).buyCue(cue.id),
+        done: 'bought',
+      );
   }
 
   @override
@@ -80,16 +118,25 @@ class _CuesScreenState extends ConsumerState<CuesScreen> {
     final session = ref.watch(sessionProvider);
     final all = lobby.valueOrNull?.cues ?? const <CueOffer>[];
     final owned = session.cues;
-    final cues = [for (final c in all) if (!widget.ownedOnly || owned.contains(c.id)) c];
+    final cues = [
+      for (final c in all)
+        if (!widget.ownedOnly || owned.contains(c.id)) c,
+    ];
     return DuelPage(
-      title: widget.ownedOnly ? t.myItems : (widget.asShop ? t.shopTitleShort : t.navCues),
+      title: widget.ownedOnly
+          ? t.myItems
+          : (widget.asShop ? t.shopTitleShort : t.navCues),
       sub: widget.ownedOnly ? t.cuesSubOwned : t.cuesSubBuy,
       legacyScale: 2.1,
       child: lobby.valueOrNull == null
           ? Center(
               child: lobby.hasError
-                  ? Text(t.offlineServer, style: AppText.label(20, color: DuelColors.red))
-                  : const CircularProgressIndicator(color: DuelColors.silver))
+                  ? Text(
+                      t.offlineServer,
+                      style: AppText.label(20, color: DuelColors.red),
+                    )
+                  : const CircularProgressIndicator(color: DuelColors.silver),
+            )
           : Column(
               children: [
                 if (!widget.ownedOnly)
@@ -98,7 +145,11 @@ class _CuesScreenState extends ConsumerState<CuesScreen> {
                     child: Text(
                       t.cuesSamePlayHint,
                       textAlign: TextAlign.center,
-                      style: AppText.label(14, color: DuelColors.silver, weight: FontWeight.w700),
+                      style: AppText.label(
+                        14,
+                        color: DuelColors.silver,
+                        weight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 Expanded(
@@ -116,7 +167,12 @@ class _CuesScreenState extends ConsumerState<CuesScreen> {
                           equipped: session.cue == cue.id,
                           busy: _busy == cue.id,
                           onBuy: () => _buy(cue),
-                          onEquip: () => _run(cue.id, () => ref.read(lobbyProvider.notifier).equipCue(cue.id)),
+                          onEquip: () => _run(
+                            cue.id,
+                            () => ref
+                                .read(lobbyProvider.notifier)
+                                .equipCue(cue.id),
+                          ),
                           t: t,
                         ),
                       if (widget.ownedOnly)
@@ -126,14 +182,34 @@ class _CuesScreenState extends ConsumerState<CuesScreen> {
                             pushScreen(context, const SettingsScreen());
                           },
                           child: Container(
-                            decoration: duelPanel(radius: 16, rim: DuelColors.rim),
+                            decoration: duelPanel(
+                              radius: 16,
+                              rim: DuelColors.rim,
+                            ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.table_restaurant_rounded, color: DuelColors.silver, size: 70),
+                                const Icon(
+                                  Icons.table_restaurant_rounded,
+                                  color: DuelColors.silver,
+                                  size: 70,
+                                ),
                                 const SizedBox(height: 8),
-                                Text(t.tablesProfile, style: AppText.label(18, color: DuelColors.silver, weight: FontWeight.w900)),
-                                Text(t.chooseTableLook, style: AppText.label(11, color: DuelColors.dim)),
+                                Text(
+                                  t.tablesProfile,
+                                  style: AppText.label(
+                                    18,
+                                    color: DuelColors.silver,
+                                    weight: FontWeight.w900,
+                                  ),
+                                ),
+                                Text(
+                                  t.chooseTableLook,
+                                  style: AppText.label(
+                                    11,
+                                    color: DuelColors.dim,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -148,7 +224,15 @@ class _CuesScreenState extends ConsumerState<CuesScreen> {
 }
 
 class _CueCard extends StatelessWidget {
-  const _CueCard({required this.cue, required this.owned, required this.equipped, required this.busy, required this.onBuy, required this.onEquip, required this.t});
+  const _CueCard({
+    required this.cue,
+    required this.owned,
+    required this.equipped,
+    required this.busy,
+    required this.onBuy,
+    required this.onEquip,
+    required this.t,
+  });
 
   final CueOffer cue;
   final bool owned;
@@ -161,13 +245,25 @@ class _CueCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: duelPanel(radius: 16, rim: equipped ? DuelColors.green : DuelColors.rim, glow: equipped),
+      decoration: duelPanel(
+        radius: 16,
+        rim: equipped ? DuelColors.green : DuelColors.rim,
+        glow: equipped,
+      ),
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       child: Column(
         children: [
           Expanded(child: CueStickPreview(cueId: cue.id)),
           const SizedBox(height: 6),
-          Text(cue.name.toUpperCase(), maxLines: 1, style: AppText.label(17, color: Colors.white, weight: FontWeight.w900)),
+          Text(
+            cue.name.toUpperCase(),
+            maxLines: 1,
+            style: AppText.label(
+              17,
+              color: Colors.white,
+              weight: FontWeight.w900,
+            ),
+          ),
           const SizedBox(height: 8),
           if (equipped)
             Container(
@@ -176,14 +272,32 @@ class _CueCard extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.check_circle_rounded, color: DuelColors.green, size: 24),
+                  const Icon(
+                    Icons.check_circle_rounded,
+                    color: DuelColors.green,
+                    size: 24,
+                  ),
                   const SizedBox(width: 6),
-                  Text(t.inUse, style: AppText.label(16, color: DuelColors.green, weight: FontWeight.w900)),
+                  Text(
+                    t.inUse,
+                    style: AppText.label(
+                      16,
+                      color: DuelColors.green,
+                      weight: FontWeight.w900,
+                    ),
+                  ),
                 ],
               ),
             )
           else if (owned)
-            DuelButton(label: busy ? '...' : t.useCue, width: 170, height: 40, fontSize: 16, color: DuelColors.blue, onPressed: busy ? null : onEquip)
+            DuelButton(
+              label: busy ? '...' : t.useCue,
+              width: 170,
+              height: 40,
+              fontSize: 16,
+              color: DuelColors.blue,
+              onPressed: busy ? null : onEquip,
+            )
           else
             GestureDetector(
               onTap: busy
@@ -205,7 +319,14 @@ class _CueCard extends StatelessWidget {
                   children: [
                     const PikoCoinIcon(size: 26),
                     const SizedBox(width: 8),
-                    Text(busy ? '...' : formatCoins(cue.price), style: AppText.label(17, color: DuelColors.gold, weight: FontWeight.w900)),
+                    Text(
+                      busy ? '...' : formatCoins(cue.price),
+                      style: AppText.label(
+                        17,
+                        color: DuelColors.gold,
+                        weight: FontWeight.w900,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -215,4 +336,3 @@ class _CueCard extends StatelessWidget {
     );
   }
 }
-

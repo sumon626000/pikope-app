@@ -1639,7 +1639,7 @@ class _DailyBonusDialogState extends ConsumerState<_DailyBonusDialog> {
     return Material(
       type: MaterialType.transparency,
       child: SizedBox(
-        width: 1000,
+        width: DesignAuth.dailyBonusDialogWidth,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

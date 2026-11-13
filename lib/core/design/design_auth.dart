@@ -44,7 +44,7 @@ abstract final class DesignAuth {
   static const overlayScrim = Color(0xB3000000);
   static const dialogChooserWidth = 460.0;
   static const dialogPracticeWidth = 520.0;
-  static const dailyBonusDialogWidth = 640.0;
+  static const dailyBonusDialogWidth = 900.0;
 
   static const fieldFill = DesignColors.appPanel;
   static const fieldBorder = DesignColors.appFrame;
@@ -117,10 +117,13 @@ class DesignPromptDialog extends StatelessWidget {
         children: [
           IconTheme.merge(data: const IconThemeData(size: 90), child: icon),
           const SizedBox(height: 24),
-          Text(body, textAlign: TextAlign.center, style: pcText(36, weight: FontWeight.w500).copyWith(height: 1.35)),
+          Text(
+            body,
+            textAlign: TextAlign.center,
+            style: pcText(36, weight: FontWeight.w500).copyWith(height: 1.35),
+          ),
         ],
       ),
     );
   }
 }
-

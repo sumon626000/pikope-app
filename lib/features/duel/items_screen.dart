@@ -34,7 +34,11 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
   late int _tab = widget.initialTab;
   String? _busy;
 
-  Future<void> _run(String id, Future<void> Function() action, {bool celebrate = false}) async {
+  Future<void> _run(
+    String id,
+    Future<void> Function() action, {
+    bool celebrate = false,
+  }) async {
     setState(() => _busy = id);
     try {
       await action();
@@ -42,10 +46,16 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
     } on ApiException catch (e) {
       if (mounted) {
         final t = ref.read(stringsProvider);
-        showDuelMessage(context,
-            title: e.code.startsWith('not_enough') ? e.message.toUpperCase() : t.notDone,
-            body: e.code.startsWith('not_enough') ? t.notEnoughCueBody : t.maybeApi(e.message),
-            icon: Icons.lock_rounded);
+        showDuelMessage(
+          context,
+          title: e.code.startsWith('not_enough')
+              ? e.message.toUpperCase()
+              : t.notDone,
+          body: e.code.startsWith('not_enough')
+              ? t.notEnoughCueBody
+              : t.maybeApi(e.message),
+          icon: Icons.lock_rounded,
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = null);
@@ -58,32 +68,79 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
       context,
       builder: (dialog) => PcDialog(
         title: t.buyCue(cue.name),
-        actions: [
-          PcButton(label: t.cancel, style: PcButtonStyle.gray, width: 300, onPressed: () => Navigator.of(dialog).pop(false)),
-          PcButton(label: t.buy, style: PcButtonStyle.gold, width: 360, onPressed: () => Navigator.of(dialog).pop(true)),
-        ],
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        width: 820,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const PikoCoinIcon(size: 90),
-            const SizedBox(width: 16),
-            Text(formatCoins(cue.price), style: pcText(54, color: DesignColors.pcGold)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const PikoCoinIcon(size: 72),
+                const SizedBox(width: 14),
+                Text(
+                  formatCoins(cue.price),
+                  style: pcText(48, color: DesignColors.pcGold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 28),
+            PcButton(
+              label: t.buy,
+              style: PcButtonStyle.gold,
+              width: 640,
+              height: 84,
+              fontSize: 34,
+              onPressed: () => Navigator.of(dialog).pop(true),
+            ),
+            const SizedBox(height: 14),
+            PcButton(
+              label: t.cancel,
+              style: PcButtonStyle.gray,
+              width: 640,
+              height: 76,
+              fontSize: 30,
+              onPressed: () => Navigator.of(dialog).pop(false),
+            ),
           ],
         ),
       ),
     );
-    if (yes == true) await _run(cue.id, () => ref.read(lobbyProvider.notifier).buyCue(cue.id), celebrate: true);
+    if (yes == true)
+      await _run(
+        cue.id,
+        () => ref.read(lobbyProvider.notifier).buyCue(cue.id),
+        celebrate: true,
+      );
   }
 
   List<Widget> _cueCards(AppStrings t) {
     final lobby = ref.watch(lobbyProvider);
     final session = ref.watch(sessionProvider);
-    final cues = lobby.valueOrNull?.cues ?? [for (final s in CueStyle.all) CueOffer(id: s.id, name: s.name, price: 0, currency: 'coins', owned: s.id == 'classic')];
+    final cues =
+        lobby.valueOrNull?.cues ??
+        [
+          for (final s in CueStyle.all)
+            CueOffer(
+              id: s.id,
+              name: s.name,
+              price: 0,
+              currency: 'coins',
+              owned: s.id == 'classic',
+            ),
+        ];
     final owned = session.cues;
     return [
       Padding(
         padding: const EdgeInsets.only(bottom: 18),
-        child: Text(t.cuesSamePlayHint, textAlign: TextAlign.center, style: pcText(26, color: DesignColors.pcTextDim, weight: FontWeight.w500)),
+        child: Text(
+          t.cuesSamePlayHint,
+          textAlign: TextAlign.center,
+          style: pcText(
+            26,
+            color: DesignColors.pcTextDim,
+            weight: FontWeight.w500,
+          ),
+        ),
       ),
       for (final cue in cues)
         () {
@@ -95,8 +152,18 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
             rarity: rarity,
             name: cue.name,
             selected: equipped,
-            trailing: Text(titleCase(isOwned ? t.inUse : formatCoins(cue.price)), style: pcText(28, color: isOwned ? const Color(0xFF6CF0A0) : DesignColors.pcGold)).withOpacity(isOwned && !equipped ? 0 : 1),
-            art: SizedBox(width: 940, height: 150, child: CueStickPreview(cueId: cue.id, stroke: 26)),
+            trailing: Text(
+              titleCase(isOwned ? t.inUse : formatCoins(cue.price)),
+              style: pcText(
+                28,
+                color: isOwned ? const Color(0xFF6CF0A0) : DesignColors.pcGold,
+              ),
+            ).withOpacity(isOwned && !equipped ? 0 : 1),
+            art: SizedBox(
+              width: 940,
+              height: 150,
+              child: CueStickPreview(cueId: cue.id, stroke: 26),
+            ),
             info: ItemStats([
               (t.navCues, rarity.label, rarity.colors.first),
               ('ID', cue.id.toUpperCase(), const Color(0xFF9FE4FF)),
@@ -104,8 +171,22 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
             action: equipped
                 ? ItemActionButton.using(t.inUse)
                 : isOwned
-                    ? ItemActionButton.use(busy ? '...' : t.useCue, onTap: busy ? null : () => _run(cue.id, () => ref.read(lobbyProvider.notifier).equipCue(cue.id)))
-                    : ItemActionButton.buy(busy ? '...' : t.buy, price: cue.price, onTap: busy ? null : () => _buyCue(cue)),
+                ? ItemActionButton.use(
+                    busy ? '...' : t.useCue,
+                    onTap: busy
+                        ? null
+                        : () => _run(
+                            cue.id,
+                            () => ref
+                                .read(lobbyProvider.notifier)
+                                .equipCue(cue.id),
+                          ),
+                  )
+                : ItemActionButton.buy(
+                    busy ? '...' : t.buy,
+                    price: cue.price,
+                    onTap: busy ? null : () => _buyCue(cue),
+                  ),
           );
         }(),
     ];
@@ -137,10 +218,14 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
         onProfile: () => pushScreen(context, const SettingsScreen()),
         onWallet: () => pushScreen(context, const ShopScreen()),
       ),
-      tabs: PcTabs(labels: tabs, index: _tab, onChanged: (i) {
-        AudioService.tap();
-        setState(() => _tab = i);
-      }),
+      tabs: PcTabs(
+        labels: tabs,
+        index: _tab,
+        onChanged: (i) {
+          AudioService.tap();
+          setState(() => _tab = i);
+        },
+      ),
       panel: false,
       scroll: true,
       bodyPadding: const EdgeInsets.fromLTRB(22, 10, 22, 10),
@@ -151,7 +236,11 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
           if (_tab == 0 && lobby.valueOrNull == null && lobby.hasError)
             Padding(
               padding: const EdgeInsets.only(bottom: 14),
-              child: Text(titleCase(t.offlineServer), textAlign: TextAlign.center, style: pcText(28, color: DuelColors.red)),
+              child: Text(
+                titleCase(t.offlineServer),
+                textAlign: TextAlign.center,
+                style: pcText(28, color: DuelColors.red),
+              ),
             ),
           ...cards,
         ],

@@ -271,11 +271,22 @@ class DuelCanvas extends StatelessWidget {
       body: CustomPaint(
         painter: _HallPainter(),
         child: SafeArea(
-          child: Center(
-            child: FittedBox(
-              fit: BoxFit.contain,
-              child: SizedBox.fromSize(size: size, child: child),
-            ),
+          child: LayoutBuilder(
+            builder: (context, c) {
+              final host = PortraitWebLayout.landscapeMenuHost(
+                Size(c.maxWidth, c.maxHeight),
+              );
+              return Center(
+                child: SizedBox(
+                  width: host.width,
+                  height: host.height,
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: SizedBox.fromSize(size: size, child: child),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),

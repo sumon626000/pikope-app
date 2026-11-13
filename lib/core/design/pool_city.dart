@@ -1172,7 +1172,7 @@ class PcDialog extends StatelessWidget {
     required this.title,
     required this.child,
     this.actions = const [],
-    this.width = 990,
+    this.width = 900,
     this.onClose,
     this.scroll = true,
     this.maxBodyHeight = 1500,

@@ -46,7 +46,10 @@ Future<bool> _restoreRegisteredIfSaved(WidgetRef ref) async {
 }
 
 /// Small lobby-style prompt (440px) — Cancel or continue to the compact sign-in form.
-Future<bool> _showLoginRequiredPrompt(BuildContext context, WidgetRef ref) async {
+Future<bool> _showLoginRequiredPrompt(
+  BuildContext context,
+  WidgetRef ref,
+) async {
   final t = ref.read(stringsProvider);
   final go = await showDuelDialog<bool>(
     context,
@@ -54,16 +57,45 @@ Future<bool> _showLoginRequiredPrompt(BuildContext context, WidgetRef ref) async
     barrierDismissible: true,
     builder: (ctx) => PcDialog(
       title: t.loginRequiredTitle,
-      actions: [
-        PcButton(label: t.cancel, style: PcButtonStyle.gray, width: 300, onPressed: () => Navigator.of(ctx).pop(false)),
-        PcButton(label: t.signUpOrLogin, width: 500, onPressed: () => Navigator.of(ctx).pop(true)),
-      ],
+      width: 820,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.login_rounded, color: DesignColors.pcGold, size: 90, shadows: [Shadow(color: Color(0x99000000), blurRadius: 8, offset: Offset(0, 4))]),
-          const SizedBox(height: 24),
-          Text(t.loginRequiredBody, textAlign: TextAlign.center, style: pcText(36, weight: FontWeight.w500).copyWith(height: 1.35)),
+          const Icon(
+            Icons.login_rounded,
+            color: DesignColors.pcGold,
+            size: 72,
+            shadows: [
+              Shadow(
+                color: Color(0x99000000),
+                blurRadius: 8,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Text(
+            t.loginRequiredBody,
+            textAlign: TextAlign.center,
+            style: pcText(30, weight: FontWeight.w500).copyWith(height: 1.35),
+          ),
+          const SizedBox(height: 28),
+          PcButton(
+            label: t.signUpOrLogin,
+            width: 640,
+            height: 84,
+            fontSize: 34,
+            onPressed: () => Navigator.of(ctx).pop(true),
+          ),
+          const SizedBox(height: 14),
+          PcButton(
+            label: t.cancel,
+            style: PcButtonStyle.gray,
+            width: 640,
+            height: 76,
+            fontSize: 30,
+            onPressed: () => Navigator.of(ctx).pop(false),
+          ),
         ],
       ),
     ),
