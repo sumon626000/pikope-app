@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_state.dart';
-import '../../core/app_theme.dart';
 import '../../core/design/design.dart';
+import '../../core/design/pool_city.dart';
 import '../../core/duel_ui.dart';
 import '../../l10n/strings.dart';
 import '../duel/lobby_data.dart';
@@ -52,58 +52,19 @@ Future<bool> _showLoginRequiredPrompt(BuildContext context, WidgetRef ref) async
     context,
     barrierColor: DesignAuth.overlayScrim,
     barrierDismissible: true,
-    builder: (ctx) => Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        width: DesignAuth.loginPromptWidth,
-        padding: const EdgeInsets.all(22),
-        decoration: duelPanel(rim: DuelColors.gold),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.login_rounded, color: DuelColors.gold, size: 40),
-            const SizedBox(height: 10),
-            Text(
-              t.loginRequiredTitle,
-              textAlign: TextAlign.center,
-              style: AppText.label(18, weight: FontWeight.w900),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              t.loginRequiredBody,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'sans-serif',
-                fontSize: 14,
-                height: 1.4,
-                color: DuelColors.silver,
-              ),
-            ),
-            const SizedBox(height: 18),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                DuelButton(
-                  label: t.cancel,
-                  width: 140,
-                  height: 42,
-                  fontSize: 15,
-                  color: DuelColors.blue,
-                  onPressed: () => Navigator.of(ctx).pop(false),
-                ),
-                const SizedBox(width: 12),
-                DuelButton(
-                  label: t.signUpOrLogin,
-                  width: 220,
-                  height: 42,
-                  fontSize: 14,
-                  color: DuelColors.green,
-                  onPressed: () => Navigator.of(ctx).pop(true),
-                ),
-              ],
-            ),
-          ],
-        ),
+    builder: (ctx) => PcDialog(
+      title: t.loginRequiredTitle,
+      actions: [
+        PcButton(label: t.cancel, style: PcButtonStyle.gray, width: 300, onPressed: () => Navigator.of(ctx).pop(false)),
+        PcButton(label: t.signUpOrLogin, width: 500, onPressed: () => Navigator.of(ctx).pop(true)),
+      ],
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.login_rounded, color: DesignColors.pcGold, size: 90, shadows: [Shadow(color: Color(0x99000000), blurRadius: 8, offset: Offset(0, 4))]),
+          const SizedBox(height: 24),
+          Text(t.loginRequiredBody, textAlign: TextAlign.center, style: pcText(36, weight: FontWeight.w500).copyWith(height: 1.35)),
+        ],
       ),
     ),
   );
@@ -145,7 +106,7 @@ Future<bool> showLoginAuthPopup(BuildContext context, WidgetRef ref) async {
                 Material(
                   color: Colors.transparent,
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.only(top: 2, right: 28),
+                    padding: EdgeInsets.zero,
                     child: LoginAuthPanel(
                       compact: true,
                       onAuthenticated: () =>
@@ -154,10 +115,10 @@ Future<bool> showLoginAuthPopup(BuildContext context, WidgetRef ref) async {
                   ),
                 ),
                 Positioned(
-                  top: 0,
-                  right: 0,
+                  top: 2,
+                  right: 2,
                   child: Material(
-                    color: Colors.black54,
+                    color: Colors.transparent,
                     shape: const CircleBorder(),
                     clipBehavior: Clip.antiAlias,
                     child: IconButton(
@@ -166,8 +127,8 @@ Future<bool> showLoginAuthPopup(BuildContext context, WidgetRef ref) async {
                       ).closeButtonTooltip,
                       icon: const Icon(
                         Icons.close_rounded,
-                        color: DuelColors.silver,
-                        size: 24,
+                        color: Colors.white,
+                        size: 28,
                       ),
                       onPressed: () => Navigator.of(dialogContext).pop(false),
                     ),

@@ -411,14 +411,15 @@ class _DuelResultOverlayState extends ConsumerState<DuelResultOverlay> with Sing
     super.dispose();
   }
 
-  Offset _winnerSpot(int count, double tile) {
+  Offset _winnerSpot(int count, double tile, Size canvas, double tilesTop) {
     final vs = count > 2 ? DesignGameplay.resultVsFourPlayer : DesignGameplay.resultVsWide;
     var total = tile;
     if (count > 1) total += vs + tile;
     for (var i = 2; i < count; i++) {
       total += 34 + tile;
     }
-    return Offset((DesignLayout.canvasSize.width - total) / 2 + tile / 2, 340 + tile / 2);
+    if (total > canvas.width - 40) return Offset(canvas.width / 2, tilesTop + tile / 2);
+    return Offset((canvas.width - total) / 2 + tile / 2, tilesTop + tile / 2);
   }
 
   static const _gray = ColorFilter.matrix(<double>[
@@ -441,9 +442,15 @@ class _DuelResultOverlayState extends ConsumerState<DuelResultOverlay> with Sing
     final tile = four ? DesignGameplay.resultSeatCompact : DesignGameplay.resultSeatLarge;
     // Winner first, as in the mockup.
     final ordered = [winner, for (final p in players) if (!identical(p, winner)) p];
-    final spot = _winnerSpot(ordered.length, tile);
     return Positioned.fill(
-      child: Container(
+      child: LayoutBuilder(builder: (context, box) {
+        // Landscape pool canvas or the portrait Ludo / Carrom canvas.
+        final canvas = box.biggest;
+        final portrait = canvas.height > canvas.width;
+        final titleTop = portrait ? canvas.height * 0.2 : 150.0;
+        final tilesTop = portrait ? titleTop + 250 : 340.0;
+        final spot = _winnerSpot(ordered.length, tile, canvas, tilesTop);
+        return Container(
         decoration: const BoxDecoration(
           boxShadow: [BoxShadow(color: Color(0xF205070F), spreadRadius: 900)],
           gradient: RadialGradient(center: Alignment(0, -0.3), radius: 1.1, colors: DesignGameplay.resultGradient),
@@ -463,18 +470,25 @@ class _DuelResultOverlayState extends ConsumerState<DuelResultOverlay> with Sing
             Positioned(
               left: 0,
               right: 0,
-              top: 150,
-              child: DuelTitle(
+              top: titleTop,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: DuelTitle(
                 t.playerWins(winner.name),
                 size: 70,
                 sub: bet.staked ? t.winningPrize(formatPicoCoins(bet.prize)) : (reason ?? t.practiceFriendlyNoCoin),
+                ),
               ),
             ),
             Positioned(
-              left: 0,
-              right: 0,
-              top: 340,
-              child: Row(
+              left: 20,
+              right: 20,
+              top: tilesTop,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Padding(
+                padding: const EdgeInsets.fromLTRB(50, 44, 20, 0),
+                child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -549,12 +563,14 @@ class _DuelResultOverlayState extends ConsumerState<DuelResultOverlay> with Sing
                   ],
                 ],
               ),
+              ),
+              ),
             ),
             if (bet.staked)
               Positioned(
                 left: 0,
                 right: 0,
-                top: 730,
+                top: tilesTop + 390,
                 child: Center(
                   child: Text(
                     me.won ? t.youWonAmount(formatPicoCoins(bet.prize)) : t.betterLuckNext,
@@ -568,7 +584,7 @@ class _DuelResultOverlayState extends ConsumerState<DuelResultOverlay> with Sing
                   animation: _coins,
                   builder: (context, _) => Stack(
                     children: [
-                      for (final coin in _fly) _flyingCoin(coin, spot),
+                      for (final coin in _fly) _flyingCoin(coin, spot, canvas),
                     ],
                   ),
                 ),
@@ -586,17 +602,20 @@ class _DuelResultOverlayState extends ConsumerState<DuelResultOverlay> with Sing
             ),
           ],
         ),
-      ),
+        );
+      }),
     );
   }
 
-  Widget _flyingCoin(_FlyCoin coin, Offset spot) {
+  Widget _flyingCoin(_FlyCoin coin, Offset spot, Size canvas) {
     final span = (1 - coin.delay).clamp(0.35, 1.0);
     final raw = ((_coins.value - coin.delay) / span).clamp(0.0, 1.0);
     if (raw <= 0) return const SizedBox.shrink();
     final travel = Curves.easeIn.transform(raw);
     final arc = sin(raw * pi) * 90;
-    final pos = Offset.lerp(coin.from, spot, travel)! + Offset(0, -arc);
+    // Scatter points were authored for 1600x900.
+    final from = Offset(coin.from.dx / 1600 * canvas.width, canvas.height - (900 - coin.from.dy) * (canvas.height > canvas.width ? 1.6 : 1));
+    final pos = Offset.lerp(from, spot, travel)! + Offset(0, -arc);
     final fade = raw < 0.12 ? raw / 0.12 : (raw > 0.82 ? (1 - raw) / 0.18 : 1.0);
     return Positioned(
       left: pos.dx - coin.size / 2,

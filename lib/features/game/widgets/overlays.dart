@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_theme.dart';
 import '../../../core/design/design.dart';
+import '../../../core/design/pool_city.dart';
 import '../../../l10n/strings.dart';
 import '../../../core/duel_ui.dart';
 import '../../../core/widgets.dart';
@@ -105,7 +106,13 @@ class OverlayPanel extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         width: width,
         padding: const EdgeInsets.all(32),
-        decoration: panelDecoration(radius: 28, border: borderColor, borderWidth: 4, opacity: 1, glow: borderColor),
+        // Same violet sheet as the Pool City dialogs.
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF3A2A7A), Color(0xFF2E2564), Color(0xFF3A2A7A)]),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: borderColor == AppColors.frame ? const Color(0xFF8C7CE8) : borderColor, width: 3),
+          boxShadow: const [BoxShadow(color: Color(0xCC000000), blurRadius: 30, offset: Offset(0, 14)), BoxShadow(color: Color(0x668C7CE8), blurRadius: 30)],
+        ),
         child: child,
       );
 }
@@ -265,8 +272,11 @@ class PauseOverlay extends ConsumerWidget {
     required this.onToggleSound,
     required this.onRules,
     required this.onQuit,
+    this.scale = 1,
   });
 
+  /// Magnifies the panel on the portrait match canvases.
+  final double scale;
   final bool soundOn;
   final VoidCallback onResume;
   final VoidCallback onToggleSound;
@@ -276,40 +286,34 @@ class PauseOverlay extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
+    // Reference in-match menu: the violet dialog with stacked buttons.
+    Widget item(String label, PcButtonStyle style, IconData icon, VoidCallback onTap) => Padding(
+          padding: const EdgeInsets.only(bottom: 18),
+          child: PcButton(label: label, icon: icon, style: style, height: 84, fontSize: 30, onPressed: onTap),
+        );
     return Scrim(
-      child: OverlayPanel(
-        width: DesignGameplay.pausePanelWidth,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(t.menu, style: AppText.label(34, weight: FontWeight.w900)),
-            const SizedBox(height: DesignSpacing.x6),
-            GameButton(label: t.resume, icon: Icons.play_arrow_rounded, width: 400, onPressed: onResume),
-            const SizedBox(height: 14),
-            GameButton(
-              label: t.soundOnLabel(soundOn),
-              icon: soundOn ? Icons.volume_up_rounded : Icons.volume_off_rounded,
-              width: 400,
-              color: AppColors.frame,
-              onPressed: onToggleSound,
+      child: Transform.scale(
+        scale: scale,
+        child: SizedBox(
+          width: DesignGameplay.pausePanelWidth,
+          child: FittedBox(
+            child: PcDialog(
+              title: t.menu,
+              width: 620,
+              scroll: false,
+              onClose: onResume,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  item(t.resume, PcButtonStyle.green, Icons.play_arrow_rounded, onResume),
+                  item(t.soundOnLabel(soundOn), PcButtonStyle.blue, soundOn ? Icons.volume_up_rounded : Icons.volume_off_rounded, onToggleSound),
+                  item(t.howToPlay, PcButtonStyle.blue, Icons.menu_book_rounded, onRules),
+                  PcButton(label: t.quitMatch, icon: Icons.logout_rounded, style: PcButtonStyle.red, height: 84, fontSize: 30, onPressed: onQuit),
+                ],
+              ),
             ),
-            const SizedBox(height: 14),
-            GameButton(
-              label: t.howToPlay,
-              icon: Icons.menu_book_rounded,
-              width: 400,
-              color: AppColors.frame,
-              onPressed: onRules,
-            ),
-            const SizedBox(height: 14),
-            GameButton(
-              label: t.quitMatch,
-              icon: Icons.logout_rounded,
-              width: 400,
-              color: AppColors.danger,
-              onPressed: onQuit,
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -319,7 +323,10 @@ class PauseOverlay extends ConsumerWidget {
 /// Online play: covers the table while the server cannot be reached, and
 /// confirms briefly when the connection is back.
 class ConnectionStatusLayer extends StatefulWidget {
-  const ConnectionStatusLayer({super.key, required this.offline, required this.onLeave});
+  const ConnectionStatusLayer({super.key, required this.offline, required this.onLeave, this.scale = 1});
+
+  /// Magnifies the panel on the portrait match canvases.
+  final double scale;
 
   final ValueListenable<bool> offline;
   final VoidCallback onLeave;
@@ -370,7 +377,9 @@ class _ConnectionStatusLayerState extends State<ConnectionStatusLayer> with Sing
         final t = ref.watch(stringsProvider);
         if (widget.offline.value) {
           return Scrim(
-            child: OverlayPanel(
+            child: Transform.scale(
+              scale: widget.scale,
+              child: OverlayPanel(
               width: 720,
               borderColor: AppColors.gold,
               child: Column(
@@ -416,6 +425,7 @@ class _ConnectionStatusLayerState extends State<ConnectionStatusLayer> with Sing
                     onPressed: widget.onLeave,
                   ),
                 ],
+              ),
               ),
             ),
           );

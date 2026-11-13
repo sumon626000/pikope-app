@@ -7,6 +7,7 @@ import 'app_state.dart';
 import 'app_theme.dart';
 import 'brand.dart';
 import 'audio_service.dart';
+import 'orientation.dart';
 
 /// Resolves an avatar reference: `asset:<name>` is bundled artwork,
 /// `cld:<publicId>` is delivered by Cloudinary.
@@ -186,8 +187,9 @@ class _GameButtonState extends State<GameButton> {
     final enabled = w.onPressed != null;
     final color = w.color;
     final fg = color.computeLuminance() > 0.4 ? const Color(0xFF10131A) : Colors.white;
-    final radius = BorderRadius.circular(w.height * 0.3);
-    final lip = w.height * 0.09;
+    // Pool City buttons are flat-cornered slabs, not pills.
+    final radius = BorderRadius.circular(6);
+    final lip = w.height * 0.06;
     final sink = _down ? lip : 0.0;
     return Opacity(
       opacity: enabled ? 1 : 0.45,
@@ -239,7 +241,7 @@ class _GameButtonState extends State<GameButton> {
                       stops: const [0, 0.55, 1],
                     ),
                     borderRadius: radius,
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.22), width: 1.5),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.45), width: 2),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -254,7 +256,7 @@ class _GameButtonState extends State<GameButton> {
                           fit: BoxFit.scaleDown,
                           child: Text(w.label,
                               maxLines: 1,
-                              style: AppText.label(w.fontSize, color: fg, weight: FontWeight.w900)),
+                              style: AppText.label(w.fontSize, color: fg, weight: FontWeight.w700).copyWith(fontFamily: 'Rubik')),
                         ),
                       ),
                     ],
@@ -296,7 +298,7 @@ ui.Image _bakedRoom() {
       ..shader = const RadialGradient(
         center: Alignment(0, -0.05),
         radius: 0.85,
-        colors: [Color(0xFF34343F), Color(0xFF23232A), Color(0xFF131316)],
+        colors: [Color(0xFF3A2C78), Color(0xFF2B2060), Color(0xFF1C1444)],
         stops: [0, 0.55, 1],
       ).createShader(rect),
   );
@@ -305,7 +307,7 @@ ui.Image _bakedRoom() {
     Paint()
       ..shader = const RadialGradient(
         radius: 1.05,
-        colors: [Color(0x00000000), Color(0x00000000), Color(0x8C000000)],
+        colors: [Color(0x00000000), Color(0x00000000), Color(0x59000000)],
         stops: [0, 0.6, 1],
       ).createShader(rect),
   );
@@ -325,15 +327,6 @@ class _RoomPainter extends CustomPainter {
       Offset.zero & size,
       Paint()..filterQuality = FilterQuality.low,
     );
-    final seam = Paint()
-      ..color = const Color(0x1F000000)
-      ..strokeWidth = 2;
-    for (final f in const [0.31, 0.69]) {
-      canvas.drawLine(Offset(size.width * f, 0), Offset(size.width * f, size.height), seam);
-    }
-    for (final f in const [0.33, 0.67]) {
-      canvas.drawLine(Offset(0, size.height * f), Offset(size.width, size.height * f), seam);
-    }
   }
 
   @override
@@ -357,12 +350,17 @@ class DesignCanvas extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => RoomBackground(
-        child: SafeArea(
-          child: Center(
-            child: FittedBox(
-              fit: BoxFit.contain,
-              child: SizedBox.fromSize(size: size, child: child),
+  Widget build(BuildContext context) => OrientationLock(
+        // Match screens are landscape (pool tables; Ludo / Carrom until their
+        // portrait layouts land).
+        orientation: AppOrientation.landscape,
+        child: RoomBackground(
+          child: SafeArea(
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.contain,
+                child: SizedBox.fromSize(size: size, child: child),
+              ),
             ),
           ),
         ),

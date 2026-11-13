@@ -106,11 +106,7 @@ class _ReferScreenState extends ConsumerState<ReferScreen> {
               ),
       );
       if (phone) {
-        return _ReferPhoneShell(
-          title: t.referTitle,
-          sub: t.referSub,
-          child: loading,
-        );
+        return DuelPage(title: t.referTitle, sub: t.referSub, legacyScale: 2.5, child: loading);
       }
       return DuelPage(title: t.referTitle, sub: t.referSub, child: loading);
     }
@@ -128,11 +124,7 @@ class _ReferScreenState extends ConsumerState<ReferScreen> {
     );
 
     if (phone) {
-      return _ReferPhoneShell(
-        title: t.referTitle,
-        sub: t.referSub,
-        child: content,
-      );
+      return DuelPage(title: t.referTitle, sub: t.referSub, legacyScale: 2.5, child: content);
     }
 
     return DuelPage(
@@ -330,95 +322,6 @@ class ReferScreenContent extends StatelessWidget {
   }
 }
 
-class _ReferPhoneShell extends StatelessWidget {
-  const _ReferPhoneShell({
-    required this.title,
-    required this.sub,
-    required this.child,
-  });
-
-  final String title;
-  final String sub;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: DuelColors.ink,
-      resizeToAvoidBottomInset: true,
-      body: DuelBackdrop(
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              DesignAuth.settingsPhonePaddingH,
-              2,
-              DesignAuth.settingsPhonePaddingH,
-              4,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => Navigator.of(context).maybePop(),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: DuelColors.rimLight,
-                              width: 1.2,
-                            ),
-                            color: DuelColors.glass.withValues(alpha: 0.9),
-                          ),
-                          child: const Icon(
-                            Icons.arrow_back_rounded,
-                            color: DuelColors.silver,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: AppText.label(16, weight: FontWeight.w900),
-                          ),
-                          Text(
-                            sub,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppText.label(
-                              9,
-                              color: DuelColors.dim,
-                              weight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Expanded(child: child),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _IdCard extends StatelessWidget {
   const _IdCard({

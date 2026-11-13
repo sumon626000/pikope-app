@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/design/design.dart';
+import '../../core/design/pool_city.dart';
 import '../../core/widgets.dart';
 import '../../core/audio_service.dart';
 import '../../core/duel_ui.dart';
@@ -22,19 +23,9 @@ import '../start/auth_prompt.dart';
 
 /// Shop-only accents (UI); logic unchanged.
 abstract final class _ShopUi {
-  // Matches site / coin-shop reference (navy + sky + green buy).
-  static const cardFillTop = Color(0xFF0C1B44);
-  static const cardFillMid = Color(0xFF091535);
-  static const cardFillBot = Color(0xFF060E24);
-  static const cardBorder = Color(0xFF1D3D82);
-  static const cardBorderDim = Color(0xFF2A3558);
-  static const bestBorder = Color(0xFFFFAA00);
-  static const buyGreen = Color(0xFF00C675);
-  static const buyGreenText = Color(0xFF032014);
-  static const ribbonStart = Color(0xFFFF1B7A);
-  static const ribbonEnd = Color(0xFFD40058);
-  static const skyLine = Color(0xFF7DD3FC);
-  static const tabGlow = Color(0xFF00D2FF);
+  // Pool City coin shop: blue pack cards, light rim, gold price button,
+  // red "More %" badge.
+  static const bestBorder = Color(0xFFF5B942);
 
   /// BUY tab: six standard packs (100 … 5,000 BDT) — no 10,000 tier on the grid.
   static List<CoinShopPack> packsForBuyTab(List<CoinShopPack> packs) {
@@ -181,16 +172,18 @@ class _CoinPackGrid extends StatelessWidget {
     }
 
     final gapH = compact ? 6.0 : _gap;
+    // Reference tiles are a little taller than wide.
+    final tileH = layoutWidth / cols * 1.12;
     if (compact && cols == 3 && packs.length == 6) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: _rowCells(packs.sublist(0, 3), cardH, stretch: true),
+          Flexible(
+            child: SizedBox(height: tileH, child: _rowCells(packs.sublist(0, 3), cardH, stretch: true)),
           ),
           SizedBox(height: gapH),
-          Expanded(
-            child: _rowCells(packs.sublist(3, 6), cardH, stretch: true),
+          Flexible(
+            child: SizedBox(height: tileH, child: _rowCells(packs.sublist(3, 6), cardH, stretch: true)),
           ),
         ],
       );
@@ -221,8 +214,8 @@ class _CoinPackGrid extends StatelessWidget {
           children: [
             for (var r = 0; r < rowSlices.length; r++) ...[
               if (r > 0) SizedBox(height: compact ? 6 : _gap),
-              Expanded(
-                child: _rowCells(rowSlices[r], cardH, stretch: true),
+              Flexible(
+                child: SizedBox(height: tileH, child: _rowCells(rowSlices[r], cardH, stretch: true)),
               ),
             ],
           ],
@@ -369,102 +362,42 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
   }
 
   Widget _shopTabBar(AppStrings t, {required bool phone}) {
-    final labelSize = phone ? 11.5 : 18.0;
-    final unselectedSize = phone ? 10.5 : 17.0;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: DuelColors.rim.withValues(alpha: 0.85)),
-        ),
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            const Color(0xFF0E1433).withValues(alpha: phone ? 0.35 : 0.6),
-            Colors.transparent,
-          ],
-        ),
-      ),
-      child: TabBar(
-        controller: _tabs,
-        isScrollable: true,
-        tabAlignment: TabAlignment.start,
-        dividerColor: Colors.transparent,
-        indicatorSize: TabBarIndicatorSize.label,
-        indicator: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: _ShopUi.tabGlow, width: phone ? 2.5 : 3),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: _ShopUi.tabGlow.withValues(alpha: 0.4),
-              blurRadius: phone ? 10 : 14,
-              spreadRadius: -2,
-            ),
-          ],
-        ),
-        labelColor: Colors.white,
-        unselectedLabelColor: DuelColors.dim,
-        labelStyle: AppText.label(labelSize, weight: FontWeight.w900),
-        unselectedLabelStyle: AppText.label(
-          unselectedSize,
-          color: DuelColors.dim,
-          weight: FontWeight.w700,
-        ),
-        labelPadding: EdgeInsets.symmetric(
-          horizontal: phone ? 8 : 16,
-          vertical: phone ? 3 : 10,
-        ),
-        tabs: [
-          Tab(text: t.tabBuy),
-          Tab(text: t.tabTransfer),
-          Tab(text: t.tabRedeem),
-          Tab(text: t.tabHistory),
-        ],
+    // The reference's tab strip (Currency / Offers); ours has four tabs.
+    return AnimatedBuilder(
+      animation: _tabs,
+      builder: (context, _) => PcTabs(
+        labels: [t.tabBuy, t.tabTransfer, t.tabRedeem, t.tabHistory],
+        index: _tabs.index,
+        onChanged: (i) {
+          AudioService.tap();
+          _tabs.animateTo(i);
+        },
       ),
     );
   }
 
   Widget _shopTabPanel(LobbyData data, {required bool phone}) {
-    final radius = phone ? 14.0 : 18.0;
+    const radius = 8.0;
     return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: _ShopUi.cardBorderDim.withValues(alpha: 0.7)),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF0A1024).withValues(alpha: 0.92),
-            const Color(0xFF141C40).withValues(alpha: 0.75),
-          ],
-        ),
-        boxShadow: phone
-            ? null
-            : [
-                BoxShadow(
-                  color: DuelColors.blue.withValues(alpha: 0.12),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-      ),
+      decoration: pcPanelDecoration(),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius - 1),
-        child: TabBarView(
-          controller: _tabs,
-          children: [
-            _BuyTab(data: data, onBuy: _onPackTap),
-            CoinTransferTab(
-              config: data.coinTransfer,
-              tutorialUrl: data.coinTutorials.transfer,
-            ),
-            _RedeemTab(
-              config: data.redeem,
-              tutorialUrl: data.coinTutorials.redeem,
-            ),
-            const _ActivityTab(),
-          ],
+        child: PcLegacyScale(
+          child: TabBarView(
+            controller: _tabs,
+            children: [
+              _BuyTab(data: data, onBuy: _onPackTap),
+              CoinTransferTab(
+                config: data.coinTransfer,
+                tutorialUrl: data.coinTutorials.transfer,
+              ),
+              _RedeemTab(
+                config: data.redeem,
+                tutorialUrl: data.coinTutorials.redeem,
+              ),
+              const _ActivityTab(),
+            ],
+          ),
         ),
       ),
     );
@@ -491,7 +424,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _shopTabBar(t, phone: phone),
-        SizedBox(height: phone ? 3 : 8),
+        const SizedBox(height: 18),
         Expanded(child: _shopTabPanel(data, phone: phone)),
       ],
     );
@@ -503,27 +436,39 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     final lobby = ref.watch(lobbyProvider);
     final data = lobby.valueOrNull;
     final global = data?.coinShop.globalDiscountPercent ?? 0;
-    final phone = DesignBreakpoints.phoneLike(context);
-    final coins = ref.watch(settingsProvider).coins;
+    final settings = ref.watch(settingsProvider);
+    final session = ref.watch(sessionProvider);
+    final registered = hasRegisteredAccount(ref);
 
-    final body = _shopBody(context, lobby, t, data, phone: phone);
-
-    if (phone) {
-      return _ShopPhoneShell(
-        title: t.picoCoin,
-        subtitle: t.shopSub(global),
-        balance: coins,
-        child: body,
-      );
-    }
-
-    return DuelPage(
-      title: t.picoCoin,
-      sub: t.shopSub(global),
-      expanded: true,
-      sideBack: true,
-      contentTop: 198,
-      child: body,
+    // Pool City shop page: player header, tab strip, pack panel, the
+    // five-tab bar with Shop lit.
+    return PcPage(
+      header: PcHeader(
+        avatar: settings.avatar,
+        name: settings.name,
+        registered: registered,
+        level: session.level,
+        coins: lobbyDisplayCoins(ref),
+        gems: registered ? session.gems : null,
+        placeholder: t.signUpOrLogin,
+        onProfile: () {},
+        onWallet: () => _tabs.animateTo(0),
+      ),
+      panel: false,
+      scroll: false,
+      bodyPadding: const EdgeInsets.fromLTRB(0, 10, 0, 0),
+      nav: duelTabNav(context, ref, active: 4),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (global > 0)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 0, 22, 10),
+              child: Text(t.shopSub(global), textAlign: TextAlign.center, style: pcText(26, color: DesignColors.pcGold, weight: FontWeight.w500)),
+            ),
+          Expanded(child: _shopBody(context, lobby, t, data, phone: false)),
+        ],
+      ),
     );
   }
 }
@@ -874,22 +819,23 @@ class _ManualDepositSheetState extends ConsumerState<_ManualDepositSheet> {
                 keyboardType: TextInputType.phone,
                 maxLength: 14,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  labelText: t.payerNumber,
-                  hintText: '01XXXXXXXXX',
-                  counterText: '',
-                  labelStyle: AppText.label(16, color: DuelColors.dim),
+                decoration: pcFieldDecoration(
+                  label: t.payerNumber,
+                  hint: '01XXXXXXXXX',
+                  phone: false,
+                  accent: DuelColors.gold,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               TextField(
                 controller: _trx,
                 style: input,
                 autocorrect: false,
                 textCapitalization: TextCapitalization.characters,
-                decoration: InputDecoration(
-                  labelText: t.trxId,
-                  labelStyle: AppText.label(16, color: DuelColors.dim),
+                decoration: pcFieldDecoration(
+                  label: t.trxId,
+                  phone: false,
+                  accent: DuelColors.silver,
                 ),
               ),
               if (_error != null) ...[
@@ -1211,11 +1157,6 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
     }
     final phone = ShopPhoneLayout.phone(context);
     final input = AppText.label(phone ? 16 : 28, color: Colors.white);
-    final fieldPad = EdgeInsets.symmetric(
-      horizontal: phone ? 10 : 22,
-      vertical: phone ? 8 : 22,
-    );
-    final fieldLabel = AppText.label(phone ? 12 : 20, color: DuelColors.dim);
     return _ShopTabScroll(
       fitViewport: phone,
       child: phone
@@ -1231,8 +1172,6 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
                         cfg: cfg,
                         redeemCap: redeemCap,
                         input: input,
-                        fieldPad: fieldPad,
-                        fieldLabel: fieldLabel,
                         phone: true,
                         scrollable: false,
                       ),
@@ -1249,8 +1188,6 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
             cfg: cfg,
             redeemCap: redeemCap,
             input: input,
-            fieldPad: fieldPad,
-            fieldLabel: fieldLabel,
             phone: false,
             scrollable: true,
           ),
@@ -1264,8 +1201,6 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
     required RedeemConfig cfg,
     required int redeemCap,
     required TextStyle input,
-    required EdgeInsets fieldPad,
-    required TextStyle fieldLabel,
     required bool phone,
     required bool scrollable,
   }) {
@@ -1373,14 +1308,13 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
             style: input,
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: InputDecoration(
-              isDense: phone,
-              labelText: t.coinAmountLabel,
-              hintText: redeemCap >= cfg.minCoins
+            decoration: pcFieldDecoration(
+              label: t.coinAmountLabel,
+              hint: redeemCap >= cfg.minCoins
                   ? '${cfg.minCoins} – ${formatCoins(redeemCap)}'
                   : t.notEnoughRedeemable,
-              contentPadding: fieldPad,
-              labelStyle: fieldLabel,
+              phone: phone,
+              accent: DuelColors.gold,
             ),
             onChanged: (_) => setState(() {}),
           ),
@@ -1436,13 +1370,11 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
             keyboardType: TextInputType.phone,
             maxLength: 14,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: InputDecoration(
-              isDense: phone,
-              labelText: t.walletNumber,
-              hintText: '01XXXXXXXXX',
-              counterText: '',
-              contentPadding: fieldPad,
-              labelStyle: fieldLabel,
+            decoration: pcFieldDecoration(
+              label: t.walletNumber,
+              hint: '01XXXXXXXXX',
+              phone: phone,
+              accent: DuelColors.silver,
             ),
           ),
           if (_error != null) ...[
@@ -1735,6 +1667,8 @@ class _CoinPackCard extends ConsumerWidget {
   final VoidCallback onTap;
   final bool isBestValue;
 
+  /// Reference shop card: the amount on top, the coin pile, the gold price
+  /// button, and a red "More x%" burst on packs with a bonus.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
@@ -1743,30 +1677,8 @@ class _CoinPackCard extends ConsumerWidget {
         final w = constraints.maxWidth;
         final h = constraints.maxHeight;
         final bonus = pack.discountPercent;
-        final borderColor = isBestValue
-            ? _ShopUi.bestBorder
-            : _ShopUi.cardBorder;
-        final buyBdt = pack.free
-            ? t.claimNow
-            : '৳${formatCoins(pack.coins, compact: true)}';
-        final amountLabel = formatCoins(pack.coins, compact: true);
-        final amountSize = (w * 0.115).clamp(22.0, 34.0);
-        final subSize = (w * 0.062).clamp(11.0, 15.0);
-        final btnFont = (w * 0.075).clamp(12.0, 15.0);
-        final coinSlot = (w * 0.34).clamp(52.0, 88.0);
-        final short = h < 168;
-        final tiny = h < 118;
-        final topInset = bonus > 0 || isBestValue
-            ? (tiny ? 14.0 : short ? 18.0 : 28.0)
-            : (tiny ? 4.0 : short ? 6.0 : 10.0);
-        final btnH = tiny
-            ? (h * 0.22).clamp(24.0, 32.0)
-            : short
-            ? (h * 0.21).clamp(28.0, 38.0)
-            : (h * 0.24).clamp(38.0, 48.0);
-        final amountSizeAdj = tiny ? amountSize * 0.88 : amountSize;
-        final coinSlotAdj = tiny ? coinSlot * 0.82 : coinSlot;
-
+        final price = pack.free ? titleCase(t.claimNow) : '৳ ${formatCoins(pack.coins)}';
+        final btnH = (h * 0.2).clamp(22.0, 36.0);
         return GestureDetector(
           onTap: () {
             AudioService.tap();
@@ -1774,166 +1686,78 @@ class _CoinPackCard extends ConsumerWidget {
           },
           child: DecoratedBox(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(4),
               gradient: const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  _ShopUi.cardFillTop,
-                  _ShopUi.cardFillMid,
-                  _ShopUi.cardFillBot,
-                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF6A56D8), Color(0xFF3F2E9A), Color(0xFF34257F)],
               ),
               border: Border.all(
-                color: borderColor.withValues(alpha: isBestValue ? 1 : 0.85),
+                color: isBestValue ? _ShopUi.bestBorder : const Color(0xFF9C8CF0),
                 width: isBestValue ? 2 : 1.2,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-                if (isBestValue)
-                  BoxShadow(
-                    color: _ShopUi.bestBorder.withValues(alpha: 0.25),
-                    blurRadius: 12,
-                    spreadRadius: -2,
-                  ),
-              ],
+              boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 6, offset: Offset(0, 3))],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(13),
+              borderRadius: BorderRadius.circular(3),
               child: Stack(
-                clipBehavior: Clip.hardEdge,
                 children: [
+                  const Positioned.fill(child: CustomPaint(painter: _PackStripePainter())),
                   Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      tiny ? 6 : 10,
-                      topInset,
-                      tiny ? 6 : 10,
-                      tiny ? 4 : 8,
-                    ),
+                    padding: EdgeInsets.fromLTRB(w * 0.05, h * 0.04, w * 0.05, w * 0.05),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(formatCoins(pack.depositReceiveCoins), maxLines: 1, style: pcText((w * 0.12).clamp(12.0, 18.0))),
+                        ),
                         Expanded(
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  _ShopUi.packCoinArt(pack.coins, coinSlotAdj),
-                                  SizedBox(width: (w * 0.04).clamp(4.0, 12.0)),
-                                  Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        amountLabel,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: AppText.label(
-                                          amountSizeAdj,
-                                          color: Colors.white,
-                                          weight: FontWeight.w900,
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        height: tiny ? 1 : (h * 0.03).clamp(2.0, 6.0),
-                                      ),
-                                      Text(
-                                        t.youGetCoins(
-                                          formatPicoCoins(
-                                            pack.depositReceiveCoins,
-                                          ),
-                                        ),
-                                        maxLines: tiny ? 1 : 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: AppText.label(
-                                          tiny ? subSize * 0.9 : subSize,
-                                          color: _ShopUi.skyLine,
-                                          weight: FontWeight.w800,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: h * 0.03),
+                            child: FittedBox(child: _ShopUi.packCoinArt(pack.coins, 80)),
                           ),
                         ),
-                        SizedBox(height: (h * 0.04).clamp(4.0, 8.0)),
                         Container(
                           height: btnH,
                           alignment: Alignment.center,
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
                           decoration: BoxDecoration(
-                            color: _ShopUi.buyGreen,
-                            borderRadius: BorderRadius.circular(btnH / 2),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x5500C675),
-                                blurRadius: 6,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Text(
-                            pack.free ? buyBdt : '$buyBdt  ·  ${t.tabBuy} →',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: AppText.label(
-                              btnFont,
-                              color: _ShopUi.buyGreenText,
-                              weight: FontWeight.w900,
+                            gradient: const LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Color(0xFFFFCB45), Color(0xFFF0A51A), Color(0xFFD98A0C)],
                             ),
+                            borderRadius: BorderRadius.circular(3),
+                            border: Border.all(color: const Color(0xFFFFE08A), width: 1),
+                          ),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(price, maxLines: 1, style: pcText((btnH * 0.5).clamp(11.0, 16.0))),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  if (bonus > 0) _BonusBadge(percent: bonus, compact: tiny),
-                  if (isBestValue)
+                  if (bonus > 0)
                     Positioned(
-                      top: tiny ? 2 : 6,
-                      left: 0,
-                      right: 0,
-                      child: Center(
+                      right: -w * 0.04,
+                      top: h * 0.36,
+                      child: Transform.rotate(
+                        angle: 0.22,
                         child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: tiny ? 6 : 10,
-                            vertical: tiny ? 2 : 4,
-                          ),
+                          width: w * 0.36,
+                          height: w * 0.36,
+                          alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFFBBF24), Color(0xFFEAB308)],
-                            ),
-                            borderRadius: BorderRadius.circular(999),
+                            shape: BoxShape.circle,
+                            gradient: const RadialGradient(colors: [Color(0xFFFF5A5A), Color(0xFFD81E2C)]),
+                            border: Border.all(color: const Color(0xFFFF9A9A), width: 1),
+                            boxShadow: const [BoxShadow(color: Color(0x88000000), blurRadius: 4, offset: Offset(0, 2))],
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.workspace_premium_rounded,
-                                size: tiny ? 10 : 13,
-                                color: Colors.brown.shade900,
-                              ),
-                              SizedBox(width: tiny ? 2 : 4),
-                              Text(
-                                'BEST VALUE',
-                                style: AppText.label(
-                                  tiny ? 8 : 10,
-                                  color: Colors.brown.shade900,
-                                  weight: FontWeight.w900,
-                                ),
-                              ),
-                            ],
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('More\n$bonus%', textAlign: TextAlign.center, style: pcText(10).copyWith(height: 1.05)),
                           ),
                         ),
                       ),
@@ -1948,166 +1772,27 @@ class _CoinPackCard extends ConsumerWidget {
   }
 }
 
-class _BonusBadge extends StatelessWidget {
-  const _BonusBadge({required this.percent, this.compact = false});
-
-  final int percent;
-  final bool compact;
+/// Faint diagonal bands across a shop card, as on the reference.
+class _PackStripePainter extends CustomPainter {
+  const _PackStripePainter();
 
   @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      top: compact ? 4 : 8,
-      left: compact ? 4 : 8,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: compact ? 5 : 8,
-          vertical: compact ? 2 : 4,
-        ),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [_ShopUi.ribbonStart, _ShopUi.ribbonEnd],
-          ),
-          borderRadius: BorderRadius.circular(6),
-          boxShadow: [
-            BoxShadow(
-              color: _ShopUi.ribbonStart.withValues(alpha: 0.35),
-              blurRadius: 4,
-            ),
-          ],
-        ),
-        child: Text(
-          '+$percent%',
-          style: AppText.label(
-            compact ? 8 : 11,
-            color: Colors.white,
-            weight: FontWeight.w900,
-          ),
-        ),
-      ),
-    );
+  void paint(Canvas canvas, Size size) {
+    final band = Paint()..color = Colors.white.withValues(alpha: 0.045);
+    final step = size.width * 0.34;
+    for (var x = -size.height; x < size.width; x += step) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(x, size.height)
+          ..lineTo(x + size.height, 0)
+          ..lineTo(x + size.height + step * 0.45, 0)
+          ..lineTo(x + step * 0.45, size.height)
+          ..close(),
+        band,
+      );
+    }
   }
-}
-
-/// Full-viewport Pico coin shop on phones (no 1600×900 canvas scale).
-class _ShopPhoneShell extends StatelessWidget {
-  const _ShopPhoneShell({
-    required this.title,
-    required this.subtitle,
-    required this.balance,
-    required this.child,
-  });
-
-  final String title;
-  final String subtitle;
-  final int balance;
-  final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: DuelColors.ink,
-      resizeToAvoidBottomInset: true,
-      body: DuelBackdrop(
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              DesignAuth.settingsPhonePaddingH,
-              2,
-              DesignAuth.settingsPhonePaddingH,
-              4,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => Navigator.of(context).maybePop(),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: DuelColors.rimLight,
-                              width: 1.2,
-                            ),
-                            color: DuelColors.glass.withValues(alpha: 0.9),
-                          ),
-                          child: const Icon(
-                            Icons.arrow_back_rounded,
-                            color: DuelColors.silver,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: AppText.label(16, weight: FontWeight.w900),
-                          ),
-                          Text(
-                            subtitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppText.label(
-                              9,
-                              color: DuelColors.dim,
-                              weight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: DuelColors.gold.withValues(alpha: 0.45),
-                        ),
-                        color: const Color(0xFF121830),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const PikoCoinIcon(size: 16),
-                          const SizedBox(width: 4),
-                          Text(
-                            formatCoins(balance, compact: balance >= 100000),
-                            style: AppText.label(
-                              12,
-                              color: DuelColors.gold,
-                              weight: FontWeight.w900,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Expanded(child: child),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  bool shouldRepaint(_PackStripePainter old) => false;
 }

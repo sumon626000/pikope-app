@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
+import '../../core/design/design.dart';
+import '../../core/design/pool_city.dart';
 import '../../core/duel_ui.dart';
 import '../../data/api_client.dart';
 import '../../data/cues.dart';
@@ -52,42 +54,19 @@ class _CuesScreenState extends ConsumerState<CuesScreen> {
     final yes = await showDuelDialog<bool>(
       context,
       barrierColor: const Color(0xB3000000),
-      builder: (dialog) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          width: 420,
-          padding: const EdgeInsets.all(22),
-          decoration: duelPanel(rim: DuelColors.rimLight),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(t.buyCue(cue.name), textAlign: TextAlign.center, style: AppText.label(18, weight: FontWeight.w900)),
-              const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const PikoCoinIcon(size: 30),
-                  const SizedBox(width: 8),
-                  Text(formatCoins(cue.price), style: AppText.label(22, color: DuelColors.gold, weight: FontWeight.w900)),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  DuelButton(label: t.buy, width: 150, height: 42, fontSize: 16, onPressed: () => Navigator.of(dialog).pop(true)),
-                  const SizedBox(width: 10),
-                  DuelButton(
-                      label: t.cancel,
-                      width: 150,
-                      height: 42,
-                      fontSize: 16,
-                      color: DuelColors.rimLight,
-                      onPressed: () => Navigator.of(dialog).pop(false)),
-                ],
-              ),
-            ],
-          ),
+      builder: (dialog) => PcDialog(
+        title: t.buyCue(cue.name),
+        actions: [
+          PcButton(label: t.cancel, style: PcButtonStyle.gray, width: 300, onPressed: () => Navigator.of(dialog).pop(false)),
+          PcButton(label: t.buy, style: PcButtonStyle.gold, width: 360, onPressed: () => Navigator.of(dialog).pop(true)),
+        ],
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const PikoCoinIcon(size: 90),
+            const SizedBox(width: 16),
+            Text(formatCoins(cue.price), style: pcText(54, color: DesignColors.pcGold)),
+          ],
         ),
       ),
     );
@@ -105,6 +84,7 @@ class _CuesScreenState extends ConsumerState<CuesScreen> {
     return DuelPage(
       title: widget.ownedOnly ? t.myItems : (widget.asShop ? t.shopTitleShort : t.navCues),
       sub: widget.ownedOnly ? t.cuesSubOwned : t.cuesSubBuy,
+      legacyScale: 2.1,
       child: lobby.valueOrNull == null
           ? Center(
               child: lobby.hasError

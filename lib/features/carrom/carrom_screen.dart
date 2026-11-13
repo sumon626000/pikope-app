@@ -9,6 +9,7 @@ import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
 import '../../core/design/design.dart';
+import '../../core/design/pool_city.dart';
 import '../../core/duel_ui.dart';
 import '../../core/turn_life_dots.dart';
 import '../../core/widgets.dart';
@@ -47,14 +48,13 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
   bool _paused = false;
   bool _resultBooked = false;
 
-  static const _canvasW = DesignGameplay.canvasWidth;
-  static const _boardSize = DesignGameplay.carromBoardSize;
-  static const _boardLeft = DesignGameplay.carromBoardLeft;
-  static const _boardTop = DesignGameplay.carromBoardTop;
-  static const _sliderW = DesignGameplay.carromSliderWidth;
-  static const _sliderH = DesignGameplay.carromSliderHeight;
-  static const _sliderLeft = DesignGameplay.carromSliderLeft;
-  static const _sliderTop = DesignGameplay.carromSliderTop;
+  // Portrait canvas (1080 wide): board across the width, slider under it.
+  static const _canvasW = PortraitGameCanvas.width;
+  static const _boardSize = 1040.0;
+  static const _boardLeft = (_canvasW - _boardSize) / 2;
+  static const _sliderW = 720.0;
+  static const _sliderH = 60.0;
+  static const _sliderLeft = (_canvasW - _sliderW) / 2;
 
   @override
   void initState() {
@@ -164,101 +164,117 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
       child: Scaffold(
         backgroundColor: const Color(0xFF2B0B0B),
         body: _CarromBackground(
-          child: DesignCanvas(
-            size: DesignCanvas.tableSize,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Positioned(left: DesignGameplay.menuTabLeft, top: 0, child: _MenuTab(onTap: () => setState(() => _paused = true))),
-                if (widget.config.bet.staked)
-                  Positioned(
-                    left: DesignGameplay.prizeTileLeft,
-                    top: DesignGameplay.prizeTileTop,
-                    child: MatchPrizeTile(prize: widget.config.bet.prize),
-                  ),
-                      // The board.
-                      Positioned(
-                        left: _boardLeft,
-                        top: _boardTop,
-                        width: _boardSize,
-                        height: _boardSize,
-                        child: RepaintBoundary(
-                          child: CarromBoard(controller: _c, onPanStart: _panStart, onPanUpdate: _panUpdate, onPanEnd: _panEnd),
-                        ),
-                      ),
-                      // Striker slider under the board.
-                      Positioned(
-                        left: _sliderLeft,
-                        top: _sliderTop,
-                        width: _sliderW,
-                        height: _sliderH,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTapDown: (d) => _slideTo(d.localPosition.dx),
-                          onHorizontalDragStart: (d) => _slideTo(d.localPosition.dx),
-                          onHorizontalDragUpdate: (d) => _slideTo(d.localPosition.dx),
-                          child: _StrikerSlider(controller: _c),
-                        ),
-                      ),
-                      ..._seatPanels(),
-                      Positioned(left: 232, top: 560, child: _ChatButton(onTap: _openChat)),
-                      // What to do now.
-                      Positioned(
-                        left: 40,
-                        width: _boardLeft - 60,
-                        top: 650,
-                        child: Text(
-                          _c.hint,
-                          textAlign: TextAlign.center,
-                          style: AppText.label(20, color: _c.canAim ? DesignGameplay.hintActive : DesignGameplay.hintIdle, weight: FontWeight.w900)
-                              .copyWith(shadows: const [Shadow(color: Color(0xCC000000), blurRadius: 4, offset: Offset(0, 2))]),
-                        ),
-                      ),
-                      // Messages over the board.
-                      Positioned(
-                        left: _boardLeft,
-                        width: _boardSize,
-                        top: _boardTop + _boardSize / 2 - 60,
-                        child: IgnorePointer(
-                          child: Center(
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 180),
-                              child: _c.toast == null
-                                  ? const SizedBox.shrink()
-                                  : GameplayToastBanner(key: ValueKey(_c.toast), lines: _c.toast!.lines, good: _c.toast!.good),
-                            ),
-                          ),
-                        ),
-                      ),
-                      if (widget.driver != null) ...[
-                        OpponentDisconnectBanner(
-                          presence: _c.opponentPresence,
-                          serverOffsetMs: _c.serverOffsetMs,
-                          opponentName: widget.config.seats[1 - widget.driver!.seat].name,
-                        ),
-                        ConnectionStatusLayer(
-                          offline: widget.driver!.offline,
-                          onLeave: () => Navigator.of(context).pop(),
-                        ),
-                      ],
-                      if (_c.over) _result(),
-                      if (_paused)
-                        PauseOverlay(
-                          soundOn: settings.soundOn,
-                          onResume: () => setState(() => _paused = false),
-                          onToggleSound: () => ref.read(settingsProvider.notifier).update((s) => s.copyWith(soundOn: !s.soundOn)),
-                          onRules: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const HowToPlayScreen())),
-                          onQuit: _quit,
-                        ),
-              ],
-            ),
-          ),
+          child: PortraitGameCanvas(builder: (context, height) => _table(context, height, settings)),
         ),
       ),
     );
   }
 
-  List<Widget> _seatPanels() {
+  /// Portrait table as in Carrom Pool: the opponent above the board, the
+  /// striker slider and this player's card below it.
+  Widget _table(BuildContext context, double height, AppSettings settings) {
+    final boardTop = (height - _boardSize) / 2 - 40;
+    final boardBottom = boardTop + _boardSize;
+    final sliderTop = boardBottom + 16;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(left: 30, top: 0, child: _MenuTab(onTap: () => setState(() => _paused = true))),
+        if (widget.config.bet.staked)
+          Positioned(
+            right: 40,
+            top: boardTop - 24 - MatchPrizeTile.size - 60,
+            child: MatchPrizeTile(prize: widget.config.bet.prize),
+          ),
+        // The board.
+        Positioned(
+          left: _boardLeft,
+          top: boardTop,
+          width: _boardSize,
+          height: _boardSize,
+          child: RepaintBoundary(
+            child: CarromBoard(controller: _c, onPanStart: _panStart, onPanUpdate: _panUpdate, onPanEnd: _panEnd),
+          ),
+        ),
+        // Striker slider under the board.
+        Positioned(
+          left: _sliderLeft,
+          top: sliderTop,
+          width: _sliderW,
+          height: _sliderH,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: (d) => _slideTo(d.localPosition.dx),
+            onHorizontalDragStart: (d) => _slideTo(d.localPosition.dx),
+            onHorizontalDragUpdate: (d) => _slideTo(d.localPosition.dx),
+            child: _StrikerSlider(controller: _c),
+          ),
+        ),
+        ..._seatPanels(boardTop, sliderTop + _sliderH),
+        Positioned(
+          left: 60,
+          top: sliderTop + _sliderH + 60,
+          child: Transform.scale(scale: 1.5, alignment: Alignment.topLeft, child: _ChatButton(onTap: _openChat)),
+        ),
+        // What to do now.
+        Positioned(
+          left: _canvasW / 2 + _SeatPanel.width / 2 + 10,
+          right: 30,
+          top: sliderTop + _sliderH + 70,
+          child: Text(
+            _c.hint,
+            textAlign: TextAlign.center,
+            style: AppText.label(28, color: _c.canAim ? DesignGameplay.hintActive : DesignGameplay.hintIdle, weight: FontWeight.w900)
+                .copyWith(shadows: const [Shadow(color: Color(0xCC000000), blurRadius: 4, offset: Offset(0, 2))]),
+          ),
+        ),
+        // Messages over the board.
+        Positioned(
+          left: _boardLeft,
+          width: _boardSize,
+          top: boardTop + _boardSize / 2 - 60,
+          child: IgnorePointer(
+            child: Center(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                child: _c.toast == null
+                    ? const SizedBox.shrink()
+                    : Transform.scale(
+                        key: ValueKey(_c.toast),
+                        scale: 1.3,
+                        child: GameplayToastBanner(lines: _c.toast!.lines, good: _c.toast!.good),
+                      ),
+              ),
+            ),
+          ),
+        ),
+        if (widget.driver != null) ...[
+          OpponentDisconnectBanner(
+            presence: _c.opponentPresence,
+            serverOffsetMs: _c.serverOffsetMs,
+            opponentName: widget.config.seats[1 - widget.driver!.seat].name,
+          ),
+          ConnectionStatusLayer(
+            offline: widget.driver!.offline,
+            onLeave: () => Navigator.of(context).pop(),
+            scale: 1.35,
+          ),
+        ],
+        if (_c.over) _result(),
+        if (_paused)
+          PauseOverlay(
+            scale: 1.6,
+            soundOn: settings.soundOn,
+            onResume: () => setState(() => _paused = false),
+            onToggleSound: () => ref.read(settingsProvider.notifier).update((s) => s.copyWith(soundOn: !s.soundOn)),
+            onRules: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const HowToPlayScreen())),
+            onQuit: _quit,
+          ),
+      ],
+    );
+  }
+
+  List<Widget> _seatPanels(double boardTop, double belowSlider) {
     final state = _c.state;
     final session = ref.watch(sessionProvider);
     final myCoins = ref.watch(settingsProvider).coins;
@@ -268,8 +284,9 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
           final p = state.players[seat];
           final you = seat == _c.mySeat;
           return Positioned(
-            left: you ? 300 - _SeatPanel.width / 2 : _canvasW - 300 - _SeatPanel.width / 2,
-            top: 150,
+            left: (_canvasW - _SeatPanel.width) / 2,
+            // Opponent: avatar, name and score end just above the board.
+            top: you ? belowSlider + 24 : boardTop - 296,
             child: _SeatPanel(
               name: p.name,
               avatar: p.avatar,

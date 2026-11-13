@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/design/pool_city.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -126,7 +127,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     return PageFrame(
       title: t.forgotPasswordTitle,
       maxWidth: DesignAuth.forgotPasswordMaxWidth,
-      child: Column(
+      child: PcLegacyScale(child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(t.forgotPasswordSteps, style: AppText.label(15, color: AppColors.textDim)),
@@ -186,7 +187,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               child: Text(_error!, style: AppText.label(14, color: AppColors.danger)),
             ),
         ],
-      ),
+      )),
     );
   }
 }

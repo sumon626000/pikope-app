@@ -142,11 +142,11 @@ class _ChallengeWaitScreenState extends ConsumerState<ChallengeWaitScreen> {
   Widget build(BuildContext context) {
     final t = ref.watch(stringsProvider);
     final name = widget.opponentName.toUpperCase();
-    return DuelCanvas(
-      child: Stack(
-        children: [
-          const Positioned(left: 0, right: 0, top: 6, child: DuelTopBar()),
-          Center(
+    return DuelPage(
+      title: t.waitingShort,
+      legacyScale: 2.3,
+      onBack: _cancel,
+      child: Center(
             child: Container(
               width: 420,
               padding: const EdgeInsets.all(28),
@@ -168,8 +168,6 @@ class _ChallengeWaitScreenState extends ConsumerState<ChallengeWaitScreen> {
                 ],
               ),
             ),
-          ),
-        ],
       ),
     );
   }

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_state.dart';
-import '../../core/app_theme.dart';
 import '../../core/design/design.dart';
+import '../../core/design/pool_city.dart';
 import '../../core/duel_ui.dart';
 import '../../l10n/strings.dart';
 import 'login_auth_panel.dart';
@@ -46,68 +46,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(stringsProvider);
-    return DuelCanvas(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          DesignSpacing.x10,
-          DesignSpacing.x4,
-          DesignSpacing.x6,
-          DesignSpacing.x4,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+    return PortraitCanvas(
+      minHeight: 1500,
+      builder: (context, height) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(40, 50, 40, 60),
+        child: Column(
           children: [
-            Expanded(
-              flex: 5,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Padding(
-                  padding: const EdgeInsets.only(
-                    left: DesignSpacing.x10,
-                    right: DesignSpacing.x8,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const DuelLogo(height: 190),
-                      const SizedBox(height: DesignSpacing.x6),
-                      Text(
-                        s.taglineGames,
-                        style: AppText.label(
-                          24,
-                          color: DuelColors.silver,
-                          weight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        s.taglinePick,
-                        style: AppText.label(16, color: AppColors.gold),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 7,
-              child: SingleChildScrollView(
-                child: Align(
-                  alignment: Alignment.center,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: DesignAuth.loginFormMaxWidth,
-                    ),
-                    child: LoginAuthPanel(
-                      compact: false,
-                      onAuthenticated: _onAuthenticated,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            const DuelLogo(height: 240),
+            const SizedBox(height: 20),
+            Text(titleCase(s.taglineGames), textAlign: TextAlign.center, style: pcText(36, color: const Color(0xFFE6E2FF))),
+            const SizedBox(height: 8),
+            Text(s.taglinePick, textAlign: TextAlign.center, style: pcText(26, color: DesignColors.pcGold, weight: FontWeight.w500)),
+            const SizedBox(height: 40),
+            LoginAuthPanel(compact: false, onAuthenticated: _onAuthenticated),
           ],
         ),
       ),

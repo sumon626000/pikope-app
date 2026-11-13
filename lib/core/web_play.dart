@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app_theme.dart';
 import 'duel_ui.dart';
+import 'orientation.dart';
 import 'web_fullscreen.dart';
 import '../l10n/strings.dart';
 
@@ -75,6 +76,16 @@ class _WebLandscapeGateState extends ConsumerState<WebLandscapeGate> with Widget
   @override
   Widget build(BuildContext context) {
     if (!kIsWeb) return widget.child;
+    return ValueListenableBuilder<AppOrientation>(
+      valueListenable: AppOrientationController.current,
+      builder: (context, wanted, _) => _buildWeb(context, wanted),
+    );
+  }
+
+  Widget _buildWeb(BuildContext context, AppOrientation wanted) {
+    // Portrait screens (home, Ludo, Carrom) lay themselves out for any
+    // viewport; only the 1600×900 landscape pages need the rotate gate.
+    if (wanted == AppOrientation.portrait) return widget.child;
 
     final landscape = _landscapeViewport(context);
     final t = ref.watch(stringsProvider);

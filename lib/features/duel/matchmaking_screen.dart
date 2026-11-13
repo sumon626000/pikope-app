@@ -8,13 +8,13 @@ import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
 import '../../core/design/design.dart';
+import '../../core/design/pool_city.dart';
 import '../../core/duel_ui.dart';
 import '../../core/widgets.dart';
 import '../../data/api_client.dart';
 import '../online/online_screens.dart';
 import '../online/realtime_socket.dart';
 import '../online/session.dart';
-import 'duel_chrome.dart';
 import '../../l10n/strings.dart';
 import 'challenge_inbox_pulse.dart';
 import 'lobby_data.dart';
@@ -202,75 +202,58 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> with Sing
     final players = ((_room?['players'] as List?) ?? const []).cast<Map<String, dynamic>>();
     final others = [for (final p in players) if (p['id'] != myId) p];
     final poker = widget.mode == DuelMode.poker;
-    final tile = poker ? 240.0 : 230.0;
     final prizeLine = _started && (_room?['prize'] as int? ?? 0) > 0
         ? t.prizeColon(formatCoins(_room!['prize'] as int))
         : poker
             ? t.entryWinUpTo(formatCoins(widget.level.buyIn), formatCoins(widget.level.maxPrize!, compact: true))
             : t.prizeColon(formatCoins(widget.level.prize!));
+    final seatTile = poker ? 300.0 : 360.0;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _cancel();
       },
-      child: DuelCanvas(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: PcPage(
+        title: _started ? t.matchFound : t.matchmaking,
+        panel: false,
+        scroll: false,
+        onBack: _started ? () {} : _cancel,
+        body: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const SizedBox(height: 6),
-            const DuelTopBar(showProfile: false, showShortcuts: false),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  DuelTitle(_started ? t.matchFound : t.matchmaking, size: 66, sub: prizeLine),
-                  const SizedBox(height: DesignSpacing.x10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _Seat(size: tile, name: settings.name, avatar: settings.avatar),
-                      SizedBox(
-                        width: poker ? 96 : 110,
-                        height: tile,
-                        child: OverflowBox(
-                          maxWidth: 200,
-                          child: Text(t.vs,
-                              style: AppText.label(poker ? 60 : 92, color: DuelColors.gold, weight: FontWeight.w900).copyWith(shadows: const [
-                                Shadow(color: Color(0xFF7A4A00), offset: Offset(0, 5)),
-                                Shadow(color: Color(0xCC000000), blurRadius: 14, offset: Offset(0, 8)),
-                              ])),
-                        ),
-                      ),
-                      for (var i = 0; i < seats - 1; i++) ...[
-                        if (i > 0) SizedBox(width: poker ? 36 : 0),
-                        i < others.length
-                            ? _Seat(size: tile, name: others[i]['name'] as String, avatar: others[i]['avatar'] as String, looking: t.lookingForOpponent)
-                            : _Seat(size: tile, spin: _spin, looking: t.lookingForOpponent),
-                      ],
-                    ],
-                  ),
-                  if (_error != null) ...[
-                    const SizedBox(height: DesignSpacing.x8),
-                    Text(_error!.toUpperCase(), style: AppText.label(18, color: DuelColors.red)),
-                    const SizedBox(height: DesignSpacing.x3),
-                    DuelButton(label: t.back, color: DuelColors.rimLight, onPressed: () => Navigator.of(context).pop()),
-                  ],
-                ],
-              ),
-            ),
-            if (!_started && _error == null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: DesignSpacing.x4),
-                child: Center(
-                  child: Text(t.buyInHeld, style: AppText.label(13, color: DuelColors.dim, weight: FontWeight.w700)),
+            Text(titleCase(prizeLine), textAlign: TextAlign.center, style: pcText(40, color: DesignColors.pcGold)),
+            const SizedBox(height: 50),
+            // The player, VS, then the seats still filling.
+            Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 30,
+              runSpacing: 40,
+              children: [
+                _Seat(size: seatTile, name: settings.name, avatar: settings.avatar),
+                Text(
+                  t.vs,
+                  style: pcText(poker ? 80 : 110, color: DesignColors.pcGold).copyWith(shadows: const [
+                    Shadow(color: Color(0xFF7A4A00), offset: Offset(0, 6)),
+                    Shadow(color: Color(0xCC000000), blurRadius: 16, offset: Offset(0, 10)),
+                  ]),
                 ),
-              ),
-            if (!_started && _error == null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(DesignSpacing.screenEdge, 0, DesignSpacing.screenEdge, DesignLayout.bottomBarInset),
-                child: LobbyBackNav(label: t.cancel, onTap: _cancel),
-              ),
+                for (var i = 0; i < seats - 1; i++)
+                  i < others.length
+                      ? _Seat(size: seatTile, name: others[i]['name'] as String, avatar: others[i]['avatar'] as String, looking: t.lookingForOpponent)
+                      : _Seat(size: seatTile, spin: _spin, looking: t.lookingForOpponent),
+              ],
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 50),
+              Text(_error!, textAlign: TextAlign.center, style: pcText(34, color: DuelColors.red)),
+              const SizedBox(height: 24),
+              PcButton(label: t.back, style: PcButtonStyle.gray, width: 360, onPressed: () => Navigator.of(context).pop()),
+            ],
+            if (!_started && _error == null) ...[
+              const SizedBox(height: 60),
+              Text(t.buyInHeld, textAlign: TextAlign.center, style: pcText(26, color: DesignColors.pcTextDim, weight: FontWeight.w500)),
+            ],
           ],
         ),
       ),
@@ -296,30 +279,29 @@ class _Seat extends StatelessWidget {
           Container(
             width: size,
             height: size,
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: const Color(0xFF4A4973),
-              borderRadius: BorderRadius.circular(size * 0.14),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF7FE0FF), width: 4),
+              color: const Color(0xFF2A1C5E),
               boxShadow: const [BoxShadow(color: Color(0xB3000000), blurRadius: 18, offset: Offset(0, 8))],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(size * 0.1),
+              borderRadius: BorderRadius.circular(6),
               child: avatar != null
-                  ? AvatarImage(avatar!, size: size - 16)
+                  ? AvatarImage(avatar!, size: size - 20)
                   : AnimatedBuilder(
                       animation: spin!,
-                      builder: (context, _) => CustomPaint(size: Size.square(size - 16), painter: _SearchPainter(spin!.value)),
+                      builder: (context, _) => CustomPaint(size: Size.square(size - 20), painter: _SearchPainter(spin!.value)),
                     ),
             ),
           ),
           const SizedBox(height: 18),
           SizedBox(
-            width: size + 30,
+            width: size + 40,
             child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text((name ?? looking).toUpperCase(),
-                                maxLines: 1,
-                style: AppText.label(30, color: DuelColors.silver, weight: FontWeight.w800)),
+              fit: BoxFit.scaleDown,
+              child: Text(name ?? titleCase(looking), maxLines: 1, style: pcText(36)),
             ),
           ),
         ],

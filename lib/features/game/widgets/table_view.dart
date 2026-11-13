@@ -61,6 +61,16 @@ class _TableViewState extends State<TableView> {
   bool _draggingCue = false;
   Offset? _lastPan;
 
+  /// The brand mark painted faintly onto the felt. Loaded once, shared by
+  /// every table instance.
+  static ui.Image? _logo;
+  static Future<ui.Image> _loadLogo() async {
+    if (_logo != null) return _logo!;
+    final data = await rootBundle.load('assets/images/pikope_logo.png');
+    final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+    return _logo = (await codec.getNextFrame()).image;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -84,9 +94,10 @@ class _TableViewState extends State<TableView> {
     final ui.Image image;
     if (skin.style != null) {
       // Rasterise the vector table once, well above screen resolution.
+      final logo = await _loadLogo();
       const raster = Size(2400, 1404);
       final recorder = ui.PictureRecorder();
-      paintProTable(Canvas(recorder), raster, skin.style!);
+      paintProTable(Canvas(recorder), raster, skin.style!, logo: logo);
       final picture = recorder.endRecording();
       image = picture.toImageSync(raster.width.toInt(), raster.height.toInt());
       picture.dispose();
@@ -244,10 +255,17 @@ class _TablePainter extends CustomPainter {
     if (aiming) _paintGuide(canvas, proj, r, target);
 
     for (final sink in c.sinking) {
-      final t = ((c.time - sink.start) / SinkingBall.seconds).clamp(0.0, 1.0);
+      final raw = ((c.time - sink.start) / SinkingBall.seconds).clamp(0.0, 1.0);
+      final t = raw * raw; // accelerate as it falls into the pocket
       final from = proj.toLocal(sink.from);
       final to = proj.toLocal(TableGeometry.pockets[sink.pocket].center);
-      paintBall(canvas, Offset.lerp(from, to, t)!, r * (1 - 0.65 * t), sink.number, shadow: false);
+      final pos = Offset.lerp(from, to, t)!;
+      final rr = r * (1 - 0.82 * t);
+      paintBall(canvas, pos, rr, sink.number, shadow: false);
+      if (t > 0.55) {
+        // Darken as it drops below the rim into the net.
+        canvas.drawCircle(pos, rr, Paint()..color = Color.fromRGBO(0, 0, 0, (t - 0.55) / 0.45 * 0.6));
+      }
     }
     for (final b in world.balls) {
       if (!b.pocketed) paintBall(canvas, proj.toLocal(b.pos), r, b.number);

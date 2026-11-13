@@ -564,11 +564,32 @@ class _PowerBarPainter extends CustomPainter {
           ..color = AppColors.gold.withValues(alpha: 0.35 + 0.5 * pulse),
       );
     }
-    canvas.drawRRect(outer, Paint()..color = AppColors.frame);
+    // Reference gauge: a dark housing round a brushed-steel ruler.
+    canvas.drawRRect(outer, Paint()..color = const Color(0xFF15131F));
+    canvas.drawRRect(outer, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = const Color(0xFF5A5870));
     final inner = outer.deflate(5);
-    canvas.drawRRect(inner, Paint()..color = const Color(0xFF101014));
+    canvas.drawRRect(
+      inner,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFF8E9098), Color(0xFFE9EAEE), Color(0xFFB4B6BE), Color(0xFF6E7078)],
+          stops: [0, 0.35, 0.7, 1],
+        ).createShader(inner.outerRect),
+    );
     canvas.save();
     canvas.clipRRect(inner);
+    final tick = Paint()
+      ..color = const Color(0xCC2A2A34)
+      ..strokeWidth = 1.6;
+    const ticks = 40;
+    for (var i = 0; i <= ticks; i++) {
+      final y = 10 + (size.height - 20) * i / ticks;
+      final len = i % 10 == 0 ? size.width * 0.5 : (i % 5 == 0 ? size.width * 0.36 : size.width * 0.22);
+      canvas.drawLine(Offset(size.width - 5 - len, y), Offset(size.width - 5, y), tick);
+    }
     final power = c.power;
     if (power > 0) {
       final h = (size.height - 10) * power;
@@ -658,21 +679,31 @@ class MenuTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = ref.watch(stringsProvider);
     return GestureDetector(
       onTap: () {
         AudioService.tap();
         onTap();
       },
+      // Reference: a square violet button with three white bars.
       child: Container(
         width: size,
         height: size,
-        decoration: panelDecoration(radius: size * 0.2),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF5A63D8), Color(0xFF3B3FA8)]),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: const Color(0xFF8E96F0), width: 2),
+          boxShadow: const [BoxShadow(color: Color(0x99000000), blurRadius: 8, offset: Offset(0, 4))],
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.grid_view_rounded, color: const Color(0xFFB5B5C0), size: size * 0.46),
-            Text(t.menu, style: AppText.label(size * 0.15, color: const Color(0xFFB5B5C0))),
+            for (var i = 0; i < 3; i++)
+              Container(
+                width: size * 0.56,
+                height: size * 0.09,
+                margin: EdgeInsets.symmetric(vertical: size * 0.055),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(2)),
+              ),
           ],
         ),
       ),

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../app_theme.dart';
 import '../duel_ui.dart';
 import 'design_colors.dart';
+import 'pool_city.dart';
 import 'design_layout.dart';
 import 'design_spacing.dart';
 import 'design_typography.dart';
@@ -65,12 +65,12 @@ abstract final class DesignAuth {
       labelText: label,
       labelStyle: TextStyle(
         fontFamily: DesignTypography.displayFont,
-        fontSize: dense ? 14 : 26,
+        fontSize: dense ? 14 : 34,
         color: DesignColors.appTextDim,
       ),
       prefixIcon: icon == null
           ? null
-          : Icon(icon, color: DesignColors.appTextDim, size: dense ? 22 : 36),
+          : Icon(icon, color: DesignColors.appTextDim, size: dense ? 22 : 44),
       filled: true,
       fillColor: dense ? fieldFillLobby : fieldFillLogin,
       counterText: '',
@@ -108,51 +108,19 @@ class DesignPromptDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        width: width,
-        padding: const EdgeInsets.all(DesignSpacing.x5),
-        decoration: duelPanel(rim: rim),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            icon,
-            const SizedBox(height: DesignSpacing.x2),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: AppText.label(18, weight: FontWeight.w900),
-            ),
-            const SizedBox(height: DesignSpacing.x2),
-            Text(
-              body,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: DesignTypography.displayFont,
-                fontSize: 14,
-                height: 1.4,
-                color: DesignColors.silver,
-              ),
-            ),
-            SizedBox(
-              height: actions.length == 1 ? DesignSpacing.x4 : DesignSpacing.x5,
-            ),
-            if (actions.length == 1)
-              actions.first
-            else
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  for (var i = 0; i < actions.length; i++) ...[
-                    if (i > 0) const SizedBox(width: DesignSpacing.x3),
-                    actions[i],
-                  ],
-                ],
-              ),
-          ],
-        ),
+    // Pool City dialog: header bar with the title, dark body, action row.
+    return PcDialog(
+      title: title,
+      actions: actions,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconTheme.merge(data: const IconThemeData(size: 90), child: icon),
+          const SizedBox(height: 24),
+          Text(body, textAlign: TextAlign.center, style: pcText(36, weight: FontWeight.w500).copyWith(height: 1.35)),
+        ],
       ),
     );
   }
 }
+

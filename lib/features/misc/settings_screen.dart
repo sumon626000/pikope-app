@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/design/pool_city.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -6,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_state.dart';
 import '../duel/challenge_prefs.dart';
+import '../duel/home_portrait_widgets.dart' show RankEmblemPainter;
 import '../../core/app_theme.dart';
 import '../../core/widgets.dart';
 import '../../data/demo_data.dart';
@@ -263,38 +265,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     required IconData icon,
     required List<Widget> children,
   }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-      decoration: duelPanel(radius: 18, rim: DuelColors.rimLight, glow: true),
+    // Reference settings: a plain white heading with a rule, rows beneath.
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 2, 4, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  color: DuelColors.gold.withValues(alpha: 0.12),
-                  border: Border.all(
-                    color: DuelColors.gold.withValues(alpha: 0.35),
-                  ),
-                ),
-                child: Icon(icon, color: DuelColors.gold, size: 20),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  title,
-                  style: AppText.label(16, weight: FontWeight.w900),
-                ),
-              ),
+              Icon(icon, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(child: Text(titleCase(title), style: pcText(17))),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 4),
+          Container(height: 1, color: Colors.white.withValues(alpha: 0.18)),
+          const SizedBox(height: 10),
           ...children,
         ],
       ),
@@ -311,13 +297,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Widget _prefInline(String label, Widget control, {required bool stack}) {
     final title = Text(
-      label,
-      style: AppText.label(13, color: DuelColors.dim, weight: FontWeight.w800),
+      titleCase(label),
+      style: pcText(14, color: const Color(0xFFD9D2FF)),
     );
     if (stack) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [title, const SizedBox(height: 8), control],
+        children: [title, const SizedBox(height: 5), control],
       );
     }
     return Row(
@@ -378,6 +364,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ValueChanged<bool> onChanged, {
     bool stacked = false,
   }) {
+    if (stacked) {
+      // Reference style: label over an ON / OFF bar.
+      final t = ref.read(stringsProvider);
+      return _prefInline(
+        label,
+        ChoiceRow<bool>(mini: true, options: {true: t.on, false: t.off}, value: value, onChanged: onChanged),
+        stack: true,
+      );
+    }
     final chip = Container(
       width: stacked ? double.infinity : null,
       padding: const EdgeInsets.symmetric(
@@ -755,7 +750,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final gap = phoneLayout
         ? DesignAuth.settingsPhoneSectionGap
         : DesignAuth.settingsSectionGap;
-    final stackPrefs = phoneLayout;
+    const stackPrefs = true;
     final st = _resolvedStats(s);
 
     return Column(
@@ -796,7 +791,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _prefInline(
               t.language,
               ChoiceRow<String>(
-                dense: true,
+                mini: true,
                 options: {'en': t.languageEnglish, 'bn': t.languageBangla},
                 value: s.languageCode == 'bn' ? 'bn' : 'en',
                 onChanged: (v) => ref
@@ -809,7 +804,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _prefInline(
               t.sound,
               ChoiceRow<bool>(
-                dense: true,
+                mini: true,
                 options: {true: t.on, false: t.off},
                 value: s.soundOn,
                 onChanged: (v) => _update((st) => st.copyWith(soundOn: v)),
@@ -820,7 +815,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _prefInline(
               t.sectionShotClock,
               ChoiceRow<int>(
-                dense: true,
+                mini: true,
                 options: {
                   20: t.secLabel(20),
                   30: t.secLabel(30),
@@ -836,7 +831,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _prefInline(
               t.sectionBot,
               ChoiceRow<int>(
-                dense: true,
+                mini: true,
                 options: {0: t.botEasy, 1: t.botNormal, 2: t.botHard},
                 value: s.botLevel,
                 onChanged: (v) => _update((st) => st.copyWith(botLevel: v)),
@@ -942,27 +937,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       referral: referral,
     );
 
-    if (phoneLayout) {
-      return _SettingsPhoneShell(title: t.settingsTitle, child: body);
-    }
-
+    // One portrait layout (Pool City page): the body scrolls on the panel.
     return DuelPage(
       title: t.settingsTitle,
-      expanded: true,
-      sideBack: true,
-      contentTop: DesignSecondaryPage.bodyTopExpanded,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(bottom: DesignSpacing.x3),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: DesignAuth.settingsContentMaxWidth,
-            ),
-            child: body,
-          ),
-        ),
-      ),
+      scroll: true,
+      child: PcLegacyScale(child: body),
     );
   }
 
@@ -972,23 +951,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     AppStrings t, {
     required bool compact,
   }) {
+    final avatarSize = compact ? 72.0 : 82.0;
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        // Avatar in a cyan-rimmed frame.
         Container(
-          width: compact ? 68 : 76,
-          height: compact ? 68 : 76,
+          width: avatarSize,
+          height: avatarSize,
           padding: const EdgeInsets.all(3),
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFFFFE08A), Color(0xFF5C8BFF), Color(0xFFFF3B4E)],
+              colors: [Color(0xFF8FD0FF), Color(0xFF5E86F0), Color(0xFF6E5BD6)],
             ),
+            border: Border.all(color: const Color(0xFF29C6F0), width: 2.5),
           ),
-          child: ClipOval(
-            child: AvatarImage(s.avatar, size: compact ? 62 : 70),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: AvatarImage(s.avatar, size: avatarSize - 7),
           ),
         ),
         const SizedBox(width: 12),
@@ -997,26 +980,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                session.phone ?? t.noPhoneYet,
-                style: AppText.label(
-                  compact ? 16 : 17,
-                  weight: FontWeight.w900,
-                ),
+                s.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppText.label(compact ? 16 : 18, weight: FontWeight.w900),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
-                t.winsGames(s.wins, s.games),
-                style: AppText.label(12, color: DuelColors.dim),
+                session.phone ?? t.noPhoneYet,
+                style: AppText.label(11, color: DuelColors.dim),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
+              _levelBar(session, compact: compact),
+              const SizedBox(height: 7),
               Row(
                 children: [
-                  PikoCoinIcon(size: compact ? 18 : 20),
+                  PikoCoinIcon(size: compact ? 16 : 18),
                   const SizedBox(width: 6),
                   Text(
                     formatPicoCoins(s.coins),
                     style: AppText.label(
-                      compact ? 14 : 15,
+                      compact ? 13 : 15,
                       color: DuelColors.gold,
                       weight: FontWeight.w800,
                     ),
@@ -1024,6 +1008,85 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ],
               ),
             ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        // Rank emblem.
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: compact ? 54 : 62,
+              height: compact ? 58 : 68,
+              child: CustomPaint(
+                painter: RankEmblemPainter(
+                  session.signedIn ? session.rankTier : -1,
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            SizedBox(
+              width: compact ? 64 : 74,
+              child: Text(
+                titleCase(session.rankName),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppText.label(compact ? 10 : 12, weight: FontWeight.w800),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _levelBar(SessionState session, {required bool compact}) {
+    final circle = compact ? 28.0 : 34.0;
+    return Stack(
+      alignment: Alignment.centerLeft,
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          height: compact ? 16 : 20,
+          margin: EdgeInsets.only(left: circle / 2),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1B2247),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: [
+              FractionallySizedBox(
+                widthFactor: (session.levelProgress / 100).clamp(0.04, 1.0),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF3CCB5A), Color(0xFF2AA54A)],
+                    ),
+                  ),
+                ),
+              ),
+              Center(
+                child: Text(
+                  '${session.levelProgress}%',
+                  style: AppText.label(compact ? 9 : 11, weight: FontWeight.w800),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          width: circle,
+          height: circle,
+          alignment: Alignment.center,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(colors: [Color(0xFFFFE27A), Color(0xFFE09A12)]),
+          ),
+          child: Text(
+            '${session.level}',
+            style: AppText.label(compact ? 12 : 15, weight: FontWeight.w900),
           ),
         ),
       ],
@@ -1072,116 +1135,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           style: AppText.label(11, color: DuelColors.dim),
         ),
       ],
-    );
-  }
-}
-
-/// Full-screen settings on phones — uses the real viewport instead of scaling 1600×900.
-class _SettingsPhoneShell extends StatelessWidget {
-  const _SettingsPhoneShell({required this.title, required this.child});
-
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: DuelColors.ink,
-      resizeToAvoidBottomInset: true,
-      body: DuelBackdrop(
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(6, 4, 10, 0),
-                child: Row(
-                  children: [
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => Navigator.of(context).maybePop(),
-                        borderRadius: BorderRadius.circular(14),
-                        child: Container(
-                          width: 46,
-                          height: 46,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: DuelColors.rimLight,
-                              width: 1.5,
-                            ),
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                DuelColors.glass,
-                                DuelColors.glass.withValues(alpha: 0.85),
-                              ],
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.arrow_back_rounded,
-                            color: DuelColors.silver,
-                            size: 26,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        title,
-                        textAlign: TextAlign.center,
-                        style: AppText.label(22, weight: FontWeight.w900),
-                      ),
-                    ),
-                    const SizedBox(width: 46),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  DesignAuth.settingsPhonePaddingH,
-                  8,
-                  DesignAuth.settingsPhonePaddingH,
-                  6,
-                ),
-                child: Container(
-                  height: 2,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(1),
-                    gradient: LinearGradient(
-                      colors: [
-                        DuelColors.gold.withValues(alpha: 0.05),
-                        DuelColors.gold.withValues(alpha: 0.55),
-                        DuelColors.gold.withValues(alpha: 0.05),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Scrollbar(
-                  thumbVisibility: true,
-                  radius: const Radius.circular(8),
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(
-                      DesignAuth.settingsPhonePaddingH,
-                      4,
-                      DesignAuth.settingsPhonePaddingH,
-                      DesignAuth.settingsPhonePaddingBottom,
-                    ),
-                    child: child,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

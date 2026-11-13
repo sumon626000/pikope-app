@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_state.dart';
-import '../../core/app_theme.dart';
 import '../../core/brand.dart';
 import '../../core/design/design.dart';
+import '../../core/design/pool_city.dart';
 import '../../core/duel_ui.dart';
 import '../../core/env.dart';
 import '../duel/duel_home_screen.dart';
@@ -106,18 +106,19 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(stringsProvider);
-    return DuelCanvas(
-      child: LoadingSplashBody(
+    return PortraitCanvas(
+      minHeight: 1400,
+      builder: (context, height) => LoadingSplashBody(
         message: s.loadingBilliard,
         progress: AnimatedBuilder(
           animation: _bar,
           builder: (_, _) => ClipRRect(
-            borderRadius: BorderRadius.circular(DesignRadii.sm),
+            borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
               value: Curves.easeInOut.transform(_bar.value),
-              minHeight: 12,
-              backgroundColor: const Color(0xFF2B2B38),
-              valueColor: const AlwaysStoppedAnimation(AppColors.active),
+              minHeight: 22,
+              backgroundColor: const Color(0xFF2A1C5E),
+              valueColor: const AlwaysStoppedAnimation(DesignColors.pcGold),
             ),
           ),
         ),
@@ -126,7 +127,8 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
   }
 }
 
-/// Static splash layout (also used in Phase 7 responsive tests).
+/// Splash layout in 1080-wide design units (also used in the responsive
+/// tests): logo, the three game cards, a message and the progress bar.
 class LoadingSplashBody extends StatelessWidget {
   const LoadingSplashBody({
     super.key,
@@ -143,45 +145,41 @@ class LoadingSplashBody extends StatelessWidget {
       child: FittedBox(
         fit: BoxFit.scaleDown,
         alignment: Alignment.center,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const DuelLogo(height: 168),
-            const SizedBox(height: 28),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                _LoadingGameCard(
-                  rim: DesignColors.poolEightAccent,
-                  label: 'POOL',
-                  art: BilliardArt(),
-                ),
-                SizedBox(width: DesignSpacing.x5),
-                _LoadingGameCard(
-                  rim: DesignColors.ludoAccent,
-                  label: 'LUDO',
-                  art: LudoArt(),
-                ),
-                SizedBox(width: DesignSpacing.x5),
-                _LoadingGameCard(
-                  rim: DesignColors.carromAccent,
-                  label: 'CARROM',
-                  art: CarromArt(),
-                ),
-              ],
-            ),
-            const SizedBox(height: DesignSpacing.x6),
-            Text(
-              message,
-              style: AppText.label(
-                22,
-                color: DuelColors.silver,
-                weight: FontWeight.w800,
+        child: SizedBox(
+          width: PortraitCanvas.width,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const DuelLogo(height: 300),
+              const SizedBox(height: 60),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  _LoadingGameCard(
+                    rim: DesignColors.pcTileOrange,
+                    label: 'POOL',
+                    art: BilliardArt(),
+                  ),
+                  SizedBox(width: 24),
+                  _LoadingGameCard(
+                    rim: DesignColors.pcTilePink,
+                    label: 'LUDO',
+                    art: LudoArt(),
+                  ),
+                  SizedBox(width: 24),
+                  _LoadingGameCard(
+                    rim: DesignColors.pcTileTeal,
+                    label: 'CARROM',
+                    art: CarromArt(),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: DesignSpacing.x8),
-            SizedBox(width: 480, child: progress),
-          ],
+              const SizedBox(height: 70),
+              Text(titleCase(message), style: pcText(36, color: const Color(0xFFE6E2FF))),
+              const SizedBox(height: 40),
+              SizedBox(width: 700, child: progress),
+            ],
+          ),
         ),
       ),
     );
@@ -202,21 +200,18 @@ class _LoadingGameCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 280,
-      height: 168,
+      width: 300,
+      height: 200,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: rim.withValues(alpha: 0.55), width: 2),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 3),
         boxShadow: [
-          BoxShadow(
-            color: rim.withValues(alpha: 0.2),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
+          BoxShadow(color: rim.withValues(alpha: 0.35), blurRadius: 22, offset: const Offset(0, 8)),
+          const BoxShadow(color: Color(0x99000000), blurRadius: 14, offset: Offset(0, 8)),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(11),
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -226,17 +221,9 @@ class _LoadingGameCard extends StatelessWidget {
               right: 0,
               bottom: 0,
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                color: Colors.black.withValues(alpha: 0.35),
-                child: Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: AppText.label(
-                    14,
-                    color: Colors.white,
-                    weight: FontWeight.w900,
-                  ),
-                ),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                color: Colors.black.withValues(alpha: 0.4),
+                child: Text(titleCase(label), textAlign: TextAlign.center, style: pcText(34)),
               ),
             ),
           ],

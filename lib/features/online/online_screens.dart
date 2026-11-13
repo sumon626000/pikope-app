@@ -71,7 +71,8 @@ Future<bool> resumeActiveOnlineMatch(WidgetRef ref) async {
   if (nav == null || !Env.hasBackend) return false;
   if (ref.read(settingsProvider).authToken.isEmpty) return false;
   try {
-    if (!await ref.read(sessionProvider.notifier).tryRestoreExistingSession()) return false;
+    if (!await ref.read(sessionProvider.notifier).tryRestoreExistingSession())
+      return false;
   } catch (_) {
     return false;
   }
@@ -97,7 +98,7 @@ Future<void> openOnlineMatch(
   required int seat,
   required int shotSeconds,
   required List<Map<String, dynamic>> players,
-  required String?   wsUrl,
+  required String? wsUrl,
   Map<String, dynamic>? bet,
   bool intro = false,
   bool replace = true,
@@ -105,31 +106,55 @@ Future<void> openOnlineMatch(
   final liveWs = normalizeWebSocketForWeb(wsUrl);
   final seats = [
     for (final p in players)
-      SeatConfig(name: p['name'] as String, avatar: p['avatar'] as String, cue: p['cue'] as String? ?? 'classic'),
+      SeatConfig(
+        name: p['name'] as String,
+        avatar: p['avatar'] as String,
+        cue: p['cue'] as String? ?? 'classic',
+      ),
   ];
   final stake = MatchBet.fromJson(bet);
-  final driver = OnlineGameDriver(api, gameId, seat, roomId: roomId, wsUrl: liveWs);
+  final driver = OnlineGameDriver(
+    api,
+    gameId,
+    seat,
+    roomId: roomId,
+    wsUrl: liveWs,
+  );
   final MaterialPageRoute<void> route;
   if (gameKey.startsWith('ludo')) {
     route = MaterialPageRoute<void>(
       builder: (_) => WebPlayScope(
         child: LudoScreen(
-          config: LudoMatchConfig(seats: players.length, players: seats, shotSeconds: shotSeconds, bet: stake),
+          config: LudoMatchConfig(
+            seats: players.length,
+            players: seats,
+            shotSeconds: shotSeconds,
+            bet: stake,
+          ),
           driver: driver,
         ),
       ),
     );
   } else if (gameKey == 'carrom') {
     route = MaterialPageRoute<void>(
-      builder: (_) => Consumer(builder: (context, ref, _) {
-        final prefs = ref.read(settingsProvider);
-        return WebPlayScope(
-          child: CarromScreen(
-            config: CarromMatchConfig(seats: seats, shotSeconds: shotSeconds, bet: stake, strikerSkin: prefs.carromStriker, pieceSkin: prefs.carromPieces, boardSkin: prefs.carromBoard),
-            driver: driver,
-          ),
-        );
-      }),
+      builder: (_) => Consumer(
+        builder: (context, ref, _) {
+          final prefs = ref.read(settingsProvider);
+          return WebPlayScope(
+            child: CarromScreen(
+              config: CarromMatchConfig(
+                seats: seats,
+                shotSeconds: shotSeconds,
+                bet: stake,
+                strikerSkin: prefs.carromStriker,
+                pieceSkin: prefs.carromPieces,
+                boardSkin: prefs.carromBoard,
+              ),
+              driver: driver,
+            ),
+          );
+        },
+      ),
     );
   } else {
     final game = AppGameInfo.fromApi(gameKey);
@@ -137,19 +162,39 @@ Future<void> openOnlineMatch(
     route = MaterialPageRoute<void>(
       builder: (_) => WebPlayScope(
         child: pool == null
-            ? GameScreen(config: MatchConfig(seats: seats, shotSeconds: shotSeconds, bet: stake), driver: driver, intro: intro)
+            ? GameScreen(
+                config: MatchConfig(
+                  seats: seats,
+                  shotSeconds: shotSeconds,
+                  bet: stake,
+                ),
+                driver: driver,
+                intro: intro,
+              )
             : PoolScreen(
-                config: PoolMatchConfig(game: pool, seats: seats, shotSeconds: shotSeconds, bet: stake),
+                config: PoolMatchConfig(
+                  game: pool,
+                  seats: seats,
+                  shotSeconds: shotSeconds,
+                  bet: stake,
+                ),
                 driver: driver,
                 intro: intro,
               ),
       ),
     );
   }
-  return replace ? navigator.pushReplacement<void, void>(route) : navigator.push(route);
+  return replace
+      ? navigator.pushReplacement<void, void>(route)
+      : navigator.push(route);
 }
 
-const _body = TextStyle(fontFamily: 'sans-serif', fontSize: 14, height: 1.4, color: AppColors.text);
+const _body = TextStyle(
+  fontFamily: 'sans-serif',
+  fontSize: 14,
+  height: 1.4,
+  color: AppColors.text,
+);
 
 /// Online entry for one game: quick match, private room, or join by code.
 ///
@@ -158,33 +203,36 @@ const _body = TextStyle(fontFamily: 'sans-serif', fontSize: 14, height: 1.4, col
 /// no free public quick match).
 class OnlineLobbyScreen extends ConsumerStatefulWidget {
   const OnlineLobbyScreen({super.key, required this.game})
-      : ludoPlayers = null,
-        carrom = false,
-        friendLevel = null,
-        friendGameKey = null;
+    : ludoPlayers = null,
+      carrom = false,
+      friendLevel = null,
+      friendGameKey = null;
 
   /// A Ludo private room for [players] (2 or 4).
   const OnlineLobbyScreen.ludo(this.ludoPlayers, {super.key})
-      : game = null,
-        carrom = false,
-        friendLevel = null,
-        friendGameKey = null;
+    : game = null,
+      carrom = false,
+      friendLevel = null,
+      friendGameKey = null;
 
   /// A carrom private room.
   const OnlineLobbyScreen.carrom({super.key})
-      : game = null,
-        ludoPlayers = null,
-        carrom = true,
-        friendLevel = null,
-        friendGameKey = null;
+    : game = null,
+      ludoPlayers = null,
+      carrom = true,
+      friendLevel = null,
+      friendGameKey = null;
 
   /// Private room at a chosen stake (play with friends).
-  const OnlineLobbyScreen.stakedPrivate({super.key, required String gameKey, required BetLevel level})
-      : game = null,
-        ludoPlayers = gameKey == 'ludo2' ? 2 : (gameKey == 'ludo4' ? 4 : null),
-        carrom = gameKey == 'carrom',
-        friendLevel = level,
-        friendGameKey = gameKey;
+  const OnlineLobbyScreen.stakedPrivate({
+    super.key,
+    required String gameKey,
+    required BetLevel level,
+  }) : game = null,
+       ludoPlayers = gameKey == 'ludo2' ? 2 : (gameKey == 'ludo4' ? 4 : null),
+       carrom = gameKey == 'carrom',
+       friendLevel = level,
+       friendGameKey = gameKey;
 
   final AppGame? game;
   final int? ludoPlayers;
@@ -194,19 +242,24 @@ class OnlineLobbyScreen extends ConsumerStatefulWidget {
 
   bool get isLudo => ludoPlayers != null;
   String get gameKey =>
-      friendGameKey ?? (carrom ? 'carrom' : (isLudo ? (ludoPlayers == 2 ? 'ludo2' : 'ludo4') : game!.apiName));
+      friendGameKey ??
+      (carrom
+          ? 'carrom'
+          : (isLudo ? (ludoPlayers == 2 ? 'ludo2' : 'ludo4') : game!.apiName));
 
   bool get stakedFriends => friendLevel != null;
   String get titleText => carrom
       ? 'CARROM'
       : isLudo
-          ? 'LUDO'
-          : (game?.title ?? AppGameInfo.titleOf(friendGameKey ?? gameKey));
+      ? 'LUDO'
+      : (game?.title ?? AppGameInfo.titleOf(friendGameKey ?? gameKey));
   String get taglineText => carrom
       ? '1 V 1 - PRIVATE ROOM'
       : isLudo
-          ? (ludoPlayers == 2 ? '2 PLAYERS - PRIVATE ROOM' : '4 PLAYERS - PRIVATE ROOM')
-          : game!.tagline;
+      ? (ludoPlayers == 2
+            ? '2 PLAYERS - PRIVATE ROOM'
+            : '4 PLAYERS - PRIVATE ROOM')
+      : game!.tagline;
 
   @override
   ConsumerState<OnlineLobbyScreen> createState() => _OnlineLobbyScreenState();
@@ -229,9 +282,18 @@ class _OnlineLobbyScreenState extends ConsumerState<OnlineLobbyScreen> {
     super.dispose();
   }
 
-  Future<void> _signIn() => _run(() => ref.read(sessionProvider.notifier).tryRestoreExistingSession().then((ok) {
-        if (!ok) throw ApiException(401, 'login_required', 'Sign in or sign up to continue.');
-      }));
+  Future<void> _signIn() => _run(
+    () => ref.read(sessionProvider.notifier).tryRestoreExistingSession().then((
+      ok,
+    ) {
+      if (!ok)
+        throw ApiException(
+          401,
+          'login_required',
+          'Sign in or sign up to continue.',
+        );
+    }),
+  );
 
   Future<void> _run(Future<void> Function() action) async {
     setState(() {
@@ -248,11 +310,12 @@ class _OnlineLobbyScreenState extends ConsumerState<OnlineLobbyScreen> {
   }
 
   Future<void> _enter(String path, Map<String, dynamic> body) => _run(() async {
-        final room = await ref.read(apiProvider)!.post(path, body);
-        if (!mounted) return;
-        await Navigator.of(context)
-            .push(MaterialPageRoute<void>(builder: (_) => RoomScreen(room: room)));
-      });
+    final room = await ref.read(apiProvider)!.post(path, body);
+    if (!mounted) return;
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => RoomScreen(room: room)));
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -263,37 +326,46 @@ class _OnlineLobbyScreenState extends ConsumerState<OnlineLobbyScreen> {
     final gameTitle = widget.carrom
         ? t.carromTitle
         : widget.isLudo
-            ? t.ludoTitle
-            : (widget.game != null ? t.appGameTitle(widget.game!) : AppGameInfo.titleOf(widget.gameKey));
+        ? t.ludoTitle
+        : (widget.game != null
+              ? t.appGameTitle(widget.game!)
+              : AppGameInfo.titleOf(widget.gameKey));
     final tagline = widget.carrom
         ? t.taglinePrivateCarrom
         : widget.isLudo
-            ? t.taglinePrivateLudo(widget.ludoPlayers ?? 4)
-            : widget.game != null
-                ? t.appGameTagline(widget.game!)
-                : t.poolFriendsBody;
+        ? t.taglinePrivateLudo(widget.ludoPlayers ?? 4)
+        : widget.game != null
+        ? t.appGameTagline(widget.game!)
+        : t.poolFriendsBody;
     return PageFrame(
       title: t.onlineSuffix(gameTitle),
       maxWidth: 760,
       child: Column(
         children: [
           SectionCard(
+            legacy: true,
             title: t.you,
             child: Row(
               children: [
-                FramedTile(size: 52, child: AvatarImage(settings.avatar, size: 52)),
+                FramedTile(
+                  size: 52,
+                  child: AvatarImage(settings.avatar, size: 52),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(settings.name.toUpperCase(), style: AppText.label(16, weight: FontWeight.w900)),
+                      Text(
+                        settings.name.toUpperCase(),
+                        style: AppText.label(16, weight: FontWeight.w900),
+                      ),
                       Text(
                         !session.signedIn
                             ? t.connecting
                             : session.isGuest
-                                ? t.guestHint
-                                : session.phone ?? '',
+                            ? t.guestHint
+                            : session.phone ?? '',
                         style: AppText.label(11, color: AppColors.textDim),
                       ),
                     ],
@@ -307,8 +379,11 @@ class _OnlineLobbyScreenState extends ConsumerState<OnlineLobbyScreen> {
                   fontSize: 13,
                   color: AppColors.frame,
                   onPressed: session.signedIn
-                      ? () => Navigator.of(context)
-                          .push(MaterialPageRoute<void>(builder: (_) => const AccountScreen()))
+                      ? () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const AccountScreen(),
+                          ),
+                        )
                       : null,
                 ),
               ],
@@ -316,28 +391,45 @@ class _OnlineLobbyScreenState extends ConsumerState<OnlineLobbyScreen> {
           ),
           if (_error != null)
             SectionCard(
+              legacy: true,
               title: t.problem,
               child: Row(
                 children: [
                   Expanded(child: Text(_error!, style: _body)),
                   if (!session.signedIn)
-                    GameButton(label: t.retry, height: 40, width: 130, fontSize: 13, onPressed: _signIn),
+                    GameButton(
+                      label: t.retry,
+                      height: 40,
+                      width: 130,
+                      fontSize: 13,
+                      onPressed: _signIn,
+                    ),
                 ],
               ),
             ),
           if (level != null) ...[
-            Builder(builder: (context) {
-              final seats = widget.isLudo
-                  ? (widget.ludoPlayers ?? 2)
-                  : (widget.carrom ? 2 : (widget.game?.players ?? 2));
-              final prize = level.prize ?? level.stake * seats;
-              return SectionCard(
-                title: level.displayName,
-                child: Text(t.friendsStakeLine(formatCoins(level.buyIn), formatCoins(prize)), style: _body),
-              );
-            }),
+            Builder(
+              builder: (context) {
+                final seats = widget.isLudo
+                    ? (widget.ludoPlayers ?? 2)
+                    : (widget.carrom ? 2 : (widget.game?.players ?? 2));
+                final prize = level.prize ?? level.stake * seats;
+                return SectionCard(
+                  legacy: true,
+                  title: level.displayName,
+                  child: Text(
+                    t.friendsStakeLine(
+                      formatCoins(level.buyIn),
+                      formatCoins(prize),
+                    ),
+                    style: _body,
+                  ),
+                );
+              },
+            ),
           ],
           SectionCard(
+            legacy: true,
             title: tagline,
             child: Column(
               children: [
@@ -353,7 +445,9 @@ class _OnlineLobbyScreenState extends ConsumerState<OnlineLobbyScreen> {
                           fontSize: 17,
                           onPressed: _busy || !session.signedIn
                               ? null
-                              : () => _enter('/rooms/quick', {'game': widget.gameKey}),
+                              : () => _enter('/rooms/quick', {
+                                  'game': widget.gameKey,
+                                }),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -368,8 +462,12 @@ class _OnlineLobbyScreenState extends ConsumerState<OnlineLobbyScreen> {
                         onPressed: _busy || !session.signedIn
                             ? null
                             : () {
-                                final body = <String, dynamic>{'game': widget.gameKey, 'private': true};
-                                if (widget.friendLevel != null) body['level'] = widget.friendLevel!.level;
+                                final body = <String, dynamic>{
+                                  'game': widget.gameKey,
+                                  'private': true,
+                                };
+                                if (widget.friendLevel != null)
+                                  body['level'] = widget.friendLevel!.level;
                                 _enter('/rooms', body);
                               },
                       ),
@@ -385,7 +483,10 @@ class _OnlineLobbyScreenState extends ConsumerState<OnlineLobbyScreen> {
                         maxLength: 6,
                         textCapitalization: TextCapitalization.characters,
                         style: AppText.label(18),
-                        decoration: InputDecoration(labelText: t.roomCode, counterText: ''),
+                        decoration: InputDecoration(
+                          labelText: t.roomCode,
+                          counterText: '',
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -400,7 +501,8 @@ class _OnlineLobbyScreenState extends ConsumerState<OnlineLobbyScreen> {
                           ? null
                           : () {
                               final code = _code.text.trim();
-                              if (code.length == 6) _enter('/rooms/join', {'code': code});
+                              if (code.length == 6)
+                                _enter('/rooms/join', {'code': code});
                             },
                     ),
                   ],
@@ -482,12 +584,14 @@ class _RoomScreenState extends ConsumerState<RoomScreen> {
       });
       _maybeStart();
     } on ApiException catch (e) {
-      if (mounted) setState(() => _error = ref.read(stringsProvider).maybeApi(e.message));
+      if (mounted)
+        setState(() => _error = ref.read(stringsProvider).maybeApi(e.message));
     }
   }
 
   Future<void> _maybeStart() async {
-    if (_started || _room['status'] != 'playing' || _room['gameId'] == null) return;
+    if (_started || _room['status'] != 'playing' || _room['gameId'] == null)
+      return;
     _started = true;
     _timer?.cancel();
     _socket?.dispose();
@@ -547,6 +651,7 @@ class _RoomScreenState extends ConsumerState<RoomScreen> {
         child: Column(
           children: [
             SectionCard(
+              legacy: true,
               title: t.waitingPlayers(players.length, seats),
               child: Row(
                 children: [
@@ -556,18 +661,33 @@ class _RoomScreenState extends ConsumerState<RoomScreen> {
                         children: [
                           FramedTile(
                             size: 64,
-                            frameColor: i < players.length ? AppColors.active : AppColors.frame,
+                            frameColor: i < players.length
+                                ? AppColors.active
+                                : AppColors.frame,
                             child: i < players.length
-                                ? AvatarImage(players[i]['avatar'] as String, size: 64)
-                                : const Icon(Icons.hourglass_empty_rounded, color: AppColors.textDim, size: 30),
+                                ? AvatarImage(
+                                    players[i]['avatar'] as String,
+                                    size: 64,
+                                  )
+                                : const Icon(
+                                    Icons.hourglass_empty_rounded,
+                                    color: AppColors.textDim,
+                                    size: 30,
+                                  ),
                           ),
                           const SizedBox(height: 6),
                           FittedBox(
                             fit: BoxFit.scaleDown,
                             child: Text(
-                              i < players.length ? (players[i]['name'] as String).toUpperCase() : t.emptySeat,
-                              style: AppText.label(13,
-                                  color: i < players.length ? AppColors.text : AppColors.textDim),
+                              i < players.length
+                                  ? (players[i]['name'] as String).toUpperCase()
+                                  : t.emptySeat,
+                              style: AppText.label(
+                                13,
+                                color: i < players.length
+                                    ? AppColors.text
+                                    : AppColors.textDim,
+                              ),
                             ),
                           ),
                         ],
@@ -577,18 +697,30 @@ class _RoomScreenState extends ConsumerState<RoomScreen> {
               ),
             ),
             SectionCard(
+              legacy: true,
               title: _room['isPrivate'] == true ? t.privateRoom : t.publicRoom,
               child: Row(
                 children: [
-                  Text(t.code, style: AppText.label(13, color: AppColors.textDim)),
+                  Text(
+                    t.code,
+                    style: AppText.label(13, color: AppColors.textDim),
+                  ),
                   const SizedBox(width: 12),
-                  SelectableText(_room['code'] as String,
-                      style: AppText.label(26, color: AppColors.gold, weight: FontWeight.w900)),
+                  SelectableText(
+                    _room['code'] as String,
+                    style: AppText.label(
+                      26,
+                      color: AppColors.gold,
+                      weight: FontWeight.w900,
+                    ),
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Text(
                       _error ??
-                          (_room['isPrivate'] == true ? t.sharePrivateRoom : t.publicRoomHint),
+                          (_room['isPrivate'] == true
+                              ? t.sharePrivateRoom
+                              : t.publicRoomHint),
                       style: _body,
                     ),
                   ),
@@ -650,6 +782,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       child: Column(
         children: [
           SectionCard(
+            legacy: true,
             title: guest ? t.keepProgress : t.signedIn,
             child: guest
                 ? Column(
@@ -676,13 +809,19 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                               onPressed: _busy
                                   ? null
                                   : () {
-                                      final err = BdPhone.validationMessage(_phone.text.trim(), t);
+                                      final err = BdPhone.validationMessage(
+                                        _phone.text.trim(),
+                                        t,
+                                      );
                                       if (err != null) {
                                         setState(() => _message = err);
                                         return;
                                       }
                                       _run(
-                                        () => notifier.register(_phone.text.trim(), _password.text),
+                                        () => notifier.register(
+                                          _phone.text.trim(),
+                                          _password.text,
+                                        ),
                                         t.msgLoginAdded,
                                       );
                                     },
@@ -698,13 +837,19 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                               onPressed: _busy
                                   ? null
                                   : () {
-                                      final err = BdPhone.validationMessage(_phone.text.trim(), t);
+                                      final err = BdPhone.validationMessage(
+                                        _phone.text.trim(),
+                                        t,
+                                      );
                                       if (err != null) {
                                         setState(() => _message = err);
                                         return;
                                       }
                                       _run(
-                                        () => notifier.login(_phone.text.trim(), _password.text),
+                                        () => notifier.login(
+                                          _phone.text.trim(),
+                                          _password.text,
+                                        ),
                                         t.msgSignedIn,
                                       );
                                     },
@@ -721,16 +866,23 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                         onPressed: _busy
                             ? null
                             : () => Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => ForgotPasswordScreen(initialPhoneLocal: _phone.text.trim()),
+                                MaterialPageRoute<void>(
+                                  builder: (_) => ForgotPasswordScreen(
+                                    initialPhoneLocal: _phone.text.trim(),
                                   ),
                                 ),
+                              ),
                       ),
                     ],
                   )
                 : Row(
                     children: [
-                      Expanded(child: Text(session.phone ?? '', style: AppText.label(15))),
+                      Expanded(
+                        child: Text(
+                          session.phone ?? '',
+                          style: AppText.label(15),
+                        ),
+                      ),
                       GameButton(
                         label: t.signOut,
                         height: 42,
@@ -744,13 +896,21 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                                 await notifier.logout();
                                 // Back to the sign-in screen, nothing behind it.
                                 navigator.pushAndRemoveUntil(
-                                    MaterialPageRoute<void>(builder: (_) => const LoadingScreen()), (_) => false);
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const LoadingScreen(),
+                                  ),
+                                  (_) => false,
+                                );
                               },
                       ),
                     ],
                   ),
           ),
-          if (_message != null) SectionCard(title: t.status, child: Text(_message!, style: _body)),
+          if (_message != null)
+            SectionCard(
+              title: t.status,
+              child: Text(_message!, style: _body),
+            ),
         ],
       ),
     );

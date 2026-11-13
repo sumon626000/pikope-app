@@ -95,8 +95,8 @@ void main() {
     await tester.tap(find.text('PLAY VS BOTS'));
     await tester.pumpAndSettle();
     expect(find.byType(LobbyScreen), findsOneWidget);
-    expect(find.text('BOT'), findsNWidgets(3));
-    expect(find.text('START MATCH'), findsOneWidget);
+    expect(find.text('Bot'), findsNWidgets(3));
+    expect(find.text('Start Match'), findsOneWidget);
   });
 
   testWidgets('match flow: break spread, pick, order, 7 cards dealt face-up to the viewer',
@@ -259,7 +259,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('production DuelHomeScreen shell renders choose-table title', (tester) async {
+  testWidgets('production DuelHomeScreen shell renders the game tiles', (tester) async {
     await useLandscape(tester);
     await tester.pumpWidget(app(
       const DuelHomeScreen(),
@@ -267,7 +267,8 @@ void main() {
     ));
     await tester.pump();
     expect(find.byType(DuelHomeScreen), findsOneWidget);
-    expect(find.text('CHOOSE YOUR TABLE'), findsWidgets);
+    expect(find.text('Play Pool'), findsWidgets);
+    expect(find.text('Play Ludo'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 }

@@ -36,6 +36,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     final rate = s.games == 0 ? 0 : (100 * s.wins / s.games).round();
     return DuelPage(
       title: t.matchDataTitle,
+      legacyScale: 2.1,
       sub: t.matchDataSub,
       child: Column(
         children: [
@@ -199,7 +200,7 @@ class _Stat extends StatelessWidget {
             children: [
               Text(label, style: AppText.label(13, color: DuelColors.dim)),
               const SizedBox(height: 6),
-              Text(value, style: AppText.label(26, color: Colors.white, weight: FontWeight.w900)),
+              FittedBox(fit: BoxFit.scaleDown, child: Text(value, maxLines: 1, style: AppText.label(26, color: Colors.white, weight: FontWeight.w900))),
             ],
           ),
         ),

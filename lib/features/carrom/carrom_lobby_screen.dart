@@ -2,127 +2,156 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_state.dart';
-import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
 import '../../core/design/design.dart';
-import '../../core/duel_ui.dart';
+import '../../core/design/pool_city.dart';
 import '../duel/bet_level_screen.dart';
-import '../duel/duel_chrome.dart';
 import '../duel/lobby_data.dart';
+import '../duel/shop_screen.dart';
+import '../misc/settings_screen.dart';
+import '../online/session.dart';
 import '../start/auth_prompt.dart';
 import 'carrom_skins.dart';
 import '../../l10n/strings.dart';
 
-/// Carrom coin play: pick striker and pieces here, then stake tables (boards in Items shop).
+/// Carrom coin play in the reference's room layout: pick striker and pieces
+/// (select cards), then a gold Play to the stake tables. Boards are bought
+/// in Items.
 class CarromLobbyScreen extends ConsumerWidget {
   const CarromLobbyScreen({super.key});
+
+  Future<void> _gated(BuildContext context, WidgetRef ref, Widget screen) async {
+    if (!await requireRegisteredAccount(context, ref)) return;
+    if (context.mounted) await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
     final settings = ref.watch(settingsProvider);
+    final session = ref.watch(sessionProvider);
+    final registered = hasRegisteredAccount(ref);
     final striker = strikerSkinOf(settings.carromStriker);
     final pieces = pieceSkinOf(settings.carromPieces);
-    return DuelCanvas(
-      child: LobbyScaffold(
-        topBar: const DuelTopBar(showProfile: false, showShortcuts: false),
-        title: Center(child: DuelTitle(t.carromTitle, size: 48, sub: t.carromLobbySub)),
-        centerPadding: EdgeInsets.zero,
-        center: Column(
-          children: [
-            const SizedBox(height: DesignSpacing.x5),
-            _Picker(
-              title: t.yourStriker,
-              selectedName: striker.name,
-              children: [
-                for (final sk in strikerSkins)
-                  _Swatch(
-                    selected: sk.id == settings.carromStriker,
-                    onTap: () => ref.read(settingsProvider.notifier).update((s) => s.copyWith(carromStriker: sk.id)),
-                    child: CustomPaint(size: const Size(64, 64), painter: _DiscPreview(const [DiscKind.striker], sk, pieces)),
-                  ),
-              ],
-            ),
-            const SizedBox(height: DesignSpacing.x10),
-            _Picker(
-              title: t.yourPieces,
-              selectedName: pieces.name,
-              children: [
-                for (final pk in pieceSkins)
-                  _Swatch(
-                    selected: pk.id == settings.carromPieces,
-                    onTap: () => ref.read(settingsProvider.notifier).update((s) => s.copyWith(carromPieces: pk.id)),
-                    child: CustomPaint(size: const Size(150, 64), painter: _DiscPreview(const [DiscKind.light, DiscKind.queen, DiscKind.dark], striker, pk)),
-                  ),
-              ],
-            ),
-            const Spacer(),
-            DuelButton(
+    return PcPage(
+      header: PcHeader(
+        avatar: settings.avatar,
+        name: settings.name,
+        registered: registered,
+        level: session.level,
+        coins: lobbyDisplayCoins(ref),
+        gems: registered ? session.gems : null,
+        placeholder: t.signUpOrLogin,
+        onProfile: () => _gated(context, ref, const SettingsScreen()),
+        onWallet: () => _gated(context, ref, const ShopScreen()),
+      ),
+      title: t.carromTitle,
+      panel: false,
+      scroll: true,
+      bodyPadding: const EdgeInsets.fromLTRB(22, 10, 22, 10),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Section(
+            title: t.yourStriker,
+            selectedName: striker.name,
+            sub: t.carromLobbySub,
+            children: [
+              for (final sk in strikerSkins)
+                PcSelectCard(
+                  width: 190,
+                  height: 190,
+                  selected: sk.id == settings.carromStriker,
+                  onTap: () {
+                    AudioService.tap();
+                    ref.read(settingsProvider.notifier).update((s) => s.copyWith(carromStriker: sk.id));
+                  },
+                  child: _Felt(child: CustomPaint(painter: _DiscPreview(const [DiscKind.striker], sk, pieces))),
+                ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _Section(
+            title: t.yourPieces,
+            selectedName: pieces.name,
+            children: [
+              for (final pk in pieceSkins)
+                PcSelectCard(
+                  width: 300,
+                  height: 170,
+                  selected: pk.id == settings.carromPieces,
+                  onTap: () {
+                    AudioService.tap();
+                    ref.read(settingsProvider.notifier).update((s) => s.copyWith(carromPieces: pk.id));
+                  },
+                  child: _Felt(child: CustomPaint(painter: _DiscPreview(const [DiscKind.light, DiscKind.queen, DiscKind.dark], striker, pk))),
+                ),
+            ],
+          ),
+          const SizedBox(height: 40),
+          Center(
+            child: PcButton(
               label: t.playForCoin,
-              width: 420,
-              height: 72,
-              color: DuelColors.gold,
-              onPressed: () async {
-                if (!await requireRegisteredAccount(context, ref)) return;
-                if (!context.mounted) return;
-                await Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const BetLevelScreen(mode: DuelMode.carrom)),
-                );
-              },
+              style: PcButtonStyle.gold,
+              width: 640,
+              height: 120,
+              fontSize: 44,
+              onPressed: () => _gated(context, ref, const BetLevelScreen(mode: DuelMode.carrom)),
             ),
-            const SizedBox(height: DesignSpacing.x8),
-          ],
-        ),
-        bottomLeading: LobbyBackNav(label: t.back, onTap: () => Navigator.of(context).pop()),
+          ),
+          const SizedBox(height: 10),
+        ],
       ),
     );
   }
 }
 
-class _Picker extends StatelessWidget {
-  const _Picker({required this.title, required this.selectedName, required this.children});
+class _Section extends StatelessWidget {
+  const _Section({required this.title, required this.selectedName, required this.children, this.sub});
 
   final String title;
   final String selectedName;
+  final String? sub;
   final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(title, style: AppText.label(16, color: DuelColors.dim, weight: FontWeight.w800)),
-              const SizedBox(width: DesignSpacing.x3),
-              Text(selectedName, style: AppText.label(16, color: DuelColors.gold, weight: FontWeight.w900)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(mainAxisSize: MainAxisSize.min, children: children),
-        ],
+  Widget build(BuildContext context) => Container(
+        decoration: pcPanelDecoration(),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            PcSectionBar(title),
+            Padding(
+              padding: const EdgeInsets.all(22),
+              child: Wrap(spacing: 18, runSpacing: 18, alignment: WrapAlignment.center, children: children),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 0, 22, 22),
+              child: Column(
+                children: [
+                  Text(titleCase(selectedName), style: pcText(34, color: DesignColors.pcGold)),
+                  if (sub != null) ...[
+                    const SizedBox(height: 6),
+                    Text(sub!, textAlign: TextAlign.center, style: pcText(26, color: DesignColors.pcTextDim, weight: FontWeight.w500)),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
       );
 }
 
-class _Swatch extends StatelessWidget {
-  const _Swatch({required this.selected, required this.onTap, required this.child});
+/// Carrom-board wood behind a swatch.
+class _Felt extends StatelessWidget {
+  const _Felt({required this.child});
 
-  final bool selected;
-  final VoidCallback onTap;
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: () {
-          AudioService.tap();
-          onTap();
-        },
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 7),
-          padding: const EdgeInsets.all(10),
-          decoration: duelPanel(radius: DesignRadii.md, rim: selected ? DuelColors.green : DuelColors.rim, glow: selected, fill: selected ? const Color(0xE60C2414) : const Color(0xCC0B0E1C)),
-          child: child,
-        ),
+  Widget build(BuildContext context) => DecoratedBox(
+        decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFE8BF8E), Color(0xFFC9955E)])),
+        child: Padding(padding: const EdgeInsets.all(24), child: child),
       );
 }
 
@@ -137,8 +166,9 @@ class _DiscPreview extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final r = size.height * 0.42;
     final gap = kinds.length == 1 ? 0.0 : (size.width - 2 * r) / (kinds.length - 1);
+    final x0 = kinds.length == 1 ? size.width / 2 : r;
     for (var i = 0; i < kinds.length; i++) {
-      paintCarromDisc(canvas, Offset(r + gap * i, size.height / 2), r, kinds[i], striker: striker, pieces: pieces);
+      paintCarromDisc(canvas, Offset(x0 + gap * i, size.height / 2), r, kinds[i], striker: striker, pieces: pieces);
     }
   }
 

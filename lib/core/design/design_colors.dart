@@ -25,12 +25,12 @@ abstract final class DesignColors {
     Color(0xFFB04DFF),
   ];
 
-  // --- In-game / PageFrame / settings ---
-  static const appBackground = Color(0xFF1E1E21);
-  static const appBackgroundAlt = Color(0xFF26262A);
-  static const appPanel = Color(0xFF15151A);
-  static const appFrame = Color(0xFF4A4973);
-  static const appFrameLight = Color(0xFF6C6BA0);
+  // --- In-game / PageFrame / settings (Pool City purple since 2026-11) ---
+  static const appBackground = Color(0xFF261C49);
+  static const appBackgroundAlt = Color(0xFF2A1C5E);
+  static const appPanel = Color(0xFF2E2564);
+  static const appFrame = Color(0xFF6E5BD6);
+  static const appFrameLight = Color(0xFF8C7CE8);
   static const appActive = Color(0xFF2EE84F);
   static const appGold = Color(0xFFFFC928);
   static const appDanger = Color(0xFFFF4D4D);
@@ -43,4 +43,59 @@ abstract final class DesignColors {
   static const poolEightAccent = Color(0xFF2E8B57);
 
   static const dialogOverlayScrim = Color(0xB3000000);
+
+  // --- Pool City theme (portrait home + gameplay restyle, 2026-11) ---
+  // Values sampled from the reference app's screenshots.
+  static const pcInk = Color(0xFF1B0E3D); // page top
+  static const pcPlum = Color(0xFF24072D);
+  static const pcMagenta = Color(0xFF5C193D); // mid-page glow
+  static const pcViolet = Color(0xFF66285F);
+  static const pcNavyLow = Color(0xFF122850); // blurred table in the lower half
+  static const pcNavyBottom = Color(0xFF0C1632);
+  static const pcTableBlue = Color(0xFF3B79B4);
+  static const pcTableCyan = Color(0xFF78D8FE);
+
+  static const pcGameBg = Color(0xFF261C49); // match screens
+  static const pcPanel = Color(0xFF442F85); // glass panel / list row
+  static const pcPanelDeep = Color(0xFF2E2564); // dialog body
+  static const pcPanelLight = Color(0xFF5A35C1);
+  static const pcPanelLighter = Color(0xFF6D50C4);
+  static const pcPanelRim = Color(0xFF7D6AD6);
+  static const pcHeaderBar = Color(0xFF443196);
+  static const pcSeason = Color(0xFF47339B);
+  static const pcSeasonDeep = Color(0xFF382F84);
+
+  static const pcPill = Color(0xFF170E29);
+  static const pcPlus = Color(0xFF2BB04A);
+  static const pcPlusLight = Color(0xFF4ED86A);
+  static const pcGold = Color(0xFFF5B942);
+  static const pcGoldDeep = Color(0xFFDA9B14);
+  static const pcCash = Color(0xFF3FC95B);
+
+  static const pcRibbon = Color(0xFFDB308A);
+  static const pcRibbonDeep = Color(0xFFC21773);
+  static const pcRibbonEdge = Color(0xFF850549);
+
+  static const pcTileOrange = Color(0xFFF4A52A);
+  static const pcTileOrangeDeep = Color(0xFFC96A12);
+  static const pcTilePink = Color(0xFFF04A95);
+  static const pcTilePinkDeep = Color(0xFFB81C6C);
+  static const pcTileTeal = Color(0xFF22C4E0);
+  static const pcTileTealDeep = Color(0xFF0B64A2);
+  static const pcTileBlue = Color(0xFF3F7BE3);
+  static const pcTileBlueDeep = Color(0xFF1F3FAE);
+  static const pcTileGreen = Color(0xFF2AA790);
+  static const pcTileGreenDeep = Color(0xFF1C6A6E);
+
+  static const pcNav = Color(0xFF312269);
+  static const pcNavRim = Color(0xFF4A3A8A);
+  static const pcNavActive = Color(0xFF4C63D8);
+  static const pcNavActiveDeep = Color(0xFF373F84);
+  static const pcNavText = Color(0xFFA7ABDC);
+
+  static const pcBlueButton = Color(0xFF2F7BFF);
+  static const pcBlueButtonDeep = Color(0xFF1B4FD0);
+  static const pcRedButton = Color(0xFFE23B5A);
+  static const pcText = Color(0xFFFFFFFF);
+  static const pcTextDim = Color(0xFFBFB7E8);
 }

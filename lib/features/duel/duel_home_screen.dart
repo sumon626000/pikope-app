@@ -2,14 +2,17 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import '../misc/settings_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_state.dart';
 import '../../core/env.dart';
+import '../../core/orientation.dart';
 import '../../core/push_service.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
 import '../../core/design/design.dart';
+import '../../core/design/pool_city.dart';
 import '../../core/duel_ui.dart';
 import '../../core/icon_motion.dart';
 import '../../data/api_client.dart';
@@ -20,6 +23,7 @@ import '../online/online_screens.dart';
 import '../online/notification_unread.dart';
 import '../online/session.dart';
 import '../carrom/carrom_lobby_screen.dart';
+import '../ludo/ludo_board.dart';
 import '../ludo/ludo_lobby_screen.dart';
 import '../misc/how_to_play_screen.dart';
 import 'bet_level_screen.dart';
@@ -27,6 +31,9 @@ import 'practice_launch.dart';
 import 'challenge_inbox_host.dart';
 import 'challenge_screen.dart';
 import 'history_screen.dart';
+import 'home_portrait_widgets.dart';
+import 'notices_screen.dart';
+import 'notifications_screen.dart';
 import 'refer_screen.dart';
 import 'lobby_data.dart';
 import 'pool_hub_screen.dart';
@@ -35,8 +42,10 @@ import 'items_screen.dart';
 import 'shop_screen.dart';
 import '../start/auth_prompt.dart';
 
-/// Home lobby: pick Pool, Ludo or Carrom (every game gets the same billing),
-/// with the wallet, daily bonus, rank and the shortcuts around it.
+/// Home lobby in the Pool City look (portrait): wallet and shortcuts across
+/// the top, the player's rank in the middle, Pool / Ludo hero tiles, the
+/// Carrom / Friends / Practice row, a wide banner and the five-tab bar.
+/// Every game gets the same billing.
 class DuelHomeScreen extends ConsumerStatefulWidget {
   const DuelHomeScreen({super.key});
 
@@ -107,6 +116,12 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
     if (mounted) _reload();
   }
 
+  /// Screens that need an account (shop, items, challenge, history, mail).
+  Future<void> _openRegistered(Widget screen) async {
+    if (!await requireRegisteredAccount(context, ref)) return;
+    if (mounted) await _open(screen);
+  }
+
   Future<void> _rejoin(Map<String, dynamic> match) async {
     await openOnlineMatchFromActivePayload(Navigator.of(context), ref, match);
     if (mounted) _reload();
@@ -117,36 +132,27 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
       showDuelDialog<void>(
         context,
         barrierColor: DesignAuth.overlayScrim,
-        builder: (dialog) => Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            width: DesignAuth.dialogChooserWidth,
-            padding: const EdgeInsets.all(DesignSpacing.x5),
-            decoration: duelPanel(rim: DuelColors.rimLight),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(title, style: AppText.label(18, weight: FontWeight.w900)),
-                const SizedBox(height: 6),
-                Text(body, textAlign: TextAlign.center, style: const TextStyle(fontFamily: 'sans-serif', fontSize: 13, height: 1.4, color: DuelColors.dim)),
-                const SizedBox(height: 14),
-                for (final (label, color, go) in choices)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: DuelButton(
-                      label: label,
-                      width: 320,
-                      height: 44,
-                      fontSize: 16,
-                      color: color,
-                      onPressed: () {
-                        Navigator.of(dialog).pop();
-                        go();
-                      },
-                    ),
+        builder: (dialog) => PcDialog(
+          title: title,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(body, textAlign: TextAlign.center, style: pcText(32, color: DesignColors.pcTextDim, weight: FontWeight.w500).copyWith(height: 1.35)),
+              const SizedBox(height: 28),
+              for (final (label, color, go) in choices)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 18),
+                  child: PcButton(
+                    label: label,
+                    width: 760,
+                    style: pcStyleFor(color),
+                    onPressed: () {
+                      Navigator.of(dialog).pop();
+                      go();
+                    },
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
       );
@@ -177,14 +183,14 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
   void _practice() {
     final t = ref.read(stringsProvider);
     _chooser(
-        title: t.practiceTitle,
-        body: t.practiceChooserBody,
-        choices: [
-          (t.poolTitle, _poolColor, () => showPoolPracticeDialog(context, open: _open)),
-          (t.ludoTitle, _ludoColor, _practiceLudoPick),
-          (t.carromTitle, _carromColor, () => launchCarromPractice(context, ref)),
-        ],
-      );
+      title: t.practiceTitle,
+      body: t.practiceChooserBody,
+      choices: [
+        (t.poolTitle, _poolColor, () => showPoolPracticeDialog(context, open: _open)),
+        (t.ludoTitle, _ludoColor, _practiceLudoPick),
+        (t.carromTitle, _carromColor, () => launchCarromPractice(context, ref)),
+      ],
+    );
   }
 
   Future<void> _friends() async {
@@ -192,15 +198,15 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
     if (!mounted) return;
     final t = ref.read(stringsProvider);
     _chooser(
-        title: t.friendsTitle,
-        body: t.friendsBody,
-        choices: [
-          (t.poolTitle, _poolColor, _friendsPool),
-          (t.ludoPlayers(2), _ludoColor, () => _open(const BetLevelScreen(mode: DuelMode.ludo2, friendsRoom: true))),
-          (t.ludoPlayers(4), _ludoColor, () => _open(const BetLevelScreen(mode: DuelMode.ludo4, friendsRoom: true))),
-          (t.carromTitle, _carromColor, () => _open(const BetLevelScreen(mode: DuelMode.carrom, friendsRoom: true))),
-        ],
-      );
+      title: t.friendsTitle,
+      body: t.friendsBody,
+      choices: [
+        (t.poolTitle, _poolColor, _friendsPool),
+        (t.ludoPlayers(2), _ludoColor, () => _open(const BetLevelScreen(mode: DuelMode.ludo2, friendsRoom: true))),
+        (t.ludoPlayers(4), _ludoColor, () => _open(const BetLevelScreen(mode: DuelMode.ludo4, friendsRoom: true))),
+        (t.carromTitle, _carromColor, () => _open(const BetLevelScreen(mode: DuelMode.carrom, friendsRoom: true))),
+      ],
+    );
   }
 
   void _friendsPool() {
@@ -229,347 +235,312 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen> with WidgetsBin
     );
   }
 
+  void _missions() {
+    final t = ref.read(stringsProvider);
+    showDuelMessage(context, title: t.missions, body: t.missionsBody, icon: Icons.flag_rounded);
+  }
+
+  Future<void> _profile() async {
+    if (!await requireRegisteredAccount(context, ref)) return;
+    if (mounted) await _open(const SettingsScreen());
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = ref.watch(stringsProvider);
     final lobby = ref.watch(lobbyProvider);
     final session = ref.watch(sessionProvider);
+    final settings = ref.watch(settingsProvider);
     final registered = hasRegisteredAccount(ref);
     final active = ref.watch(activeMatchProvider).valueOrNull;
-    final challengePending = ref.watch(challengePendingCountProvider) > 0;
+    final challengePending = ref.watch(challengePendingCountProvider);
+    final unread = ref.watch(notificationUnreadProvider);
     final data = lobby.valueOrNull;
-    return DuelCanvas(
-      child: LobbyScaffold(
-        title: Center(child: DuelTitle(t.chooseTable, size: 50, sub: t.pickGameDuel)),
-        centerPadding: EdgeInsets.zero,
-        leftRail: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.topCenter,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    final coins = lobbyDisplayCoins(ref);
+    final dailyReady = data?.daily.available ?? false;
+    final lobbyError = lobby.hasError && data == null;
+
+    return OrientationLock(
+      orientation: AppOrientation.portrait,
+      child: PortraitCanvas(
+        builder: (context, height) {
+          // Reference layout is 2340 tall; shorter screens tighten the gaps.
+          final roomy = height >= 2200;
+          const edge = 20.0;
+          // The two hero tiles share one slanted edge: 528 + 512 = full width.
+          const heroLeftW = 528.0;
+          const heroRightW = PortraitCanvas.width - edge * 2 - heroLeftW;
+          const smallW = (PortraitCanvas.width - edge * 2 - 2 * 18) / 3; // ~335
+          final daily = data?.daily;
+          return Column(
             children: [
-              _SideTile(
-              height: 158,
-              title: t.dailyBonus,
-              titleColor: DuelColors.gold,
-              onTap: data == null ? null : () => _daily(data.daily),
-              badge: data?.daily.available ?? false,
-              attention: data?.daily.available ?? false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.redeem_rounded, color: Color(0xFFFF9A2E), size: 70),
-                  const SizedBox(height: 4),
-                  data == null
-                      ? const SizedBox(height: 18)
-                      : data.daily.available
-                          ? Text(t.claimNow, style: AppText.label(14, color: DuelColors.green, weight: FontWeight.w900))
-                          : _Countdown(from: data.fetchedAt, seconds: data.daily.secondsToNext),
-                ],
-              ),
-            ),
-            const SizedBox(height: DesignSpacing.x3),
-            _SideTile(
-              height: 206,
-              title: t.rank,
-              onTap: () => _open(const LeaderboardScreen()),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (registered) ...[
-                    SizedBox(width: 96, height: 104, child: CustomPaint(painter: _RankBadgePainter(session.rankTier, session.rankName))),
-                    const SizedBox(height: DesignSpacing.x2),
-                    Text(session.rankName, style: AppText.label(15, color: DuelColors.gold, weight: FontWeight.w900)),
-                  ] else ...[
-                    const Icon(Icons.emoji_events_outlined, color: DuelColors.dim, size: 72),
-                    const SizedBox(height: DesignSpacing.x2),
-                    Text(t.browseProfileTitle, style: AppText.label(14, color: DuelColors.dim, weight: FontWeight.w800)),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: DesignSpacing.x3),
-            _SideTile(
-              height: 158,
-              title: '',
-              onTap: () => showDuelMessage(context, title: t.missions, body: t.missionsBody, icon: Icons.flag_rounded),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.flag_rounded, color: Color(0xFF8EDB5A), size: 74),
-                  const SizedBox(height: 6),
-                  Text(t.mission, style: AppText.label(15, color: DuelColors.dim, weight: FontWeight.w800)),
-                ],
-              ),
-            ),
-            ],
-          ),
-        ),
-        center: Column(
-          children: [
-            Expanded(
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: DesignSpacing.x6),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.topCenter,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        GameCard(
-                        width: DesignLayout.gameCardWidth,
-                        color: DuelColors.green,
-                        title: t.poolTitle,
-                        sub: t.poolSub,
-                        art: const BilliardArt(),
-                        onPlay: () => _open(const PoolHubScreen()),
-                      ),
-                      const SizedBox(width: DesignSpacing.gameCardGap),
-                      GameCard(
-                        width: DesignLayout.gameCardWidth,
-                        color: DesignColors.ludoAccent,
-                        title: t.ludoTitle,
-                        sub: t.ludoSub,
-                        art: const LudoArt(),
-                        onPlay: () => _open(const LudoLobbyScreen()),
-                      ),
-                      const SizedBox(width: DesignSpacing.gameCardGap),
-                      GameCard(
-                        width: DesignLayout.gameCardWidth,
-                        color: DesignColors.carromAccent,
-                        title: t.carromTitle,
-                        sub: t.carromSub,
-                        art: const CarromArt(),
-                        onPlay: () => _open(const CarromLobbyScreen()),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            if (lobby.hasError && data == null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: DesignSpacing.x4),
-                child: Text(
-                  lobby.error is ApiException ? ref.read(stringsProvider).maybeApi((lobby.error as ApiException).message) : t.offlineServer,
-                  style: AppText.label(14, color: DuelColors.red),
-                ),
-              ),
-          ],
-        ),
-        rightRail: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.topCenter,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              HomeBanner(
-              title: t.howToPlayTitle,
-              sub: t.howToPlaySub,
-              colors: const [Color(0xFF2A1A4A), Color(0xFF0E0820)],
-              rim: const Color(0xFF7B5BFF),
-              titleColor: const Color(0xFFC9B8FF),
-              icon: const Icon(Icons.menu_book_rounded, color: Color(0xFFC9B8FF), size: 84),
-              onTap: () => _open(const HowToPlayScreen()),
-            ),
-            const SizedBox(height: DesignSpacing.x3),
-            HomeBanner(
-              title: t.practiceFreeTitle,
-              sub: t.practiceFreeSub,
-              colors: const [Color(0xFF0E3A22), Color(0xFF07140D)],
-              rim: DesignColors.poolEightAccent,
-              titleColor: const Color(0xFF9BF2B5),
-              icon: const Icon(Icons.smart_toy_rounded, color: Color(0xFF9BF2B5), size: 84),
-              onTap: _practice,
-            ),
-            const SizedBox(height: DesignSpacing.x3),
-            HomeBanner(
-              title: t.friendsBannerTitle,
-              sub: t.friendsBannerSub,
-              colors: const [Color(0xFF0B2A66), Color(0xFF070E24)],
-              rim: DuelColors.blue,
-              titleColor: const Color(0xFF9CC2FF),
-              icon: const Icon(Icons.groups_rounded, color: Color(0xFF9CC2FF), size: 88),
-              onTap: _friends,
-            ),
-            ],
-          ),
-        ),
-        bottomLeading: active != null
-            ? HighlightPulse(
-                highlightColor: DuelColors.gold,
-                onTap: () {
+              SizedBox(height: roomy ? 24 : 12),
+              HomeTopBar(
+                avatar: settings.avatar,
+                registered: registered,
+                level: session.level,
+                coins: coins,
+                gems: registered ? session.gems : null,
+                placeholder: t.signUpOrLogin,
+                unread: unread,
+                onProfile: () {
                   AudioService.tap();
-                  _rejoin(active);
+                  _profile();
                 },
-                child: Container(
-                  width: 430,
-                  height: DesignLayout.navTileSize,
-                  decoration: duelPanel(radius: DesignRadii.lg, rim: DuelColors.gold, glow: true),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                onWallet: () {
+                  AudioService.tap();
+                  _openRegistered(const ShopScreen());
+                },
+                onMail: () async {
+                  if (!await requireRegisteredAccount(context, ref)) return;
+                  if (mounted) await showNoticesDialog(context, ref);
+                },
+                onBell: () async {
+                  if (!await requireRegisteredAccount(context, ref)) return;
+                  if (mounted) await showNotificationsDialog(context, ref);
+                  if (mounted) _reload();
+                },
+                onSettings: _profile,
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: edge),
+                  child: Column(
                     children: [
-                      PulseBadge(
-                        minScale: 0.94,
-                        maxScale: 1.12,
-                        child: const Icon(Icons.play_circle_fill_rounded, color: DuelColors.gold, size: 58),
-                      ),
-                      const SizedBox(width: 14),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(t.matchInProgress, style: AppText.label(14, color: DuelColors.dim)),
-                          const SizedBox(height: 4),
-                          Text(t.rejoinMatch, style: AppText.label(22, color: DuelColors.gold, weight: FontWeight.w900)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            : Row(
-                children: [
-                  Container(
-                    width: DesignLayout.bottomStatusWidth,
-                    height: DesignLayout.bottomStatusHeight,
-                    decoration: duelPanel(radius: DesignRadii.lg, rim: const Color(0xFF232A4A), fill: const Color(0x99C7CBDA).withValues(alpha: 0.16)),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.public_rounded, color: DuelColors.green, size: 28),
-                        const SizedBox(width: 10),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      SizedBox(height: roomy ? 16 : 6),
+                      // --- shortcuts down both sides, the rank block between them
+                      SizedBox(
+                        height: 470,
+                        child: Stack(
                           children: [
-                            Text(t.online, style: AppText.label(12, color: DuelColors.dim)),
-                            const SizedBox(height: 2),
-                            Text(
-                              lobby.hasError && data == null ? t.offline : (data == null ? '...' : formatCoins(data.online)),
-                              style: AppText.label(26, color: DuelColors.silver, weight: FontWeight.w900),
+                            Positioned(
+                              left: 4,
+                              top: 0,
+                              child: Column(
+                                children: [
+                                  HomeSquareButton(
+                                    icon: Icons.assignment_turned_in_rounded,
+                                    iconColor: const Color(0xFFFFB13D),
+                                    tag: 'NEW',
+                                    onTap: _missions,
+                                  ),
+                                  const SizedBox(height: 14),
+                                  HomeSquareButton(
+                                    icon: Icons.menu_book_rounded,
+                                    iconColor: const Color(0xFFC9B8FF),
+                                    size: 84,
+                                    onTap: () => _open(const HowToPlayScreen()),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  HomeSquareButton(
+                                    icon: Icons.query_stats_rounded,
+                                    iconColor: const Color(0xFF9CC2FF),
+                                    size: 84,
+                                    onTap: () => _openRegistered(const HistoryScreen()),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Column(
+                                children: [
+                                  HomeRoundButton(
+                                    icon: Icons.sports_kabaddi_rounded,
+                                    iconColor: const Color(0xFF8FD3FF),
+                                    label: t.navChallenge,
+                                    count: challengePending,
+                                    onTap: () => _openRegistered(const ChallengeScreen()),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  HomeRoundButton(
+                                    icon: Icons.card_giftcard_rounded,
+                                    iconColor: const Color(0xFFFF9A2E),
+                                    label: t.refer,
+                                    onTap: () => _openRegistered(const ReferScreen()),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Align(
+                              alignment: const Alignment(0, 1),
+                              child: RankBlock(
+                                registered: registered,
+                                tier: session.rankTier,
+                                rankName: registered ? session.rankName : t.browseProfileTitle,
+                                position: registered ? '${session.level}' : '—',
+                                avatar: settings.avatar,
+                                name: registered ? settings.name : titleCase(t.browseProfileSub),
+                                coins: coins == null ? '—' : formatCoins(coins, compact: coins >= 10000000),
+                                onTap: () => _open(const LeaderboardScreen()),
+                              ),
                             ),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                      const Spacer(),
+                      // --- the two hero games (one slanted gap between them)
+                      Row(
+                        children: [
+                          HeroTile(
+                            width: heroLeftW,
+                            height: 350,
+                            slantRight: true,
+                            colors: const [DesignColors.pcTileOrange, DesignColors.pcTileOrangeDeep],
+                            label: t.playPool,
+                            artInsets: const EdgeInsets.fromLTRB(26, 4, 70, 96),
+                            art: const Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Positioned.fill(child: RackArt()),
+                                Positioned(right: -50, bottom: -56, child: TapHandHint(size: 170)),
+                              ],
+                            ),
+                            onTap: () => _open(const PoolHubScreen()),
+                          ),
+                          HeroTile(
+                            width: heroRightW,
+                            height: 350,
+                            slantRight: false,
+                            colors: const [DesignColors.pcTilePink, DesignColors.pcTilePinkDeep],
+                            label: t.playLudo,
+                            artInsets: const EdgeInsets.fromLTRB(40, 10, 40, 92),
+                            art: const FloatBob(child: LudoHeroArt()),
+                            crown: true,
+                            onTap: () => _open(const LudoLobbyScreen()),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: roomy ? 48 : 30),
+                      // --- carrom, friends, practice
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            SmallTile(
+                              width: smallW - 4,
+                              height: 250,
+                              colors: const [DesignColors.pcTileTeal, DesignColors.pcTileTealDeep],
+                              label: t.carromTitle,
+                              onTap: () => _open(const CarromLobbyScreen()),
+                              child: const FloatBob(amplitude: 5, period: Duration(milliseconds: 3100), child: CarromArt(transparent: true)),
+                            ),
+                            SmallTile(
+                              width: smallW - 4,
+                              height: 250,
+                              colors: const [DesignColors.pcTileBlue, DesignColors.pcTileBlueDeep],
+                              label: t.navFriends,
+                              onTap: _friends,
+                              child: const Icon(Icons.groups_rounded, color: Colors.white, size: 136, shadows: [Shadow(color: Color(0x99000000), blurRadius: 10, offset: Offset(0, 4))]),
+                            ),
+                            SmallTile(
+                              width: smallW - 4,
+                              height: 250,
+                              colors: const [DesignColors.pcTileGreen, DesignColors.pcTileGreenDeep],
+                              label: t.practice,
+                              onTap: _practice,
+                              child: const Icon(Icons.smart_toy_rounded, color: Colors.white, size: 136, shadows: [Shadow(color: Color(0x99000000), blurRadius: 10, offset: Offset(0, 4))]),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Spacer(flex: 2),
+                      // --- ladder panel (the reference's season pass): daily bonus,
+                      //     or the running match to rejoin
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: active != null
+                            ? HighlightPulse(
+                                highlightColor: DuelColors.gold,
+                                onTap: () {
+                                  AudioService.tap();
+                                  _rejoin(active);
+                                },
+                                child: HomeWideBanner(
+                                  width: 748,
+                                  height: 200,
+                                  title: t.matchInProgress,
+                                  icon: PulseBadge(
+                                    minScale: 0.94,
+                                    maxScale: 1.12,
+                                    child: const Icon(Icons.play_circle_fill_rounded, color: DuelColors.gold, size: 48),
+                                  ),
+                                  rim: DuelColors.gold,
+                                  glow: true,
+                                  onTap: () => _rejoin(active),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(titleCase(t.rejoinMatch), style: pcText(44, color: DuelColors.gold)),
+                                        ),
+                                      ),
+                                      const Icon(Icons.arrow_forward_rounded, color: DuelColors.gold, size: 56),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : LadderPanel(
+                                width: 748,
+                                title: t.dailyBonus,
+                                timer: daily == null
+                                    ? Text(lobbyError ? titleCase(t.offline) : '...', style: pcText(28, color: lobbyError ? DuelColors.red : DesignColors.pcGold))
+                                    : dailyReady
+                                        ? Text(titleCase(t.claimNow), style: pcText(28, color: const Color(0xFF4DF08A)))
+                                        : _Countdown(from: data!.fetchedAt, seconds: daily.secondsToNext, size: 28, color: DesignColors.pcGold),
+                                boxes: [
+                                  if (daily == null || daily.rewards.isEmpty)
+                                    // Offline / loading: the ladder's shape with empty boxes.
+                                    for (var i = 0; i < 3; i++)
+                                      LadderBox(
+                                        art: const Opacity(opacity: 0.45, child: PikoCoinIcon(size: 62)),
+                                        count: '—',
+                                        caption: titleCase(t.dayLabel(i + 1)),
+                                      )
+                                  else
+                                    for (var i = max(0, min(daily.day, daily.rewards.length - 3)); i < min(daily.rewards.length, max(0, min(daily.day, daily.rewards.length - 3)) + 3); i++)
+                                      LadderBox(
+                                        art: daily.rewards[i].gems > 0 ? const GemIcon(size: 62) : const PikoCoinIcon(size: 62),
+                                        count: formatCoins(daily.rewards[i].gems > 0 ? daily.rewards[i].gems : daily.rewards[i].coins, compact: true),
+                                        caption: titleCase(t.dayLabel(i + 1)),
+                                        highlight: daily.rewards[i].gems > 0,
+                                        done: i < daily.day || (i == daily.day && !dailyReady),
+                                      ),
+                                ],
+                                progress: daily == null || daily.rewards.isEmpty ? 0 : (daily.day + (dailyReady ? 0 : 1)) / daily.rewards.length,
+                                footnote: data == null ? null : '${titleCase(t.online)} ${formatCoins(data.online)}',
+                                onTap: data == null ? _reload : () => _daily(data.daily),
+                              ),
+                      ),
+                      if (lobbyError)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            lobby.error is ApiException ? t.maybeApi((lobby.error as ApiException).message) : t.offlineServer,
+                            style: pcText(22, color: DuelColors.red, weight: FontWeight.w500),
+                          ),
+                        ),
+                      SizedBox(height: roomy ? 60 : 30),
+                    ],
                   ),
-                  const SizedBox(width: DesignSpacing.navGap),
-                  NavTile(
-                    icon: Icons.card_giftcard_rounded,
-                    label: t.refer,
-                    onTap: () async {
-                      if (!await requireRegisteredAccount(context, ref)) return;
-                      if (mounted) await _open(const ReferScreen());
-                    },
-                  ),
+                ),
+              ),
+              HomeBottomNav(
+                items: [
+                  HomeNavItem(icon: Icons.smart_toy_rounded, label: t.practice, onTap: _practice),
+                  HomeNavItem(icon: Icons.leaderboard_rounded, label: t.navRankings, onTap: () => _open(const LeaderboardScreen())),
+                  HomeNavItem(icon: Icons.home_rounded, label: t.navHome, active: true, onTap: _reload),
+                  HomeNavItem(icon: Icons.backpack_rounded, label: t.navItems, onTap: () => _openRegistered(const ItemsScreen())),
+                  HomeNavItem(icon: Icons.shopping_cart_rounded, label: t.navShop, onTap: () => _openRegistered(const ShopScreen())),
                 ],
               ),
-        bottomNav: Row(
-          children: [
-            NavTile(icon: Icons.home_rounded, label: t.navHome, active: true, onTap: _reload),
-            const SizedBox(width: DesignSpacing.navGap),
-            NavTile(
-              icon: Icons.storefront_rounded,
-              label: t.navShop,
-              onTap: () async {
-                if (!await requireRegisteredAccount(context, ref)) return;
-                if (mounted) await _open(const ShopScreen());
-              },
-            ),
-            const SizedBox(width: DesignSpacing.navGap),
-            NavTile(icon: Icons.leaderboard_rounded, label: t.navRankings, onTap: () => _open(const LeaderboardScreen())),
-            const SizedBox(width: DesignSpacing.navGap),
-            NavTile(
-              icon: Icons.backpack_rounded,
-              label: t.navItems,
-              onTap: () async {
-                if (!await requireRegisteredAccount(context, ref)) return;
-                if (mounted) await _open(const ItemsScreen());
-              },
-            ),
-            const SizedBox(width: DesignSpacing.navGap),
-            NavTile(icon: Icons.groups_rounded, label: t.navFriends, onTap: _friends),
-            const SizedBox(width: DesignSpacing.navGap),
-            NavTile(
-              icon: Icons.sports_kabaddi_rounded,
-              label: t.navChallenge,
-              badge: challengePending,
-              onTap: () async {
-                if (!await requireRegisteredAccount(context, ref)) return;
-                if (mounted) await _open(const ChallengeScreen());
-              },
-            ),
-            const SizedBox(width: DesignSpacing.navGap),
-            NavTile(
-              icon: Icons.query_stats_rounded,
-              label: t.navData,
-              onTap: () async {
-                if (!await requireRegisteredAccount(context, ref)) return;
-                if (mounted) await _open(const HistoryScreen());
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SideTile extends StatelessWidget {
-  const _SideTile({
-    required this.height,
-    required this.title,
-    required this.child,
-    this.onTap,
-    this.titleColor = DuelColors.silver,
-    this.badge = false,
-    this.attention = false,
-  });
-
-  final double height;
-  final String title;
-  final Widget child;
-  final VoidCallback? onTap;
-  final Color titleColor;
-  final bool badge;
-  final bool attention;
-
-  @override
-  Widget build(BuildContext context) {
-    final body = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (title.isNotEmpty) ...[
-          Text(title, style: AppText.label(14, color: titleColor, weight: FontWeight.w900)),
-          const SizedBox(height: 6),
-        ],
-        IdleAttentionScale(active: attention, child: child),
-      ],
-    );
-    return PressScale(
-      onTap: onTap,
-      enabled: onTap != null,
-      scale: 0.96,
-      child: Container(
-        width: 158,
-        height: height,
-        decoration: duelPanel(radius: 20, rim: const Color(0xFF232A4A), fill: const Color(0xCC0B0E1C)),
-        child: Stack(
-          children: [
-            Center(child: body),
-            const DuelGloss(radius: 20, strength: 0.1),
-            if (badge)
-              Positioned(
-                right: 12,
-                top: 12,
-                child: PulseBadge(child: CircleAvatar(radius: 9, backgroundColor: DuelColors.red)),
-              ),
-          ],
-        ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -577,10 +548,12 @@ class _SideTile extends StatelessWidget {
 
 /// Ticks down to the next daily bonus.
 class _Countdown extends StatefulWidget {
-  const _Countdown({required this.from, required this.seconds});
+  const _Countdown({required this.from, required this.seconds, this.size = 14, this.color = DesignColors.pcTextDim});
 
   final DateTime from;
   final int seconds;
+  final double size;
+  final Color color;
 
   @override
   State<_Countdown> createState() => _CountdownState();
@@ -608,14 +581,16 @@ class _CountdownState extends State<_Countdown> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.timer_outlined, color: DuelColors.dim, size: 18),
+        Icon(Icons.timer_outlined, color: widget.color, size: widget.size * 1.1),
         const SizedBox(width: 4),
-        Text('${two(left ~/ 3600)}:${two(left % 3600 ~/ 60)}:${two(left % 60)}', style: AppText.label(14, color: DuelColors.dim)),
+        Text('${two(left ~/ 3600)}:${two(left % 3600 ~/ 60)}:${two(left % 60)}', style: pcText(widget.size, color: widget.color)),
       ],
     );
   }
 }
 
+/// Tall game card of the landscape hubs (pool hub). Not used on the home any
+/// more, kept for [PoolHubScreen].
 class GameCard extends ConsumerWidget {
   const GameCard({super.key, required this.width, required this.color, required this.title, required this.sub, required this.art, required this.onPlay});
 
@@ -828,29 +803,71 @@ class _PokerArtPainter extends CustomPainter {
   bool shouldRepaint(_PokerArtPainter old) => false;
 }
 
-/// A mini carrom board for the game card.
+/// A mini carrom board for the game card. [transparent] skips the dark
+/// background so the board can sit on a coloured tile.
 class CarromArt extends StatelessWidget {
-  const CarromArt({super.key});
+  const CarromArt({super.key, this.transparent = false, this.themeIndex = 0});
+
+  final bool transparent;
+  final int themeIndex;
 
   @override
-  Widget build(BuildContext context) => const CustomPaint(painter: _CarromArtPainter());
+  Widget build(BuildContext context) => CustomPaint(painter: _CarromArtPainter(transparent, themeIndex));
 }
 
 class _CarromArtPainter extends CustomPainter {
-  const _CarromArtPainter();
+  const _CarromArtPainter(this.transparent, this.themeIndex);
+
+  final bool transparent;
+  final int themeIndex;
+
+  // Per-tier wood frame colors
+  static const _frames = [
+    Color(0xFF7A6040), // Rookie: light maple
+    Color(0xFF5B3A2E), // Bronze: classic teak
+    Color(0xFF3A4848), // Silver: cool slate
+    Color(0xFF6A4A00), // Gold: mahogany
+    Color(0xFF3A1848), // Platinum: dark ebony
+    Color(0xFF103050), // Diamond: exotic ocean wood
+  ];
+  // Per-tier cloth (playing field) colors
+  static const _cloths = [
+    Color(0xFFEACC98), // Rookie: light maple felt
+    Color(0xFFE8BF8E), // Bronze: classic warm felt
+    Color(0xFFB0C4A8), // Silver: slate-green felt
+    Color(0xFFD4A060), // Gold: rich teak felt
+    Color(0xFFB8A0C4), // Platinum: dark purple felt
+    Color(0xFF90B8D4), // Diamond: ocean blue felt
+  ];
+  static const _lines = [
+    Color(0xFF9A7850), Color(0xFFA2613B), Color(0xFF6A8080),
+    Color(0xFF8A6010), Color(0xFF7A5890), Color(0xFF3A6888),
+  ];
 
   @override
   void paint(Canvas canvas, Size size) {
+    final idx = themeIndex.clamp(0, _frames.length - 1);
+    final frameColor = _frames[idx];
+    final clothColor = _cloths[idx];
+    final lineColor = _lines[idx];
+
     final rect = Offset.zero & size;
-    canvas.drawRect(rect, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF4A1414), Color(0xFF1A0808)]).createShader(rect));
-    final b = size.shortestSide * 0.82;
-    final left = (size.width - b) / 2, top = (size.height - b) / 2 + size.height * 0.04;
+    if (!transparent) {
+      canvas.drawRect(rect, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF4A1414), Color(0xFF1A0808)]).createShader(rect));
+    }
+    final b = size.shortestSide * (transparent ? 0.96 : 0.82);
+    final left = (size.width - b) / 2, top = (size.height - b) / 2 + (transparent ? 0 : size.height * 0.04);
     final board = Rect.fromLTWH(left, top, b, b);
-    canvas.drawRRect(RRect.fromRectAndRadius(board, Radius.circular(b * 0.05)), Paint()..color = const Color(0xFF5B3A2E));
+    if (transparent) {
+      canvas.drawRRect(RRect.fromRectAndRadius(board.shift(Offset(0, b * 0.04)), Radius.circular(b * 0.05)), Paint()
+        ..color = const Color(0x88000000)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, b * 0.03));
+    }
+    canvas.drawRRect(RRect.fromRectAndRadius(board, Radius.circular(b * 0.05)), Paint()..color = frameColor);
     final f = b * 0.06;
     final field = board.deflate(f);
-    canvas.drawRect(field, Paint()..color = const Color(0xFFE8BF8E));
-    final line = Paint()..style = PaintingStyle.stroke..strokeWidth = 1.5..color = const Color(0xFFA2613B);
+    canvas.drawRect(field, Paint()..color = clothColor);
+    final line = Paint()..style = PaintingStyle.stroke..strokeWidth = 1.5..color = lineColor;
     final u = field.width;
     for (final s in const [0.16, 0.84]) {
       canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTRB(field.left + u * 0.19, field.top + u * (s - 0.03), field.left + u * 0.81, field.top + u * (s + 0.03)), Radius.circular(u * 0.03)), line);
@@ -860,7 +877,6 @@ class _CarromArtPainter extends CustomPainter {
     for (final c in [field.topLeft, field.topRight, field.bottomLeft, field.bottomRight]) {
       canvas.drawCircle(c + Offset(c.dx < field.center.dx ? u * 0.04 : -u * 0.04, c.dy < field.center.dy ? u * 0.04 : -u * 0.04), u * 0.05, Paint()..color = const Color(0xFF111111));
     }
-    // A few pieces round the queen.
     final r = u * 0.03;
     canvas.drawCircle(field.center, r, Paint()..color = const Color(0xFFE53935));
     for (var k = 0; k < 6; k++) {
@@ -868,63 +884,158 @@ class _CarromArtPainter extends CustomPainter {
       final p = field.center + Offset(2.1 * r * cos(a), 2.1 * r * sin(a));
       canvas.drawCircle(p, r, Paint()..color = k.isEven ? const Color(0xFF2C2F33) : const Color(0xFFEFE3D2));
     }
-    // The striker on the near base line.
     canvas.drawCircle(Offset(field.center.dx, field.top + u * 0.84), r * 1.35, Paint()..color = const Color(0xFFE53935));
   }
 
   @override
-  bool shouldRepaint(_CarromArtPainter old) => false;
+  bool shouldRepaint(_CarromArtPainter old) => old.transparent != transparent || old.themeIndex != themeIndex;
 }
 
-/// A mini Ludo board for the game card.
+/// A mini Ludo board for the game card. [transparent] skips the wooden
+/// background so the board can sit on a coloured tile.
 class LudoArt extends StatelessWidget {
-  const LudoArt({super.key});
+  const LudoArt({super.key, this.transparent = false, this.themeIndex = 0});
+
+  final bool transparent;
+  final int themeIndex;
 
   @override
-  Widget build(BuildContext context) => const CustomPaint(painter: _LudoArtPainter());
+  Widget build(BuildContext context) => CustomPaint(painter: _LudoArtPainter(transparent, themeIndex));
 }
 
 class _LudoArtPainter extends CustomPainter {
-  const _LudoArtPainter();
+  const _LudoArtPainter(this.transparent, this.themeIndex);
 
-  static const _cols = [Color(0xFFE0333B), Color(0xFF2FA84F), Color(0xFFE8B91C), Color(0xFF2F6BDC)];
+  final bool transparent;
+  final int themeIndex;
+
+  // Per-tier board field (background) colors
+  static const _fields = [
+    Color(0xFFEDF5E8), // Rookie: green-tinted ivory
+    Color(0xFFF5EDD8), // Bronze: warm cream
+    Color(0xFFEAEDF2), // Silver: cool gray
+    Color(0xFFF5F0E8), // Gold: classic ivory
+    Color(0xFFE8E0F5), // Platinum: lavender
+    Color(0xFFDFEBFF), // Diamond: ice blue
+  ];
+  // Per-tier track cell colors
+  static const _tracks = [
+    Color(0xFFCBE0C3), // Rookie: light green
+    Color(0xFFD4B882), // Bronze: warm tan
+    Color(0xFFBDC9D8), // Silver: steel gray
+    Color(0xFFE0DACE), // Gold: classic tan
+    Color(0xFFC4B0E8), // Platinum: purple
+    Color(0xFFABC4EE), // Diamond: periwinkle
+  ];
+  static const _gridColors = [
+    Color(0xFF99BB88), Color(0xFFBBAA88), Color(0xFF9AAABB),
+    Color(0xFFCCCCCC), Color(0xFF9A80CC), Color(0xFF8AAAD8),
+  ];
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    canvas.drawRect(rect, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF3A2606), Color(0xFF1A1206)]).createShader(rect));
-    // A board centred in the art area.
-    final b = size.shortestSide * 0.82;
-    final left = (size.width - b) / 2, top = (size.height - b) / 2 + size.height * 0.04;
-    final s = b / 15;
-    Rect cell(double c, double r, double w) => Rect.fromLTWH(left + c * s, top + r * s, w * s, w * s);
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(left, top, b, b), Radius.circular(s)), Paint()..color = const Color(0xFFEFF2F8));
-    // Four corner yards.
-    final yards = [[0.0, 9.0], [0.0, 0.0], [9.0, 0.0], [9.0, 9.0]];
-    for (var i = 0; i < 4; i++) {
-      canvas.drawRRect(RRect.fromRectAndRadius(cell(yards[i][0], yards[i][1], 6), Radius.circular(s)), Paint()..color = _cols[i]);
-      canvas.drawRRect(RRect.fromRectAndRadius(cell(yards[i][0] + 1, yards[i][1] + 1, 4), Radius.circular(s * 0.6)), Paint()..color = Colors.white);
-      // a token dot
-      canvas.drawCircle(Offset(left + (yards[i][0] + 3) * s, top + (yards[i][1] + 3) * s), s * 1.1, Paint()..color = _cols[i]);
-      canvas.drawCircle(Offset(left + (yards[i][0] + 3) * s, top + (yards[i][1] + 3) * s), s * 1.1, Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = Colors.white);
+    final idx = themeIndex.clamp(0, _fields.length - 1);
+    final fieldColor = _fields[idx];
+    final trackColor = _tracks[idx];
+    final gridColor = _gridColors[idx];
+
+    final b = size.shortestSide * (transparent ? 0.96 : 0.82);
+    final left = (size.width - b) / 2;
+    final top = (size.height - b) / 2 + (transparent ? 0 : size.height * 0.04);
+    final s = b / LudoBoard.n;
+
+    Rect cellRect(int col, int row) => Rect.fromLTWH(left + col * s, top + row * s, s, s);
+    Offset at(double gx, double gy) => Offset(left + gx * s, top + gy * s);
+
+    if (!transparent) {
+      canvas.drawRect(
+        Offset.zero & size,
+        Paint()
+          ..shader = const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF3A2606), Color(0xFF1A1206)],
+          ).createShader(Offset.zero & size),
+      );
+    } else {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(Rect.fromLTWH(left, top + s * 0.6, b, b), Radius.circular(s * 0.1)),
+        Paint()
+          ..color = const Color(0x88000000)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, s * 0.6),
+      );
     }
-    // Centre.
-    final mid = Offset(left + 7.5 * s, top + 7.5 * s);
-    for (var i = 0; i < 4; i++) {
-      canvas.drawRect(Rect.fromCenter(center: mid, width: 3 * s, height: 3 * s), Paint()..color = const Color(0xFFDDE3EE));
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(left, top, b, b), Radius.circular(s * 0.1)),
+      Paint()..color = fieldColor,
+    );
+
+    final grid = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8
+      ..color = gridColor;
+
+    for (final c in LudoBoard.path) {
+      canvas.drawRect(cellRect(c[0], c[1]), Paint()..color = trackColor);
+      canvas.drawRect(cellRect(c[0], c[1]), grid);
     }
-    final c = [Offset(left + 6 * s, top + 6 * s), Offset(left + 9 * s, top + 6 * s), Offset(left + 9 * s, top + 9 * s), Offset(left + 6 * s, top + 9 * s)];
-    void tri(Offset a, Offset b2, Color col) => canvas.drawPath(Path()..moveTo(mid.dx, mid.dy)..lineTo(a.dx, a.dy)..lineTo(b2.dx, b2.dy)..close(), Paint()..color = col);
-    tri(c[0], c[1], _cols[2]);
-    tri(c[1], c[2], _cols[3]);
-    tri(c[2], c[3], _cols[0]);
-    tri(c[3], c[0], _cols[1]);
+
+    for (var colour = 0; colour < 4; colour++) {
+      for (final c in LudoBoard.homeColumn[colour]) {
+        canvas.drawRect(cellRect(c[0], c[1]), Paint()..color = LudoBoard.colours[colour].withValues(alpha: 0.80));
+        canvas.drawRect(cellRect(c[0], c[1]), grid);
+      }
+    }
+
+    final mid = at(7.5, 7.5);
+    final corners = [at(6, 6), at(9, 6), at(9, 9), at(6, 9)];
+    void tri(Offset a, Offset b2, Color col) => canvas.drawPath(
+      Path()..moveTo(mid.dx, mid.dy)..lineTo(a.dx, a.dy)..lineTo(b2.dx, b2.dy)..close(),
+      Paint()..color = col,
+    );
+    tri(corners[0], corners[1], LudoBoard.colours[2]);
+    tri(corners[1], corners[2], LudoBoard.colours[3]);
+    tri(corners[2], corners[3], LudoBoard.colours[0]);
+    tri(corners[3], corners[0], LudoBoard.colours[1]);
+
+    for (var colour = 0; colour < 4; colour++) {
+      final y = LudoBoard.yardRect[colour];
+      final rect = Rect.fromLTWH(left + y[0] * s, top + y[1] * s, y[2] * s, y[2] * s);
+      final col = LudoBoard.colours[colour];
+      canvas.drawRect(rect, Paint()..color = col);
+      final inner = Rect.fromLTWH(rect.left + s, rect.top + s, s * 4, s * 4);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(inner, Radius.circular(s * 0.18)),
+        Paint()..color = fieldColor,
+      );
+      for (final spot in LudoBoard.yard[colour]) {
+        canvas.drawCircle(at(spot[0], spot[1]), s * 0.44, Paint()..color = col);
+        canvas.drawCircle(
+          at(spot[0], spot[1]),
+          s * 0.44,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.5
+            ..color = Colors.white.withValues(alpha: 0.7),
+        );
+      }
+    }
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(left, top, b, b), Radius.circular(s * 0.1)),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = gridColor,
+    );
   }
 
   @override
-  bool shouldRepaint(_LudoArtPainter old) => false;
+  bool shouldRepaint(_LudoArtPainter old) => old.transparent != transparent || old.themeIndex != themeIndex;
 }
 
+/// Wide banner of the landscape hubs (pool hub). Kept for [PoolHubScreen].
 class HomeBanner extends StatelessWidget {
   const HomeBanner({super.key, required this.title, required this.sub, required this.colors, required this.rim, required this.titleColor, required this.icon, required this.onTap});
 
@@ -978,68 +1089,6 @@ class HomeBanner extends StatelessWidget {
       );
 }
 
-/// Hexagonal rank medal with the division number.
-class _RankBadgePainter extends CustomPainter {
-  _RankBadgePainter(this.tier, this.name);
-
-  final int tier;
-  final String name;
-
-  static const _metals = [
-    [Color(0xFFE39A5B), Color(0xFF8A4A1E)], // bronze
-    [Color(0xFFE6EAF2), Color(0xFF7D8696)], // silver
-    [Color(0xFFFFD75A), Color(0xFFC77A0A)], // gold
-    [Color(0xFF9FF3F0), Color(0xFF2C8C96)], // platinum
-    [Color(0xFFB9A2FF), Color(0xFF4B2FC0)], // diamond
-  ];
-
-  Path _hex(Offset c, double r) {
-    final p = Path();
-    for (var i = 0; i < 6; i++) {
-      final a = -pi / 2 + i * pi / 3;
-      final v = c + Offset(cos(a), sin(a)) * r;
-      i == 0 ? p.moveTo(v.dx, v.dy) : p.lineTo(v.dx, v.dy);
-    }
-    return p..close();
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final c = size.center(Offset.zero);
-    final r = size.width * 0.5;
-    final metal = _metals[tier.clamp(0, _metals.length - 1)];
-    final bounds = Rect.fromCircle(center: c, radius: r);
-    canvas.drawPath(_hex(c + const Offset(0, 4), r), Paint()..color = const Color(0x99000000));
-    canvas.drawPath(_hex(c, r),
-        Paint()..shader = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: metal).createShader(bounds));
-    canvas.drawPath(_hex(c, r * 0.76), Paint()..color = Color.lerp(metal[1], Colors.black, 0.35)!);
-    canvas.drawPath(
-        _hex(c, r * 0.76),
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2
-          ..color = Colors.white.withValues(alpha: 0.5));
-    final division = name.split(' ').last.length; // I, II, III
-    final tp = TextPainter(
-      text: TextSpan(text: '$division', style: AppText.label(r * 0.8, color: metal[0], weight: FontWeight.w900)),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(canvas, c - Offset(tp.width / 2, tp.height / 2));
-    // Ribbon tail.
-    final ribbon = Path()
-      ..moveTo(c.dx - r * 0.42, c.dy + r * 0.8)
-      ..lineTo(c.dx + r * 0.42, c.dy + r * 0.8)
-      ..lineTo(c.dx + r * 0.3, c.dy + r * 1.05)
-      ..lineTo(c.dx, c.dy + r * 0.92)
-      ..lineTo(c.dx - r * 0.3, c.dy + r * 1.05)
-      ..close();
-    canvas.drawPath(ribbon, Paint()..color = const Color(0xFFD13A2A));
-  }
-
-  @override
-  bool shouldRepaint(_RankBadgePainter old) => old.tier != tier || old.name != name;
-}
-
 /// The bonus ladder: one reward a day, bigger each day in a row.
 class _DailyBonusDialog extends ConsumerStatefulWidget {
   const _DailyBonusDialog({required this.daily});
@@ -1074,63 +1123,107 @@ class _DailyBonusDialogState extends ConsumerState<_DailyBonusDialog> {
     }
   }
 
+  /// 0 later, 1 today, 2 collected.
+  int _stateOf(int i) {
+    final d = widget.daily;
+    return i < d.day || (i == d.day && !_available) ? 2 : (i == d.day ? 1 : 0);
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = ref.watch(stringsProvider);
     final d = widget.daily;
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(12),
-      child: Container(
-        width: DesignAuth.dailyBonusDialogWidth,
-        padding: const EdgeInsets.all(DesignSpacing.x5),
-        decoration: duelPanel(rim: DuelColors.gold, glow: true, radius: DesignRadii.dialog),
+    final n = d.rewards.length;
+    // The reference's calendar: small cells three to a row, the last day a
+    // tall card on the right.
+    const cell = 194.0, cellH = 230.0, gap = 14.0, bigW = 240.0;
+    final small = n - 1;
+    final rows = small <= 0 ? 1 : ((small + 2) ~/ 3);
+    final bigH = rows * cellH + (rows - 1) * gap;
+    // Reference: a pale-blue calendar sheet with the big title, the close
+    // cross above its corner and a violet strip for the action.
+    return Material(
+      type: MaterialType.transparency,
+      child: SizedBox(
+        width: 1000,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(t.dailyBonus, style: AppText.label(22, color: DuelColors.gold, weight: FontWeight.w900)),
-            const SizedBox(height: 4),
-            Text(t.dailyBonusGrow, style: AppText.label(10, color: DuelColors.dim)),
-            const SizedBox(height: 14),
-            PopCelebration(
-              trigger: _celebrate,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+            Align(
+              alignment: Alignment.centerRight,
+              child: PressScale(
+                onTap: () => Navigator.of(context).pop(),
+                scale: 0.9,
+                child: const Padding(
+                  padding: EdgeInsets.all(10),
+                  child: Icon(Icons.close_rounded, color: Colors.white, size: 76, shadows: [Shadow(color: Color(0xCC000000), blurRadius: 8, offset: Offset(0, 3))]),
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(30, 26, 30, 34),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFD6E6FF), Color(0xFFA9C6FA), Color(0xFF8FB0F2)]),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                border: Border.all(color: Colors.white, width: 4),
+                boxShadow: const [BoxShadow(color: Color(0xCC000000), blurRadius: 30, offset: Offset(0, 14))],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  for (var i = 0; i < d.rewards.length; i++)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 3),
-                      child: _DayTile(
-                        day: i + 1,
-                        coins: d.rewards[i].coins,
-                        gems: d.rewards[i].gems,
-                        state: i < d.day || (i == d.day && !_available) ? 2 : (i == d.day ? 1 : 0),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(t.dailyBonus.toUpperCase(), style: pcText(104, color: const Color(0xFF2D46B8), shadow: false).copyWith(letterSpacing: 2)),
+                  ),
+                  Text(t.dailyBonusGrow, textAlign: TextAlign.center, style: pcText(28, color: const Color(0xFF34407A), weight: FontWeight.w500, shadow: false)),
+                  const SizedBox(height: 22),
+                  if (n > 0)
+                    PopCelebration(
+                      trigger: _celebrate,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (small > 0)
+                            Expanded(
+                              child: Wrap(
+                                spacing: gap,
+                                runSpacing: gap,
+                                children: [
+                                  for (var i = 0; i < small; i++)
+                                    _DayCell(day: i + 1, coins: d.rewards[i].coins, gems: d.rewards[i].gems, state: _stateOf(i), width: cell, height: cellH, label: t.dayLabel(i + 1)),
+                                ],
+                              ),
+                            ),
+                          if (small > 0) const SizedBox(width: 20),
+                          _DayCell(day: n, coins: d.rewards[n - 1].coins, gems: d.rewards[n - 1].gems, state: _stateOf(n - 1), width: bigW, height: bigH, label: t.dayLabel(n), big: true),
+                        ],
                       ),
                     ),
                 ],
               ),
             ),
-            const SizedBox(height: 14),
-            if (_note != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Text(_note!, style: AppText.label(16, color: DuelColors.green, weight: FontWeight.w900)),
+            Container(
+              padding: const EdgeInsets.fromLTRB(30, 26, 30, 30),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF5B4BD6), Color(0xFF3A2FA6)]),
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
+                border: Border.all(color: const Color(0xFF8C7CE8), width: 3),
               ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (_available)
-                  DuelButton(label: _busy ? '...' : t.claim, width: 190, height: 44, fontSize: 18, onPressed: _busy ? null : _claim),
-                if (_available) const SizedBox(width: 12),
-                DuelButton(
-                  label: t.close,
-                  width: 150,
-                  height: 44,
-                  fontSize: 16,
-                  color: DuelColors.rimLight,
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ],
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_note != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 18),
+                      child: Text(_note!, textAlign: TextAlign.center, style: pcText(36, color: const Color(0xFF4DF08A))),
+                    ),
+                  if (_available)
+                    PcButton(label: _busy ? '...' : t.claim, style: PcButtonStyle.gold, width: 460, height: 110, fontSize: 46, onPressed: _busy ? null : _claim)
+                  else
+                    PcButton(label: t.close, style: PcButtonStyle.blue, width: 360, onPressed: () => Navigator.of(context).pop()),
+                ],
+              ),
             ),
           ],
         ),
@@ -1139,37 +1232,66 @@ class _DailyBonusDialogState extends ConsumerState<_DailyBonusDialog> {
   }
 }
 
-class _DayTile extends ConsumerWidget {
-  const _DayTile({required this.day, required this.coins, required this.gems, required this.state});
+/// One day of the bonus calendar: number in the corner, the reward art,
+/// the amount along the bottom; a tick once collected, a gold rim today.
+class _DayCell extends StatelessWidget {
+  const _DayCell({required this.day, required this.coins, required this.gems, required this.state, required this.width, required this.height, required this.label, this.big = false});
 
   final int day;
   final int coins;
   final int gems;
-
-  /// 0 later, 1 today, 2 collected.
   final int state;
+  final double width;
+  final double height;
+  final String label;
+  final bool big;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = ref.watch(stringsProvider);
-    final rim = state == 1 ? DuelColors.gold : (state == 2 ? DuelColors.green : DuelColors.rim);
-    return Opacity(
-      opacity: state == 0 ? 0.7 : 1,
-      child: Container(
-        width: 78,
-        height: 104,
-        decoration: duelPanel(radius: 12, rim: rim, glow: state == 1, fill: const Color(0xFF0B0E1C)),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(t.dayLabel(day), style: AppText.label(9, color: DuelColors.dim)),
-            const SizedBox(height: 4),
-            state == 2 ? const Icon(Icons.check_circle_rounded, color: DuelColors.green, size: 30) : const PikoCoinIcon(size: 30),
-            const SizedBox(height: 4),
-            Text(formatCoins(coins), style: AppText.label(13, color: DuelColors.silver, weight: FontWeight.w900)),
-            if (gems > 0) Text(t.gemsBonus(gems), style: AppText.label(8, color: const Color(0xFFB79CFF))),
-          ],
+  Widget build(BuildContext context) {
+    final today = state == 1, done = state == 2;
+    final premium = gems > 0 || big;
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: premium
+              ? const [Color(0xFF8E4CF0), Color(0xFF4B1FA8)]
+              : (day <= 2 ? const [Color(0xFFF7C24A), Color(0xFFD98A12)] : const [Color(0xFF3D7BE8), Color(0xFF1E3FA8)]),
         ),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: today ? DesignColors.pcGold : Colors.white.withValues(alpha: 0.55), width: today ? 4 : 2.5),
+        boxShadow: [
+          const BoxShadow(color: Color(0x88000000), blurRadius: 8, offset: Offset(0, 4)),
+          if (today) BoxShadow(color: DesignColors.pcGold.withValues(alpha: 0.5), blurRadius: 18),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(left: 12, top: 6, child: Text(day.toString().padLeft(2, '0'), style: pcText(big ? 44 : 34, color: Colors.white.withValues(alpha: 0.7)))),
+          Center(
+            child: Opacity(
+              opacity: done ? 0.4 : 1,
+              child: gems > 0 ? GemIcon(size: big ? 150 : 96) : PikoCoinIcon(size: big ? 150 : 96),
+            ),
+          ),
+          Positioned(
+            left: 8,
+            right: 8,
+            bottom: 10,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                gems > 0 ? '${formatCoins(coins, compact: true)}  +$gems' : formatCoins(coins, compact: true),
+                style: pcText(big ? 34 : 28),
+              ),
+            ),
+          ),
+          if (done)
+            const Center(child: Icon(Icons.check_circle_rounded, color: Color(0xFF4DF08A), size: 80, shadows: [Shadow(color: Color(0xCC000000), blurRadius: 8)])),
+        ],
       ),
     );
   }

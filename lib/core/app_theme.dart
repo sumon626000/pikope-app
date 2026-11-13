@@ -41,8 +41,8 @@ BoxDecoration panelDecoration({
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          const Color(0xFF24242F).withValues(alpha: opacity),
-          const Color(0xFF131319).withValues(alpha: opacity),
+          const Color(0xFF3A2A7A).withValues(alpha: opacity),
+          const Color(0xFF2E2564).withValues(alpha: opacity),
         ],
       ),
       borderRadius: BorderRadius.circular(radius),
@@ -64,4 +64,28 @@ ThemeData buildAppTheme() => ThemeData(
         error: AppColors.danger,
       ),
       useMaterial3: true,
+      // Screens share one backdrop, so they cross-fade like the reference's
+      // scenes instead of sliding or zooming.
+      pageTransitionsTheme: PageTransitionsTheme(
+        builders: {
+          for (final p in TargetPlatform.values) p: const _FadePageTransitionsBuilder(),
+        },
+      ),
     );
+
+class _FadePageTransitionsBuilder extends PageTransitionsBuilder {
+  const _FadePageTransitionsBuilder();
+
+  @override
+  Duration get transitionDuration => const Duration(milliseconds: 180);
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) =>
+      FadeTransition(opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut), child: child);
+}

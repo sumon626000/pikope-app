@@ -426,6 +426,12 @@ class AppStrings {
     'জয় · কয়েন · রিডিম · সব ইতিহাস',
   );
   String get statLevel => _t('LEVEL', 'লেভেল');
+  String get playerInformation => _t('Player Information', 'প্লেয়ার তথ্য');
+  String get walletLabel => _t('Wallet', 'ওয়ালেট');
+  String get totalMatchesLabel => _t('Total Matches', 'মোট ম্যাচ');
+  String get matchesWonLabel => _t('Matches Won', 'জেতা ম্যাচ');
+  String get matchesLostLabel => _t('Matches Lost', 'হারা ম্যাচ');
+  String get winRateLabel => _t('Win Rate', 'জয়ের হার');
   String get statRank => _t('RANK', 'র‍্যাঙ্ক');
   String get statMatches => _t('MATCHES', 'ম্যাচ');
   String get statWins => _t('WINS', 'জয়');
@@ -513,6 +519,9 @@ class AppStrings {
   // —— Home (shortcuts) ——
   String get dailyBonus => _t('DAILY BONUS', 'দৈনিক বোনাস');
   String get rank => _t('RANK', 'র‍্যাঙ্ক');
+  String get winsLabel => _t('WINS', 'জয়');
+  String get selectMode => _t('SELECT MODE', 'মোড বাছুন');
+  String get playBtn => _t('PLAY', 'খেলুন');
   String get missions => _t('MISSIONS', 'মিশন');
   String get claimNow => _t('CLAIM NOW', 'নিন');
   String get mission => _t('MISSION', 'মিশন');
@@ -743,6 +752,8 @@ class AppStrings {
   String get ludo4Players => _t('LUDO (4 PLAYERS)', 'লুডু (৪ খেলোয়াড়)');
   String get carromTitle => _t('CARROM', 'ক্যারাম');
   String get poolTitle => _t('POOL', 'পুল');
+  String get playPool => _t('PLAY POOL', 'পুল খেলুন');
+  String get playLudo => _t('PLAY LUDO', 'লুডু খেলুন');
 
   String get rematch => _t('REMATCH', 'আবার খেলুন');
   String get playAgain => _t('PLAY AGAIN', 'আবার খেলুন');

@@ -9,6 +9,7 @@ import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
 import '../../core/design/design.dart';
+import '../../core/design/pool_city.dart';
 import '../../core/duel_ui.dart';
 import '../../core/turn_life_dots.dart';
 import '../../core/widgets.dart';
@@ -140,141 +141,155 @@ class _LudoScreenState extends ConsumerState<LudoScreen>
       child: Scaffold(
         backgroundColor: const Color(0xFF060814),
         body: _LudoBackground(
-          child: DesignCanvas(
-            size: DesignCanvas.tableSize,
-            child: state == null
+          child: PortraitGameCanvas(
+            builder: (context, height) => state == null
                 ? const Center(
                     child: CircularProgressIndicator(color: DuelColors.silver),
                   )
-                : Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Positioned(
-                        left: DesignGameplay.menuTabLeft,
-                        top: 0,
-                        child: _MenuTab(
-                          onTap: () => setState(() => _paused = true),
-                        ),
-                      ),
-                      Positioned(
-                        right: 18,
-                        top: 10,
-                        child: _FairDiceBadge(
-                          online: _c.online,
-                          label: ref.watch(stringsProvider).ludoFairDice,
-                        ),
-                      ),
-                      if (widget.config.bet.staked)
-                        Positioned(
-                          left: DesignGameplay.prizeTileLeft,
-                          top: DesignGameplay.prizeTileTop,
-                          child: MatchPrizeTile(prize: widget.config.bet.prize),
-                        ),
-                      Positioned(
-                        left: DesignGameplay.ludoBoardLeft,
-                        top: DesignGameplay.ludoBoardTop,
-                        width: DesignGameplay.ludoBoardSize,
-                        height: DesignGameplay.ludoBoardSize,
-                        child: RepaintBoundary(
-                          child: _Board(
-                            controller: _c,
-                            theme: ludoThemeOf(settings.ludoBoard),
-                            onTapToken: _c.moveToken,
-                          ),
-                        ),
-                      ),
-                      // Player cards beside the board corners (dice sits in the active card).
-                      ..._seatPanels(),
-                      // Chat bubble above the bottom-left card.
-                      Positioned(
-                        left: 232,
-                        top: 474,
-                        child: _ChatButton(onTap: _openChat),
-                      ),
-                      // What to do now, under the board.
-                      Positioned(
-                        left: DesignGameplay.ludoBoardLeft,
-                        width: DesignGameplay.ludoBoardSize,
-                        top:
-                            DesignGameplay.ludoBoardTop +
-                            DesignGameplay.ludoBoardSize +
-                            42,
-                        height: 36,
-                        child: Center(
-                          child: Text(
-                            _hint(),
-                            style:
-                                AppText.label(
-                                  22,
-                                  color: _c.canRoll || _c.movable.isNotEmpty
-                                      ? DesignGameplay.hintActive
-                                      : DesignGameplay.hintIdle,
-                                  weight: FontWeight.w900,
-                                ).copyWith(
-                                  shadows: const [
-                                    Shadow(
-                                      color: Color(0xCC000000),
-                                      blurRadius: 4,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                          ),
-                        ),
-                      ),
-                      // Event messages over the board centre.
-                      Positioned(
-                        left: DesignGameplay.ludoBoardLeft,
-                        width: DesignGameplay.ludoBoardSize,
-                        top:
-                            DesignGameplay.ludoBoardTop +
-                            DesignGameplay.ludoBoardSize / 2 -
-                            60,
-                        child: IgnorePointer(
-                          child: Center(
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 180),
-                              child: _c.toast == null
-                                  ? const SizedBox.shrink()
-                                  : GameplayToastBanner(
-                                      key: ValueKey(_c.toast),
-                                      lines: [_c.toast!],
-                                    ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      if (widget.driver != null) ...[
-                        OpponentDisconnectBanner(
-                          presence: _c.opponentPresence,
-                          serverOffsetMs: _c.serverOffsetMs,
-                          opponentName: _opponentName(),
-                        ),
-                        ConnectionStatusLayer(
-                          offline: widget.driver!.offline,
-                          onLeave: () => Navigator.of(context).pop(),
-                        ),
-                      ],
-                      if (_c.over) _result(),
-                      if (_paused)
-                        PauseOverlay(
-                          soundOn: settings.soundOn,
-                          onResume: () => setState(() => _paused = false),
-                          onToggleSound: () => ref
-                              .read(settingsProvider.notifier)
-                              .update((s) => s.copyWith(soundOn: !s.soundOn)),
-                          onRules: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const HowToPlayScreen(),
-                            ),
-                          ),
-                          onQuit: _quit,
-                        ),
-                    ],
-                  ),
+                : _table(context, height, settings),
           ),
         ),
       ),
+    );
+  }
+
+  static const _boardSize = 1040.0;
+  static const _boardLeft = (PortraitGameCanvas.width - _boardSize) / 2;
+  static const _seatScale = 1.2;
+
+  /// Portrait table: opponents above the board, the board across the full
+  /// width, this player's card and the hint below.
+  Widget _table(BuildContext context, double height, AppSettings settings) {
+    final boardTop = (height - _boardSize) / 2;
+    final boardBottom = boardTop + _boardSize;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(
+          left: 30,
+          top: 0,
+          child: _MenuTab(onTap: () => setState(() => _paused = true)),
+        ),
+        Positioned(
+          right: 24,
+          top: 12,
+          child: Transform.scale(
+            scale: 1.7,
+            alignment: Alignment.topRight,
+            child: _FairDiceBadge(
+              online: _c.online,
+              label: ref.watch(stringsProvider).ludoFairDice,
+            ),
+          ),
+        ),
+        if (widget.config.bet.staked)
+          Positioned(
+            left: (PortraitGameCanvas.width - MatchPrizeTile.size) / 2,
+            top: boardTop - 24 - MatchPrizeTile.size - 70,
+            child: MatchPrizeTile(prize: widget.config.bet.prize),
+          ),
+        Positioned(
+          left: _boardLeft,
+          top: boardTop,
+          width: _boardSize,
+          height: _boardSize,
+          child: RepaintBoundary(
+            child: _Board(
+              controller: _c,
+              theme: ludoThemeOf(settings.ludoBoard),
+              onTapToken: _c.moveToken,
+            ),
+          ),
+        ),
+        // Player cards above / below the board corners (dice sits in the active card).
+        ..._seatPanels(boardTop, boardBottom),
+        // Chat bubble between the two bottom cards.
+        Positioned(
+          left: (PortraitGameCanvas.width - 117) / 2,
+          top: boardBottom + 70,
+          child: Transform.scale(
+            scale: 1.5,
+            alignment: Alignment.topLeft,
+            child: _ChatButton(onTap: _openChat),
+          ),
+        ),
+        // What to do now, under the cards.
+        Positioned(
+          left: 0,
+          right: 0,
+          top: boardBottom + 24 + (_SeatPanel._h + _SeatPanel._coinsH) * _seatScale + 6,
+          height: 44,
+          child: Center(
+            child: Text(
+              _hint(),
+              style:
+                  AppText.label(
+                    30,
+                    color: _c.canRoll || _c.movable.isNotEmpty
+                        ? DesignGameplay.hintActive
+                        : DesignGameplay.hintIdle,
+                    weight: FontWeight.w900,
+                  ).copyWith(
+                    shadows: const [
+                      Shadow(
+                        color: Color(0xCC000000),
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+            ),
+          ),
+        ),
+        // Event messages over the board centre.
+        Positioned(
+          left: _boardLeft,
+          width: _boardSize,
+          top: boardTop + _boardSize / 2 - 60,
+          child: IgnorePointer(
+            child: Center(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                child: _c.toast == null
+                    ? const SizedBox.shrink()
+                    : Transform.scale(
+                        key: ValueKey(_c.toast),
+                        scale: 1.3,
+                        child: GameplayToastBanner(lines: [_c.toast!]),
+                      ),
+              ),
+            ),
+          ),
+        ),
+        if (widget.driver != null) ...[
+          OpponentDisconnectBanner(
+            presence: _c.opponentPresence,
+            serverOffsetMs: _c.serverOffsetMs,
+            opponentName: _opponentName(),
+          ),
+          ConnectionStatusLayer(
+            offline: widget.driver!.offline,
+            onLeave: () => Navigator.of(context).pop(),
+            scale: 1.35,
+          ),
+        ],
+        if (_c.over) _result(),
+        if (_paused)
+          PauseOverlay(
+            scale: 1.6,
+            soundOn: settings.soundOn,
+            onResume: () => setState(() => _paused = false),
+            onToggleSound: () => ref
+                .read(settingsProvider.notifier)
+                .update((s) => s.copyWith(soundOn: !s.soundOn)),
+            onRules: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const HowToPlayScreen(),
+              ),
+            ),
+            onQuit: _quit,
+          ),
+      ],
     );
   }
 
@@ -288,14 +303,11 @@ class _LudoScreenState extends ConsumerState<LudoScreen>
     return '${p.name.toUpperCase()} IS PLAYING...';
   }
 
-  List<Widget> _seatPanels() {
+  List<Widget> _seatPanels(double boardTop, double boardBottom) {
     final state = _c.state!;
     final session = ref.watch(sessionProvider);
     final myCoins = ref.watch(settingsProvider).coins;
-    const boardLeft = DesignGameplay.ludoBoardLeft;
-    const boardRight = boardLeft + DesignGameplay.ludoBoardSize;
-    const left = boardLeft - 34 - _SeatPanel.width;
-    const right = boardRight + 34;
+    const w = _SeatPanel.width * _seatScale;
     return [
       for (var seat = 0; seat < state.seats; seat++)
         Builder(
@@ -306,10 +318,14 @@ class _LudoScreenState extends ConsumerState<LudoScreen>
             final you =
                 _c.online && seat == _c.mySeat || (!_c.online && seat == 0);
             final active = _c.diceSeat == seat && !_c.over;
+            final h = (_SeatPanel._h + (you ? _SeatPanel._coinsH : 0)) * _seatScale;
             return Positioned(
-              left: mirror ? right : left,
-              top: top ? 46 : 548,
-              child: _SeatPanel(
+              left: mirror ? PortraitGameCanvas.width - 30 - w : 30,
+              top: top ? boardTop - 24 - h : boardBottom + 24,
+              width: w,
+              height: h,
+              child: FittedBox(
+                child: _SeatPanel(
                 name: p.name,
                 avatar: p.avatar,
                 colour: LudoBoard.colours[p.colour],
@@ -328,6 +344,7 @@ class _LudoScreenState extends ConsumerState<LudoScreen>
                 clock: _c.clock,
                 turnLeft: active && _c.online ? () => _c.turnLeft : null,
                 chat: _c.chatTextOf(seat),
+                ),
               ),
             );
           },

@@ -5,12 +5,15 @@ import '../../core/app_state.dart';
 import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
 import '../../core/design/design.dart';
+import '../../core/design/pool_city.dart';
 import '../../core/duel_ui.dart';
 import '../../core/icon_motion.dart';
 import '../../core/widgets.dart';
+import '../misc/leaderboard_screen.dart';
 import '../misc/settings_screen.dart';
 import '../online/session.dart';
 import '../online/notification_unread.dart';
+import 'items_screen.dart';
 import 'notifications_screen.dart';
 import 'notices_screen.dart';
 import 'shop_screen.dart';
@@ -269,8 +272,11 @@ class _TopIcon extends StatelessWidget {
   }
 }
 
-/// Page frame of the secondary lobby screens (shop, cues, history ...):
-/// top bar, a title, the content, and BACK in the corner.
+/// Page frame of the secondary lobby screens (shop, cues, history ...) in
+/// the Pool City look: player header, purple title bar, the content on the
+/// translucent panel, red BACK bottom-left. [expanded], [sideBack] and
+/// [contentTop] are kept for callers from the landscape layout; the portrait
+/// page has one layout.
 class DuelPage extends ConsumerWidget {
   const DuelPage({
     super.key,
@@ -280,81 +286,85 @@ class DuelPage extends ConsumerWidget {
     this.expanded = false,
     this.sideBack = false,
     this.contentTop,
+    this.scroll = false,
+    this.nav,
+    this.legacyScale,
+    this.onBack,
   });
 
+  /// Replaces the back button's default pop.
+  final VoidCallback? onBack;
+
+  /// The body is laid out in the old small units: magnify it by this factor.
+  final double? legacyScale;
   final String title;
   final String? sub;
   final Widget child;
-
-  /// Use almost the full canvas (shop add-cash / redeem).
   final bool expanded;
-
-  /// BACK sits on the left side, clear of the shop cards.
   final bool sideBack;
-
-  /// Extra clearance below [DuelTitle] + subtitle (shop / items tabs).
   final double? contentTop;
+
+  /// Let the page scroll the body (bodies that are not scrollables themselves).
+  final bool scroll;
+
+  /// Bottom tab bar instead of the back button (shop / inventory tabs).
+  final List<HomeNavItem>? nav;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
-    final bodyTop = DesignSecondaryPage.bodyTop(
-      expanded: expanded,
-      override: contentTop,
-    );
-    final backTop = DesignSecondaryPage.backTop(
-      expanded: expanded,
-      sideBack: sideBack,
-      contentTop: contentTop,
-    );
-    final pad = DesignSecondaryPage.contentPadding(
-      expanded: expanded,
-      sideBack: sideBack,
-    );
-    return DuelCanvas(
-      child: Stack(
-        children: [
-          const Positioned(
-            left: 0,
-            right: 0,
-            top: 6,
-            child: DuelTopBar(showProfile: false, showShortcuts: false),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            top: DesignSecondaryPage.titleTop,
-            child: Center(child: DuelTitle(title, size: 44, sub: sub)),
-          ),
-          Positioned(
-            left: pad.left,
-            right: pad.right,
-            top: bodyTop,
-            bottom: pad.bottom,
-            child: child,
-          ),
-          if (sideBack)
-            Positioned(
-              left: DesignSecondaryPage.backSideLeft,
-              top: backTop,
-              child: NavTile(
-                icon: Icons.reply_rounded,
-                label: t.navBack,
-                onTap: () => Navigator.of(context).pop(),
-              ),
-            )
-          else
-            Positioned(
-              left: DesignSecondaryPage.backLeft,
-              bottom: DesignLayout.bottomBarInset,
-              child: NavTile(
-                icon: Icons.reply_rounded,
-                label: t.navBack,
-                onTap: () => Navigator.of(context).pop(),
-              ),
-            ),
-        ],
+    final settings = ref.watch(settingsProvider);
+    final session = ref.watch(sessionProvider);
+    final registered = hasRegisteredAccount(ref);
+    final child = legacyScale == null ? this.child : PcLegacyScale(factor: legacyScale!, child: this.child);
+    return PcPage(
+      header: PcHeader(
+        avatar: settings.avatar,
+        name: settings.name,
+        registered: registered,
+        level: session.level,
+        coins: lobbyDisplayCoins(ref),
+        gems: registered ? session.gems : null,
+        placeholder: t.signUpOrLogin,
+        onProfile: () async {
+          AudioService.tap();
+          if (!await requireRegisteredAccount(context, ref)) return;
+          if (context.mounted) pushScreen(context, const SettingsScreen());
+        },
+        onWallet: () async {
+          AudioService.tap();
+          if (!await requireRegisteredAccount(context, ref)) return;
+          if (context.mounted) pushScreen(context, const ShopScreen());
+        },
       ),
+      title: title,
+      scroll: scroll,
+      nav: nav,
+      onBack: onBack,
+      body: sub == null
+          ? child
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(sub!, textAlign: TextAlign.center, style: pcText(28, color: DesignColors.pcTextDim, weight: FontWeight.w500)),
+                const SizedBox(height: 16),
+                scroll ? child : Expanded(child: child),
+              ],
+            ),
     );
   }
+}
+
+/// Convenience: the five-tab bar for pages that are tabs in the reference
+/// (Shop, Inventory, Practice). Tapping another tab replaces this page.
+List<HomeNavItem> duelTabNav(BuildContext context, WidgetRef ref, {required int active}) {
+  final t = ref.read(stringsProvider);
+  void go(Widget screen) => Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => screen));
+  return [
+    HomeNavItem(icon: Icons.smart_toy_rounded, label: t.practice, active: active == 0, onTap: () => Navigator.of(context).popUntil((r) => r.isFirst)),
+    HomeNavItem(icon: Icons.leaderboard_rounded, label: t.navRankings, active: active == 1, onTap: () => go(const LeaderboardScreen())),
+    HomeNavItem(icon: Icons.home_rounded, label: t.navHome, active: false, onTap: () => Navigator.of(context).popUntil((r) => r.isFirst)),
+    HomeNavItem(icon: Icons.backpack_rounded, label: t.navItems, active: active == 3, onTap: () => go(const ItemsScreen())),
+    HomeNavItem(icon: Icons.shopping_cart_rounded, label: t.navShop, active: active == 4, onTap: () => go(const ShopScreen())),
+  ];
 }

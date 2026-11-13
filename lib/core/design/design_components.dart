@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../duel_ui.dart';
 import 'design_colors.dart';
 import 'design_layout.dart';
 import 'design_typography.dart';
+import 'pool_city.dart';
 
 /// Primary lobby CTA — [DuelButton] with design-system defaults.
 class DesignPrimaryButton extends StatelessWidget {
@@ -23,13 +23,14 @@ class DesignPrimaryButton extends StatelessWidget {
   final IconData? icon;
 
   @override
-  Widget build(BuildContext context) => DuelButton(
+  Widget build(BuildContext context) => PcButton(
         label: label,
         onPressed: onPressed,
-        color: color,
-        width: width,
-        height: DesignLayout.primaryButtonHeight,
-        fontSize: DesignLayout.primaryButtonFontSize,
+        style: pcStyleFor(color),
+        // Legacy widths are in 1600-canvas units; the Pool City pages use 1080.
+        width: width * 2.4,
+        height: 110,
+        fontSize: 44,
         icon: icon,
       );
 }
@@ -50,13 +51,13 @@ class DesignCompactButton extends StatelessWidget {
   final double width;
 
   @override
-  Widget build(BuildContext context) => DuelButton(
+  Widget build(BuildContext context) => PcButton(
         label: label,
         onPressed: onPressed,
-        color: color,
-        width: width,
-        height: DesignLayout.compactButtonHeight,
-        fontSize: DesignLayout.compactButtonFontSize,
+        style: pcStyleFor(color),
+        width: width * 2.4,
+        height: 90,
+        fontSize: 36,
       );
 }
 

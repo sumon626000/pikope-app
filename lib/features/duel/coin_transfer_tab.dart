@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_theme.dart';
+import '../../core/design/pool_city.dart';
 import '../../core/duel_ui.dart';
 import '../../core/root_nav.dart';
 import '../../core/widgets.dart';
@@ -146,30 +147,13 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
     final ok = await showDuelDialog<bool>(
       context,
       barrierDismissible: false,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          width: 460,
-          padding: const EdgeInsets.all(24),
-          decoration: duelPanel(rim: DuelColors.gold),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(t.transferConfirmTitle, textAlign: TextAlign.center, style: AppText.label(22, color: DuelColors.gold, weight: FontWeight.w900)),
-              const SizedBox(height: 14),
-              Text(t.transferConfirmBody(name, amount, fee, total), textAlign: TextAlign.center, style: AppText.label(16, color: Colors.white, weight: FontWeight.w700)),
-              const SizedBox(height: 22),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  DuelButton(label: t.cancel, width: 150, height: 48, color: DuelColors.rimLight, onPressed: () => Navigator.of(ctx).pop(false)),
-                  const SizedBox(width: 12),
-                  DuelButton(label: t.transferSendBtn, width: 170, height: 48, color: DuelColors.gold, onPressed: () => Navigator.of(ctx).pop(true)),
-                ],
-              ),
-            ],
-          ),
-        ),
+      builder: (ctx) => PcDialog(
+        title: t.transferConfirmTitle,
+        actions: [
+          PcButton(label: t.cancel, style: PcButtonStyle.gray, width: 300, onPressed: () => Navigator.of(ctx).pop(false)),
+          PcButton(label: t.transferSendBtn, style: PcButtonStyle.gold, width: 400, onPressed: () => Navigator.of(ctx).pop(true)),
+        ],
+        child: Text(t.transferConfirmBody(name, amount, fee, total), textAlign: TextAlign.center, style: pcText(36, weight: FontWeight.w500).copyWith(height: 1.35)),
       ),
     );
     if (ok != true || !mounted) return;
@@ -224,11 +208,6 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
     final total = amount + fee;
     final phone = ShopPhoneLayout.phone(context);
     final input = AppText.label(phone ? 16 : 28, color: Colors.white);
-    final fieldPad = EdgeInsets.symmetric(
-      horizontal: phone ? 12 : 22,
-      vertical: phone ? 10 : 22,
-    );
-    final fieldLabel = AppText.label(phone ? 12 : 20, color: DuelColors.dim);
     return LayoutBuilder(
       builder: (context, constraints) {
         final form = Column(
@@ -261,12 +240,10 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
               keyboardType: TextInputType.number,
               maxLength: 6,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(
-                isDense: phone,
-                labelText: t.transferGameIdLabel,
-                counterText: '',
-                contentPadding: fieldPad,
-                labelStyle: fieldLabel,
+              decoration: pcFieldDecoration(
+                label: t.transferGameIdLabel,
+                phone: phone,
+                accent: DuelColors.silver,
               ),
               onChanged: (_) {
                 setState(() {
@@ -300,12 +277,11 @@ class _CoinTransferTabState extends ConsumerState<CoinTransferTab> with Automati
               style: input,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(
-                isDense: phone,
-                labelText: t.transferAmountLabel,
-                hintText: '${cfg.minCoins} – ${formatCoins(cfg.maxCoins)}',
-                contentPadding: fieldPad,
-                labelStyle: fieldLabel,
+              decoration: pcFieldDecoration(
+                label: t.transferAmountLabel,
+                hint: '${cfg.minCoins} – ${formatCoins(cfg.maxCoins)}',
+                phone: phone,
+                accent: DuelColors.gold,
               ),
               onChanged: (_) => setState(() {
                 _error = null;

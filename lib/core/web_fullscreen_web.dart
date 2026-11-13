@@ -23,11 +23,11 @@ Future<void> webTryHideMobileBrowserChrome() async {
 }
 
 /// Best-effort; may require a user gesture on some mobile browsers.
-Future<void> webTryLockLandscape() async {
+Future<void> webTryLockLandscape() => webTryLockOrientation('landscape');
+
+/// [type] is a Screen Orientation API lock type: 'landscape' or 'portrait'.
+Future<void> webTryLockOrientation(String type) async {
   try {
-    final orient = web.window.screen.orientation;
-    if (orient != null) {
-      await orient.lock('landscape').toDart;
-    }
+    await web.window.screen.orientation.lock(type).toDart;
   } catch (_) {}
 }

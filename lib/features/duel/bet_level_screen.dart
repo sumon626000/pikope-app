@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_state.dart';
-import '../../core/app_theme.dart';
 import '../../core/audio_service.dart';
 import '../../core/design/design.dart';
+import '../../core/design/pool_city.dart';
 import '../../core/duel_ui.dart';
 import '../../data/app_game.dart';
+import '../../data/demo_data.dart';
+import '../game/widgets/table_art.dart';
 import '../lobby/lobby_screen.dart';
+import 'duel_home_screen.dart' show CarromArt, LudoArt;
 import 'practice_launch.dart';
 import '../misc/leaderboard_screen.dart';
-import 'duel_chrome.dart';
+import '../misc/settings_screen.dart';
 import 'lobby_data.dart';
 import '../online/online_screens.dart';
 import 'matchmaking_screen.dart';
@@ -23,8 +26,9 @@ import '../../data/api_client.dart';
 import 'not_enough_balance.dart';
 import '../start/auth_prompt.dart';
 
-/// Pick what to play for: a row of tables, cheapest to richest, that scrolls
-/// sideways with the chosen one large in the middle.
+/// Pick what to play for: the reference's stake cards — a row of venues,
+/// cheapest to richest, that scrolls sideways with the chosen one large in
+/// the middle; each card names its prize and entry fee.
 class BetLevelScreen extends ConsumerStatefulWidget {
   const BetLevelScreen({
     super.key,
@@ -50,7 +54,7 @@ class BetLevelScreen extends ConsumerStatefulWidget {
 }
 
 class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
-  static const _cardWidth = 372.0;
+  static const _cardWidth = 760.0;
   PageController? _pages;
   int _selected = 0;
 
@@ -74,7 +78,7 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
     for (var i = 0; i < levels.length; i++) {
       if (levels[i].buyIn <= coins) _selected = i;
     }
-    return _pages = PageController(initialPage: _selected, viewportFraction: _cardWidth * 0.78 / DuelCanvas.size.width);
+    return _pages = PageController(initialPage: _selected, viewportFraction: _cardWidth * 0.78 / PortraitCanvas.width);
   }
 
   Future<void> _open(Widget screen) async {
@@ -172,120 +176,133 @@ class _BetLevelScreenState extends ConsumerState<BetLevelScreen> {
     showPoolPracticeDialog(context, open: _open, game: game);
   }
 
+  Future<void> _gated(Widget screen) async {
+    if (!await requireRegisteredAccount(context, ref)) return;
+    if (mounted) await _open(screen);
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = ref.watch(stringsProvider);
     final lobby = ref.watch(lobbyProvider);
-    final coins = ref.watch(settingsProvider).coins;
+    final settings = ref.watch(settingsProvider);
+    final session = ref.watch(sessionProvider);
+    final registered = hasRegisteredAccount(ref);
+    final coins = settings.coins;
     final levels = lobby.valueOrNull?.levelsFor(widget.mode);
-    return DuelCanvas(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return PcPage(
+      header: PcHeader(
+        avatar: settings.avatar,
+        name: settings.name,
+        registered: registered,
+        level: session.level,
+        coins: lobbyDisplayCoins(ref),
+        gems: registered ? session.gems : null,
+        placeholder: t.signUpOrLogin,
+        onProfile: () => _gated(const SettingsScreen()),
+        onWallet: () => _gated(const ShopScreen()),
+      ),
+      title: widget.challengeTarget != null ? t.challengePlayer(widget.challengeTarget!.name) : widget.mode.title,
+      panel: false,
+      scroll: false,
+      bodyPadding: EdgeInsets.zero,
+      minHeight: 1900,
+      bottomTrailing: Row(
         children: [
-          const SizedBox(height: 6),
-          const DuelTopBar(),
-          Expanded(
-            child: levels == null
-                ? Center(
-                    child: lobby.hasError
-                        ? Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(t.offlineServer, style: AppText.label(22, color: DuelColors.red)),
-                              const SizedBox(height: DesignSpacing.x4),
-                              DuelButton(label: t.tryAgain, onPressed: () => ref.invalidate(lobbyProvider)),
-                            ],
-                          )
-                        : const CircularProgressIndicator(color: DuelColors.silver),
-                  )
-                : Column(
-                    children: [
-                      const SizedBox(height: DesignSpacing.x2),
-                      Text(
-                        widget.challengeTarget != null
-                            ? t.challengePlayer(widget.challengeTarget!.name)
-                            : t.modeSubtitle(widget.mode),
-                        textAlign: TextAlign.center,
-                        style: AppText.label(15, color: DuelColors.dim, weight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: DesignSpacing.x4),
-                      SizedBox(
-                        height: 64,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: DesignSpacing.x4),
-                          itemCount: levels.length,
-                          separatorBuilder: (_, _) => const SizedBox(width: 10),
-                          itemBuilder: (context, i) {
-                            final on = i == _selected;
-                            return GestureDetector(
-                              onTap: () {
-                                AudioService.tap();
-                                _pages?.animateToPage(i, duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 22),
-                                alignment: Alignment.center,
-                                decoration: duelPanel(radius: 14, rim: on ? DuelColors.gold : DuelColors.rim, glow: on),
-                                child: Text(levels[i].displayName,
-                                    style: AppText.label(18, color: on ? DuelColors.gold : Colors.white, weight: FontWeight.w900)),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: DesignSpacing.x2),
-                      Expanded(
-                        child: _Carousel(
-                          controller: _controller(levels, coins),
-                          levels: levels,
-                          mode: widget.mode,
-                          coins: coins,
-                          cardWidth: _cardWidth,
-                          selected: _selected,
-                          onSelect: (i) => setState(() => _selected = i),
-                          onPlay: _play,
-                          challengeMode: widget.challengeTarget != null,
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(DesignSpacing.screenEdge, DesignSpacing.x2, DesignSpacing.screenEdge, DesignLayout.bottomBarInset),
-            child: Row(
-              children: [
-                NavTile(
-                  icon: Icons.local_police_rounded,
-                  label: t.navClub,
-                  onTap: () => showDuelMessage(context, title: t.clubsTitle, body: t.clubsBody, icon: Icons.local_police_rounded),
-                ),
-                const SizedBox(width: DesignSpacing.navGap),
-                NavTile(
-                  icon: Icons.groups_rounded,
-                  label: t.navFriends,
-                  onTap: () => showDuelMessage(context, title: t.friendsTitle, body: t.friendsNavBody, icon: Icons.groups_rounded),
-                ),
-                const SizedBox(width: DesignSpacing.navGap),
-                NavTile(icon: Icons.leaderboard_rounded, label: t.navRankings, onTap: () => _open(const LeaderboardScreen())),
-                const SizedBox(width: DesignSpacing.navGap),
-                NavTile(
-                  icon: Icons.storefront_rounded,
-                  label: t.navShop,
-                  onTap: () async {
-                    if (!await requireRegisteredAccount(context, ref)) return;
-                    if (mounted) await _open(const ShopScreen());
-                  },
-                ),
-                const SizedBox(width: DesignSpacing.navGap),
-                NavTile(icon: Icons.reply_rounded, label: t.navBack, onTap: () => Navigator.of(context).pop()),
-              ],
-            ),
-          ),
+          _SmallIconButton(Icons.local_police_rounded, () => showDuelMessage(context, title: t.clubsTitle, body: t.clubsBody, icon: Icons.local_police_rounded)),
+          const SizedBox(width: 14),
+          _SmallIconButton(Icons.groups_rounded, () => showDuelMessage(context, title: t.friendsTitle, body: t.friendsNavBody, icon: Icons.groups_rounded)),
+          const SizedBox(width: 14),
+          _SmallIconButton(Icons.leaderboard_rounded, () => _open(const LeaderboardScreen())),
+          const SizedBox(width: 14),
+          _SmallIconButton(Icons.shopping_cart_rounded, () => _gated(const ShopScreen())),
         ],
       ),
+      body: levels == null
+          ? Center(
+              child: lobby.hasError
+                  ? Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(titleCase(t.offlineServer), style: pcText(36, color: DuelColors.red)),
+                        const SizedBox(height: 30),
+                        PcButton(label: t.tryAgain, width: 400, onPressed: () => ref.invalidate(lobbyProvider)),
+                      ],
+                    )
+                  : const CircularProgressIndicator(color: Colors.white),
+            )
+          : Column(
+              children: [
+                const SizedBox(height: 8),
+                Text(
+                  widget.challengeTarget != null ? t.challengePlayer(widget.challengeTarget!.name) : t.modeSubtitle(widget.mode),
+                  textAlign: TextAlign.center,
+                  style: pcText(28, color: DesignColors.pcTextDim, weight: FontWeight.w500),
+                ),
+                const SizedBox(height: 18),
+                // Level chips, cheapest to richest.
+                SizedBox(
+                  height: 84,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 30),
+                    itemCount: levels.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 14),
+                    itemBuilder: (context, i) {
+                      final on = i == _selected;
+                      return GestureDetector(
+                        onTap: () {
+                          AudioService.tap();
+                          _pages?.animateToPage(i, duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 30),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            gradient: on
+                                ? const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFF9C64A), Color(0xFFD08A10)])
+                                : const LinearGradient(colors: [Color(0xFF3E3456), Color(0xFF342B4C)]),
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(color: Colors.white.withValues(alpha: on ? 0.75 : 0.2), width: on ? 2.5 : 1.5),
+                            boxShadow: on
+                                ? [const BoxShadow(color: Color(0x88F7C04A), blurRadius: 14, spreadRadius: 1)]
+                                : null,
+                          ),
+                          child: Text(levels[i].displayName, style: pcText(30, color: on ? Colors.white : const Color(0xFFB3B4D9))),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: _Carousel(
+                    controller: _controller(levels, coins),
+                    levels: levels,
+                    mode: widget.mode,
+                    coins: coins,
+                    cardWidth: _cardWidth,
+                    selected: _selected,
+                    onSelect: (i) => setState(() => _selected = i),
+                    onPlay: _play,
+                    challengeMode: widget.challengeTarget != null,
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
     );
   }
+}
+
+class _SmallIconButton extends StatelessWidget {
+  const _SmallIconButton(this.icon, this.onTap);
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => PcButton(label: '', icon: icon, width: 110, height: 96, fontSize: 44, onPressed: onTap);
 }
 
 class _Carousel extends StatelessWidget {
@@ -314,179 +331,330 @@ class _Carousel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final step = cardWidth * 0.78;
-    return Stack(
-      children: [
-        // The cards are drawn here, farthest first, so the chosen one sits on
-        // top of its neighbours; the page view below only supplies scrolling.
-        Positioned.fill(
-          child: IgnorePointer(
-            child: AnimatedBuilder(
-              animation: controller,
-              builder: (context, _) {
-                final page = controller.position.haveDimensions ? (controller.page ?? selected.toDouble()) : selected.toDouble();
-                final order = [for (var i = 0; i < levels.length; i++) i]..sort((a, b) => (page - b).abs().compareTo((page - a).abs()));
-                return Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    for (final i in order)
-                      Positioned(
-                        left: DuelCanvas.size.width / 2 - cardWidth / 2 + (i - page) * step,
-                        top: 8,
-                        child: Builder(builder: (context) {
-                          final away = (page - i).abs().clamp(0.0, 2.0);
-                          // The middle card is full size and bright; neighbours shrink and dim.
-                          return Transform.scale(
-                            scale: 1 - 0.2 * away.clamp(0.0, 1.0) - 0.06 * (away - 1).clamp(0.0, 1.0),
-                            child: Opacity(
-                              opacity: 1 - 0.4 * away.clamp(0.0, 1.0),
-                              child: _LevelCard(
-                                level: levels[i],
-                                mode: mode,
-                                color: DuelColors.level(i),
-                                affordable: coins >= levels[i].buyIn,
-                                active: (page - i).abs() < 0.5,
-                                challengeMode: challengeMode,
+    return LayoutBuilder(
+      builder: (context, c) => Stack(
+        children: [
+          // The cards are drawn here, farthest first, so the chosen one sits on
+          // top of its neighbours; the page view below only supplies scrolling.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedBuilder(
+                animation: controller,
+                builder: (context, _) {
+                  final page = controller.position.haveDimensions ? (controller.page ?? selected.toDouble()) : selected.toDouble();
+                  final order = [for (var i = 0; i < levels.length; i++) i]..sort((a, b) => (page - b).abs().compareTo((page - a).abs()));
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      for (final i in order)
+                        Positioned(
+                          left: c.maxWidth / 2 - cardWidth / 2 + (i - page) * step,
+                          top: 8,
+                          bottom: 8,
+                          child: Builder(builder: (context) {
+                            final away = (page - i).abs().clamp(0.0, 2.0);
+                            // The middle card is full size and bright; neighbours shrink and dim.
+                            return Transform.scale(
+                              scale: 1 - 0.14 * away.clamp(0.0, 1.0) - 0.05 * (away - 1).clamp(0.0, 1.0),
+                              child: Opacity(
+                                opacity: 1 - 0.45 * away.clamp(0.0, 1.0),
+                                child: _LevelCard(
+                                  level: levels[i],
+                                  index: i,
+                                  mode: mode,
+                                  width: cardWidth,
+                                  affordable: coins >= levels[i].buyIn,
+                                  active: (page - i).abs() < 0.5,
+                                  challengeMode: challengeMode,
+                                ),
                               ),
-                            ),
-                          );
-                        }),
-                      ),
-                  ],
-                );
-              },
+                            );
+                          }),
+                        ),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
-        ),
-        PageView.builder(
-          controller: controller,
-          itemCount: levels.length,
-          onPageChanged: (i) {
-            AudioService.instance?.play(Sfx.tick, volume: 0.5);
-            onSelect(i);
-          },
-          itemBuilder: (context, i) => GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () {
-              AudioService.tap();
-              if (i == selected) {
-                onPlay(levels[i]);
-              } else {
-                controller.animateToPage(i, duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
-              }
+          PageView.builder(
+            controller: controller,
+            itemCount: levels.length,
+            onPageChanged: (i) {
+              AudioService.instance?.play(Sfx.tick, volume: 0.5);
+              onSelect(i);
             },
-            child: const SizedBox.expand(),
+            itemBuilder: (context, i) => GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                AudioService.tap();
+                if (i == selected) {
+                  onPlay(levels[i]);
+                } else {
+                  controller.animateToPage(i, duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
+                }
+              },
+              child: const SizedBox.expand(),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
+/// One stake card: mode in the corner, the venue (a table skin), its name,
+/// the prize band, the entry fee, players and the tap hint.
 class _LevelCard extends ConsumerWidget {
   const _LevelCard({
     required this.level,
+    required this.index,
     required this.mode,
-    required this.color,
+    required this.width,
     required this.affordable,
     required this.active,
     this.challengeMode = false,
   });
 
   final BetLevel level;
+  final int index;
   final DuelMode mode;
-  final Color color;
+  final double width;
   final bool affordable;
   final bool active;
   final bool challengeMode;
+
+  static const _cardTopActive = [
+    Color(0xFF5DBD50), Color(0xFFD49050), Color(0xFF90A8C0),
+    Color(0xFFF5B942), Color(0xFFA070D8), Color(0xFF6090E8),
+  ];
+  static const _cardBotActive = [
+    Color(0xFF2E7828), Color(0xFF8B5820), Color(0xFF5A7090),
+    Color(0xFFB87214), Color(0xFF5A28A0), Color(0xFF2040A0),
+  ];
+  static const _cardTopDim = [
+    Color(0xFF264E20), Color(0xFF4A3010), Color(0xFF303848),
+    Color(0xFF4A3808), Color(0xFF3A1860), Color(0xFF1A2850),
+  ];
+  static const _cardBotDim = [
+    Color(0xFF143010), Color(0xFF2E1808), Color(0xFF1C2430),
+    Color(0xFF2E2004), Color(0xFF200A40), Color(0xFF0C1428),
+  ];
+  static const _boardTopActive = [
+    Color(0xFF4AAE42), Color(0xFFC08040), Color(0xFF80A0B8),
+    Color(0xFFF7DC6A), Color(0xFF9060C8), Color(0xFF5080D8),
+  ];
+  static const _boardBotActive = [
+    Color(0xFF246820), Color(0xFF7A5018), Color(0xFF4A6878),
+    Color(0xFFD09020), Color(0xFF481890), Color(0xFF183088),
+  ];
+  static const _glows = [
+    Color(0xAA3A9A30), Color(0xAAC47030), Color(0xAA6A90B0),
+    Color(0xAAF7C04A), Color(0xAA8A50C8), Color(0xAA4A80E8),
+  ];
+  static const _borders = [
+    Color(0xFF5DBD50), Color(0xFFD49050), Color(0xFF90A8C0),
+    Color(0xFFF7C04A), Color(0xFFA070D8), Color(0xFF6090E8),
+  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(stringsProvider);
     final poker = mode == DuelMode.poker;
-    String plain(int v) => v >= 10000 ? formatCoins(v, compact: true) : '$v';
-    final headline = level.displayName;
+    final carrom = mode == DuelMode.carrom;
+    final ludo = mode == DuelMode.ludo2 || mode == DuelMode.ludo4;
+    final board = carrom || ludo;
+    String plain(int v) => v >= 10000 ? formatCoins(v, compact: true) : formatCoins(v);
     final winLine = poker ? plain(level.maxPrize!) : plain(level.prize ?? level.stake * mode.seats);
+    final skin = DemoData.tableSkins[(index + 2) % DemoData.tableSkins.length];
+    final gold = active;
+    final tierIdx = index.clamp(0, _cardTopActive.length - 1);
+    final cardTop = gold ? _cardTopActive[tierIdx] : _cardTopDim[tierIdx];
+    final cardBottom = gold ? _cardBotActive[tierIdx] : _cardBotDim[tierIdx];
+    final boardTop = gold ? _boardTopActive[tierIdx] : _cardTopDim[tierIdx];
+    final boardBottom = gold ? _boardBotActive[tierIdx] : _cardBotDim[tierIdx];
+    final venueLabel = poker
+        ? titleCase(t.billiardPokerCardTitle)
+        : titleCase(board ? '${level.displayName} ${mode.title}' : '${level.displayName} ${skin.name}');
+
     return Container(
-      width: 372,
-      height: 470,
+      width: width,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: color, width: active ? 3 : 2),
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color.lerp(color, const Color(0xFF05060C), 0.72)!, const Color(0xFF080A14), const Color(0xFF05060C)],
-          stops: const [0, 0.5, 1],
+          colors: [cardTop, cardBottom],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: gold ? _borders[tierIdx].withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.18),
+          width: gold ? 2.5 : 1.5,
         ),
         boxShadow: [
-          if (active) BoxShadow(color: color.withValues(alpha: 0.7), blurRadius: 36, spreadRadius: 1),
-          const BoxShadow(color: Color(0xB3000000), blurRadius: 16, offset: Offset(0, 8)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.72), blurRadius: 30, offset: const Offset(0, 16)),
+          if (gold) BoxShadow(color: _glows[tierIdx], blurRadius: 56, spreadRadius: 4),
         ],
       ),
-      child: Stack(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Column(
-            children: [
-              const SizedBox(height: 36),
-              Text(t.stakeAmount(level.stake), style: AppText.label(26, color: DuelColors.gold, weight: FontWeight.w800)),
-              const SizedBox(height: 14),
-              // The glowing rule under the prize.
-              Container(
-                height: 4,
-                margin: const EdgeInsets.symmetric(horizontal: 36),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [color.withValues(alpha: 0), color, color.withValues(alpha: 0)]),
-                  boxShadow: [BoxShadow(color: color, blurRadius: 12)],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(poker ? t.winUpTo : t.prize, style: AppText.label(18, color: DuelColors.silver, weight: FontWeight.w800)),
-              const SizedBox(height: 6),
-              Text(winLine, style: AppText.label(34, color: Colors.white, weight: FontWeight.w900)),
-              const SizedBox(height: 16),
-              Text(headline,
-                  style: AppText.label(30, color: poker ? DuelColors.gold : Colors.white, weight: FontWeight.w900).copyWith(
-                    shadows: [Shadow(color: color.withValues(alpha: 0.65), blurRadius: 16)],
-                  )),
-              const SizedBox(height: 14),
-              if (poker)
-                Text(t.minPrizePlayers(level.minPrize!),
-                    style: AppText.label(14, color: Color.lerp(color, Colors.white, 0.35)!, weight: FontWeight.w700))
-              else
-                Text(t.playersOnline, style: AppText.label(18, color: Color.lerp(color, Colors.white, 0.2)!, weight: FontWeight.w700)),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.groups_rounded, color: Color.lerp(color, Colors.white, 0.2), size: 30),
-                  const SizedBox(width: 10),
-                  Text(poker ? '${formatCoins(level.players)} PLAYING' : formatCoins(level.players),
-                      style: AppText.label(20, color: Color.lerp(color, Colors.white, 0.2)!, weight: FontWeight.w800)),
-                ],
-              ),
-            ],
-          ),
-          if (active)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 22,
-              child: Center(
-                child: affordable
-                    ? Text(
-                        challengeMode ? t.tapToChallenge : t.tapToPlay,
-                        style: AppText.label(15, color: Colors.white.withValues(alpha: 0.75), weight: FontWeight.w800),
-                      )
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.lock_rounded, color: DuelColors.red, size: 20),
-                          const SizedBox(width: 6),
-                          Text(t.notEnoughBalance, style: AppText.label(15, color: DuelColors.red, weight: FontWeight.w800)),
-                        ],
+          // ── Art area: full-bleed with overlaid labels and venue name ──
+          Expanded(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // Gradient background for board games; pool uses card gradient
+                if (board)
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [boardTop, boardBottom],
                       ),
-              ),
+                    ),
+                  ),
+                // Art: contained + padded (bottom padding reserves space for name)
+                Center(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(board ? 50 : 28, board ? 48 : 28, board ? 50 : 28, 90),
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      child: board
+                          ? (carrom
+                              ? SizedBox(width: 560, height: 560, child: CarromArt(transparent: true, themeIndex: tierIdx))
+                              : SizedBox(width: 560, height: 560, child: LudoArt(transparent: true, themeIndex: tierIdx)))
+                          : Container(
+                              decoration: const BoxDecoration(
+                                boxShadow: [BoxShadow(color: Color(0x88000000), blurRadius: 22, offset: Offset(0, 12))],
+                              ),
+                              child: TableArt(skin: skin, width: 620),
+                            ),
+                    ),
+                  ),
+                ),
+                // Bottom gradient — makes name readable
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        stops: const [0.44, 1.0],
+                        colors: [Colors.transparent, Colors.black.withValues(alpha: 0.76)],
+                      ),
+                    ),
+                  ),
+                ),
+                // Top-left: mode chip
+                Positioned(
+                  top: 20,
+                  left: 22,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.52),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Text(titleCase(mode.title), style: pcText(26)),
+                  ),
+                ),
+                // Top-right: info button
+                Positioned(
+                  top: 16,
+                  right: 20,
+                  child: Container(
+                    width: 54,
+                    height: 54,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black.withValues(alpha: 0.42),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1.5),
+                    ),
+                    child: Text('i', style: pcText(30, shadow: false)),
+                  ),
+                ),
+                // Bottom: venue / level name overlaid on art
+                Positioned(
+                  bottom: 20,
+                  left: 20,
+                  right: 20,
+                  child: Text(
+                    venueLabel,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: pcText(46),
+                  ),
+                ),
+              ],
             ),
+          ),
+          // ── Prize band ──
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+            color: Colors.black.withValues(alpha: 0.52),
+            child: Row(
+              children: [
+                Text('${titleCase(poker ? t.winUpTo : t.prize)}:', style: pcText(38, weight: FontWeight.w700)),
+                const SizedBox(width: 14),
+                Text(winLine, style: pcText(54, weight: FontWeight.w800)),
+                const SizedBox(width: 10),
+                const PikoCoinIcon(size: 60),
+              ],
+            ),
+          ),
+          Container(height: 1.5, color: Colors.white.withValues(alpha: 0.12)),
+          // ── Entry fee ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 18),
+            child: Row(
+              children: [
+                Text('${titleCase(t.entryFee(level.buyIn).split(':').first)}:', style: pcText(34)),
+                const SizedBox(width: 10),
+                Text(plain(level.buyIn), style: pcText(40, weight: FontWeight.w700)),
+                const SizedBox(width: 8),
+                const PikoCoinIcon(size: 50),
+              ],
+            ),
+          ),
+          if (poker)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(28, 0, 28, 10),
+              child: Text(t.minPrizePlayers(level.minPrize!), style: pcText(24, weight: FontWeight.w500)),
+            ),
+          Container(height: 1.5, color: Colors.white.withValues(alpha: 0.1)),
+          // ── Players + hint ──
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 18),
+            color: Colors.black.withValues(alpha: 0.28),
+            child: Row(
+              children: [
+                Icon(Icons.person_rounded, color: Colors.white.withValues(alpha: 0.85), size: 40),
+                const SizedBox(width: 6),
+                Text(formatCoins(level.players), style: pcText(36, weight: FontWeight.w600)),
+                const Spacer(),
+                if (active)
+                  affordable
+                      ? Row(
+                          children: [
+                            Icon(Icons.touch_app_rounded, color: Colors.white.withValues(alpha: 0.8), size: 36),
+                            const SizedBox(width: 6),
+                            Text(titleCase(challengeMode ? t.tapToChallenge : t.tapToPlay), style: pcText(28)),
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            const Icon(Icons.lock_rounded, color: Color(0xFFFF8AA0), size: 34),
+                            const SizedBox(width: 6),
+                            Text(titleCase(t.notEnoughBalance), style: pcText(26, color: const Color(0xFFFF8AA0))),
+                          ],
+                        ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -501,63 +669,53 @@ Future<void> showPoolPracticeDialog(
   AppGame? game,
 }) {
   final games = game != null ? [game] : AppGame.values;
-  return     showDuelDialog<void>(
+  return showDuelDialog<void>(
     context,
     barrierColor: DesignAuth.overlayScrim,
     builder: (dialog) => Consumer(
       builder: (context, ref, _) {
         final t = ref.watch(stringsProvider);
-        return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        width: DesignAuth.dialogPracticeWidth,
-        padding: const EdgeInsets.all(DesignSpacing.x5),
-        decoration: duelPanel(rim: DuelColors.rimLight),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(t.practice, style: AppText.label(18, weight: FontWeight.w900)),
-            const SizedBox(height: 6),
-            Text(t.practiceLong,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontFamily: 'sans-serif', fontSize: 13, height: 1.4, color: DuelColors.dim)),
-            const SizedBox(height: 12),
-            for (final pick in games)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(width: 150, child: Text(t.appGameTitle(pick), style: AppText.label(13, color: DuelColors.silver))),
-                    DuelButton(
-                      label: t.vsBots,
-                      width: 140,
-                      height: 40,
-                      fontSize: 14,
-                      onPressed: () {
-                        Navigator.of(dialog).pop();
-                        open(LobbyScreen(game: pick));
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    DuelButton(
-                      label: t.passAndPlay,
-                      width: 150,
-                      height: 40,
-                      fontSize: 14,
-                      color: DuelColors.blue,
-                      onPressed: () {
-                        Navigator.of(dialog).pop();
-                        open(LobbyScreen(game: pick, passAndPlay: true));
-                      },
-                    ),
-                  ],
+        return PcDialog(
+          title: t.practice,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(t.practiceLong, textAlign: TextAlign.center, style: pcText(30, color: DesignColors.pcTextDim, weight: FontWeight.w500).copyWith(height: 1.35)),
+              const SizedBox(height: 20),
+              for (final pick in games)
+                Padding(
+                  padding: const EdgeInsets.only(top: 18),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(titleCase(t.appGameTitle(pick)), style: pcText(32))),
+                      PcButton(
+                        label: t.vsBots,
+                        width: 250,
+                        height: 84,
+                        fontSize: 30,
+                        onPressed: () {
+                          Navigator.of(dialog).pop();
+                          open(LobbyScreen(game: pick));
+                        },
+                      ),
+                      const SizedBox(width: 12),
+                      PcButton(
+                        label: t.passAndPlay,
+                        width: 280,
+                        height: 84,
+                        fontSize: 30,
+                        style: PcButtonStyle.gold,
+                        onPressed: () {
+                          Navigator.of(dialog).pop();
+                          open(LobbyScreen(game: pick, passAndPlay: true));
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-          ],
-        ),
-      ),
-    );
+            ],
+          ),
+        );
       },
     ),
   );

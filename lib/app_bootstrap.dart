@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/app_state.dart';
 import 'core/app_theme.dart';
 import 'core/brand.dart';
+import 'core/orientation.dart';
 import 'core/perf.dart';
 import 'core/push_service.dart';
 import 'core/root_nav.dart';
@@ -45,10 +46,8 @@ Future<void> bootstrapPikope({required bool mobileShell}) async {
   } catch (_) {
     // Notifications optional — must not block launch.
   }
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.landscapeLeft,
-    DeviceOrientation.landscapeRight,
-  ]);
+  // Portrait app; the pool tables lock landscape themselves (see orientation.dart).
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   if (mobileShell) {
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
@@ -65,7 +64,7 @@ Future<void> bootstrapPikope({required bool mobileShell}) async {
   ));
   if (kIsWeb) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      webTryLockLandscape();
+      webTryLockOrientation('portrait');
     });
   }
 }
@@ -88,6 +87,8 @@ class BilliardPokerApp extends ConsumerWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+      // Portrait screens (home, Ludo, Carrom) lock themselves via OrientationLock.
+      navigatorObservers: [routeObserver],
       home: const AppStartGate(),
       builder: (context, child) => WebLandscapeGate(
             child: WebApkPromoHost(

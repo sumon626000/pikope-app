@@ -12,9 +12,10 @@ import 'audio_service.dart';
 import 'brand.dart';
 import 'design/design_colors.dart';
 import 'design/design_layout.dart';
-import 'design/design_spacing.dart';
 import 'design/design_typography.dart';
+import 'design/pool_city.dart';
 import 'icon_motion.dart';
+import 'orientation.dart';
 
 /// Look of the PikoPe lobby screens (client mockups): a dark blue pool hall,
 /// neon-rimmed glass panels, silver display type.
@@ -227,16 +228,21 @@ class DuelCanvas extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        backgroundColor: DuelColors.ink,
-        resizeToAvoidBottomInset: false,
-        body: CustomPaint(
-          painter: _HallPainter(),
-          child: SafeArea(
-            child: Center(
-              child: FittedBox(
-                fit: BoxFit.contain,
-                child: SizedBox.fromSize(size: size, child: child),
+  Widget build(BuildContext context) => OrientationLock(
+        // Landscape 1600×900 pages not yet moved to the portrait Pool City
+        // chrome keep the device sideways while they are on top.
+        orientation: AppOrientation.landscape,
+        child: Scaffold(
+          backgroundColor: DuelColors.ink,
+          resizeToAvoidBottomInset: false,
+          body: CustomPaint(
+            painter: _HallPainter(),
+            child: SafeArea(
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: SizedBox.fromSize(size: size, child: child),
+                ),
               ),
             ),
           ),
@@ -244,22 +250,24 @@ class DuelCanvas extends StatelessWidget {
       );
 }
 
-/// Dark glass panel with a coloured rim; [glow] lights the rim up. The fill
-/// runs lighter at the top and darker at the bottom, like lit smoked glass.
-BoxDecoration duelPanel({double radius = 22, Color rim = DuelColors.rim, double rimWidth = 2, bool glow = false, Color? fill}) {
-  final base = fill ?? DuelColors.glass;
+/// Purple glass panel of the Pool City look with a coloured rim; [glow]
+/// lights the rim up. The old navy rims map onto the purple palette so the
+/// many dialogs built on this read as one family.
+BoxDecoration duelPanel({double radius = 10, Color rim = DuelColors.rim, double rimWidth = 2, bool glow = false, Color? fill}) {
+  final base = fill ?? DesignColors.pcPanelDeep;
+  final rimColor = rim == DesignColors.rim || rim == DesignColors.rimLight ? const Color(0xFF8C7CE8) : rim;
   return BoxDecoration(
     gradient: LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
-      colors: [Color.lerp(base, Colors.white, 0.08)!, base, Color.lerp(base, Colors.black, 0.28)!],
-      stops: const [0, 0.42, 1],
+      colors: [Color.lerp(base, const Color(0xFF7A5FE6), 0.22)!, base, Color.lerp(base, const Color(0xFF3A2A7A), 0.5)!],
+      stops: const [0, 0.35, 1],
     ),
     borderRadius: BorderRadius.circular(radius),
-    border: Border.all(color: rim, width: rimWidth),
+    border: Border.all(color: rimColor, width: rimWidth),
     boxShadow: [
       const BoxShadow(color: Color(0xAA000000), blurRadius: 20, offset: Offset(0, 10)),
-      BoxShadow(color: rim.withValues(alpha: glow ? 0.6 : 0.22), blurRadius: glow ? 32 : 12, spreadRadius: glow ? 1 : 0),
+      BoxShadow(color: rimColor.withValues(alpha: glow ? 0.6 : 0.25), blurRadius: glow ? 32 : 14, spreadRadius: glow ? 1 : 0),
     ],
   );
 }
@@ -512,9 +520,10 @@ class NavTile extends StatelessWidget {
   }
 }
 
-/// Pill-shaped glossy button of the mockups ("PLAY NOW", "SUBMIT").
+/// Rectangular gradient button of the Pool City look ("Continue", "Create").
+/// Blue is the primary; callers pass gold / red / grey for other roles.
 class DuelButton extends StatefulWidget {
-  const DuelButton({super.key, required this.label, required this.onPressed, this.color = DuelColors.green, this.width = 280, this.height = 62, this.fontSize = 26, this.icon});
+  const DuelButton({super.key, required this.label, required this.onPressed, this.color = DesignColors.pcBlueButton, this.width = 280, this.height = 62, this.fontSize = 26, this.icon});
 
   final String label;
   final VoidCallback? onPressed;
@@ -558,44 +567,33 @@ class _DuelButtonState extends State<DuelButton> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color.lerp(w.color, Colors.white, 0.22)!, w.color, Color.lerp(w.color, Colors.black, 0.45)!],
-                stops: const [0, 0.5, 1],
+                colors: [Color.lerp(w.color, Colors.white, 0.18)!, w.color, Color.lerp(w.color, Colors.black, 0.35)!],
+                stops: const [0, 0.45, 1],
               ),
-              borderRadius: BorderRadius.circular(w.height * 0.32),
-              border: Border.all(color: Color.lerp(w.color, Colors.black, 0.55)!.withValues(alpha: 0.9), width: 1.5),
+              borderRadius: BorderRadius.circular(w.height * 0.12),
+              border: Border.all(color: Color.lerp(w.color, Colors.white, 0.45)!.withValues(alpha: 0.8), width: 1.5),
               boxShadow: [
-                BoxShadow(color: w.color.withValues(alpha: 0.5), blurRadius: 22, spreadRadius: 1),
+                BoxShadow(color: w.color.withValues(alpha: 0.4), blurRadius: 16),
                 const BoxShadow(color: Color(0xAA000000), blurRadius: 10, offset: Offset(0, 6)),
               ],
             ),
             child: Stack(
               children: [
-                // Glossy cap over the top half.
+                // Light band along the top edge.
                 Positioned(
-                  left: 2,
-                  right: 2,
+                  left: 3,
+                  right: 3,
                   top: 2,
-                  height: w.height * 0.46,
+                  height: w.height * 0.3,
                   child: IgnorePointer(
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(w.height * 0.32)),
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(w.height * 0.1)),
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [Colors.white.withValues(alpha: 0.42), Colors.white.withValues(alpha: 0.08)],
+                          colors: [Colors.white.withValues(alpha: 0.3), Colors.white.withValues(alpha: 0.0)],
                         ),
-                      ),
-                    ),
-                  ),
-                ),
-                // Thin light rim inside the dark edge.
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(w.height * 0.32 - 1.5),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.28), width: 1.2),
                       ),
                     ),
                   ),
@@ -613,9 +611,12 @@ class _DuelButtonState extends State<DuelButton> {
                           fit: BoxFit.scaleDown,
                           child: Text(w.label,
                               maxLines: 1,
-                              style: AppText.label(w.fontSize, color: Colors.white, weight: FontWeight.w900).copyWith(
-                                letterSpacing: w.fontSize * 0.04,
-                                shadows: const [Shadow(color: Color(0xAA000000), blurRadius: 4, offset: Offset(0, 2))],
+                              style: TextStyle(
+                                fontFamily: DesignTypography.poolCityFont,
+                                fontSize: w.fontSize,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                shadows: const [Shadow(color: Color(0xB3000000), blurRadius: 4, offset: Offset(0, 2))],
                               )),
                         ),
                       ),
@@ -691,43 +692,56 @@ Future<T?> showDuelDialog<T>(
   Color barrierColor = const Color(0xB3000000),
   bool barrierDismissible = true,
 }) =>
-    showDialog<T>(
+    // Pops in with a small overshoot and fades, like the reference's panels.
+    showGeneralDialog<T>(
       context: context,
       barrierColor: barrierColor,
       barrierDismissible: barrierDismissible,
-      builder: (context) => DuelDialogFrame(child: builder(context)),
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      transitionDuration: const Duration(milliseconds: 240),
+      pageBuilder: (context, _, _) => DuelDialogFrame(child: builder(context)),
+      transitionBuilder: (context, anim, _, child) {
+        final closing = anim.status == AnimationStatus.reverse;
+        final scale = Tween<double>(begin: 0.72, end: 1).animate(
+          CurvedAnimation(parent: anim, curve: closing ? Curves.easeIn : Curves.easeOutBack),
+        );
+        return FadeTransition(
+          opacity: CurvedAnimation(parent: anim, curve: const Interval(0, 0.6)),
+          child: ScaleTransition(scale: scale, child: child),
+        );
+      },
     );
 
-/// A canvas fitted to the screen with [child] centred in it. The canvas is
-/// the page canvas shrunk by [zoom], so a dialog laid out in canvas units
-/// shows [zoom] times larger than the same widths would on a page: dialogs
-/// are small boxes and need to read well on a phone.
+/// The dialog canvas: 1080 design units wide (the portrait page width),
+/// fitted to the screen, with [child] centred. Dialogs are laid out in
+/// those units like the pages, so they match the reference's sizes.
 class DuelDialogFrame extends StatelessWidget {
   const DuelDialogFrame({super.key, required this.child});
 
-  static const zoom = 1.65;
+  static const canvasWidth = 1080.0;
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    final size = DuelCanvas.size / zoom;
-    return SafeArea(
-      child: Center(
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: SizedBox.fromSize(
-            size: size,
-            child: MediaQuery(
-              // Dialogs size themselves from the "screen": give them the canvas.
-              data: MediaQuery.of(context).copyWith(size: size, viewInsets: EdgeInsets.zero, padding: EdgeInsets.zero, viewPadding: EdgeInsets.zero),
-              child: Center(child: child),
-            ),
-          ),
+  Widget build(BuildContext context) => SafeArea(
+        child: LayoutBuilder(
+          builder: (context, c) {
+            final scale = c.maxWidth / canvasWidth;
+            final size = Size(canvasWidth, c.maxHeight / scale);
+            return FittedBox(
+              fit: BoxFit.scaleDown,
+              child: SizedBox.fromSize(
+                size: size,
+                child: MediaQuery(
+                  // Dialogs size themselves from the "screen": give them the canvas.
+                  data: MediaQuery.of(context).copyWith(size: size, viewInsets: EdgeInsets.zero, padding: EdgeInsets.zero, viewPadding: EdgeInsets.zero),
+                  child: Center(child: child),
+                ),
+              ),
+            );
+          },
         ),
-      ),
-    );
-  }
+      );
 }
 
 Future<void> showDuelMessage(BuildContext context, {required String title, required String body, IconData icon = Icons.info_outline_rounded}) =>
@@ -736,34 +750,16 @@ Future<void> showDuelMessage(BuildContext context, {required String title, requi
       builder: (context) => Consumer(
         builder: (context, ref, _) {
           final t = ref.watch(stringsProvider);
-          return Dialog(
-            backgroundColor: Colors.transparent,
-            child: Container(
-              width: DesignLayout.dialogMaxWidth,
-              padding: const EdgeInsets.all(DesignSpacing.x5),
-              decoration: duelPanel(rim: DuelColors.rimLight),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, color: DuelColors.gold, size: 38),
-                  const SizedBox(height: DesignSpacing.x2),
-                  Text(title, textAlign: TextAlign.center, style: AppText.label(18, weight: FontWeight.w900)),
-                  const SizedBox(height: 10),
-                  Text(
-                    body,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontFamily: DesignTypography.displayFont, fontSize: 14, height: 1.4, color: DuelColors.silver),
-                  ),
-                  const SizedBox(height: DesignSpacing.x4),
-                  DuelButton(
-                    label: t.ok,
-                    width: DesignLayout.compactButtonWidth,
-                    height: DesignLayout.compactButtonHeight,
-                    fontSize: DesignLayout.compactButtonFontSize,
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
+          return PcDialog(
+            title: title,
+            actions: [PcButton(label: t.ok, width: 360, onPressed: () => Navigator.of(context).pop())],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: DesignColors.pcGold, size: 90, shadows: const [Shadow(color: Color(0x99000000), blurRadius: 8, offset: Offset(0, 4))]),
+                const SizedBox(height: 24),
+                Text(body, textAlign: TextAlign.center, style: pcText(36, weight: FontWeight.w500).copyWith(height: 1.35)),
+              ],
             ),
           );
         },
@@ -781,49 +777,19 @@ Future<bool> showNotEnoughBalanceDialog(BuildContext context, {int? need, int? h
         final body = (need != null && have != null)
             ? t.notEnoughBalanceBody(formatCoins(need), formatCoins(have))
             : t.notEnoughBalanceHint;
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            width: DesignLayout.dialogMaxWidth,
-            padding: const EdgeInsets.all(DesignSpacing.x5),
-            decoration: duelPanel(rim: DuelColors.red),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.account_balance_wallet_rounded, color: DuelColors.gold, size: 38),
-                const SizedBox(height: DesignSpacing.x2),
-                Text(t.notEnoughBalance, textAlign: TextAlign.center, style: AppText.label(18, weight: FontWeight.w900)),
-                const SizedBox(height: 10),
-                Text(
-                  body,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontFamily: DesignTypography.displayFont, fontSize: 14, height: 1.4, color: DuelColors.silver),
-                ),
-                const SizedBox(height: DesignSpacing.x4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    DuelButton(
-                      label: t.buyCoin,
-                      width: DesignLayout.compactButtonWidth,
-                      height: DesignLayout.compactButtonHeight,
-                      fontSize: DesignLayout.compactButtonFontSize,
-                      color: DuelColors.gold,
-                      onPressed: () => Navigator.of(dialog).pop(true),
-                    ),
-                    const SizedBox(width: 10),
-                    DuelButton(
-                      label: t.cancel,
-                      width: DesignLayout.compactButtonWidth,
-                      height: DesignLayout.compactButtonHeight,
-                      fontSize: DesignLayout.compactButtonFontSize,
-                      color: DuelColors.rimLight,
-                      onPressed: () => Navigator.of(dialog).pop(false),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+        return PcDialog(
+          title: t.notEnoughBalance,
+          actions: [
+            PcButton(label: t.cancel, style: PcButtonStyle.gray, width: 340, onPressed: () => Navigator.of(dialog).pop(false)),
+            PcButton(label: t.buyCoin, style: PcButtonStyle.gold, width: 400, onPressed: () => Navigator.of(dialog).pop(true)),
+          ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const PikoCoinIcon(size: 120),
+              const SizedBox(height: 24),
+              Text(body, textAlign: TextAlign.center, style: pcText(36, weight: FontWeight.w500).copyWith(height: 1.35)),
+            ],
           ),
         );
       },

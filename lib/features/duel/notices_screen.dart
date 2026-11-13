@@ -1,14 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/app_theme.dart';
+import '../../core/design/design.dart';
+import '../../core/design/pool_city.dart';
 import '../../core/duel_ui.dart';
 import '../../data/api_client.dart';
 import '../online/session.dart';
 import 'duel_chrome.dart';
 import '../../l10n/strings.dart';
 
-/// The inbox: operator announcements (news) and banners.
+/// The inbox: operator announcements (news) and banners. Opens as the
+/// reference's "Mail" dialog from home; [NoticesScreen] is the same list as
+/// a page for other callers.
+Future<void> showNoticesDialog(BuildContext context, WidgetRef ref) {
+  final t = ref.read(stringsProvider);
+  final notices = ref.read(sessionProvider.notifier).notices();
+  return showDuelDialog<void>(
+    context,
+    builder: (dialog) => PcDialog(
+      title: t.noticesTitle,
+      scroll: false,
+      maxBodyHeight: 1500,
+      child: SizedBox(height: 1300, child: NoticesList(notices: notices)),
+    ),
+  );
+}
+
 class NoticesScreen extends ConsumerStatefulWidget {
   const NoticesScreen({super.key});
 
@@ -24,33 +41,40 @@ class _NoticesScreenState extends ConsumerState<NoticesScreen> {
     final t = ref.watch(stringsProvider);
     return DuelPage(
       title: t.noticesTitle,
-      sub: t.noticesSub,
-      child: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _notices,
-        builder: (context, snap) {
-          if (snap.hasError) {
-            final offline = snap.error is ApiException;
-            return Center(
-              child: Text(
-                offline ? t.offlineServer : t.noticesLoadFail,
-                style: AppText.label(18, color: DuelColors.red),
-              ),
-            );
-          }
-          final notices = snap.data;
-          if (notices == null) {
-            return const Center(child: CircularProgressIndicator(color: DuelColors.silver));
-          }
-          if (notices.isEmpty) {
-            return Center(child: Text(t.noticesEmpty, style: AppText.label(20, color: DuelColors.dim)));
-          }
-          return ListView.separated(
-            itemCount: notices.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 12),
-            itemBuilder: (context, i) => _NoticeCard(notice: notices[i]),
-          );
-        },
-      ),
+      child: NoticesList(notices: _notices),
+    );
+  }
+}
+
+/// Announcement cards, or the grey 8-ball when there are none.
+class NoticesList extends ConsumerWidget {
+  const NoticesList({super.key, required this.notices});
+
+  final Future<List<Map<String, dynamic>>> notices;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(stringsProvider);
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: notices,
+      builder: (context, snap) {
+        if (snap.hasError) {
+          final offline = snap.error is ApiException;
+          return Center(child: PcEmptyState(message: offline ? titleCase(t.offlineServer) : t.noticesLoadFail));
+        }
+        final items = snap.data;
+        if (items == null) {
+          return const Center(child: CircularProgressIndicator(color: Colors.white));
+        }
+        if (items.isEmpty) {
+          return Center(child: PcEmptyState(message: titleCase(t.noticesEmpty)));
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          itemCount: items.length,
+          itemBuilder: (context, i) => _NoticeCard(notice: items[i]),
+        );
+      },
     );
   }
 }
@@ -63,30 +87,22 @@ class _NoticeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final banner = notice['kind'] == 'banner';
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: duelPanel(radius: 14, rim: banner ? DuelColors.gold : DuelColors.rim),
+    return PcListRow(
+      height: 0,
+      padding: const EdgeInsets.fromLTRB(26, 22, 26, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
-              Icon(banner ? Icons.campaign_rounded : Icons.mail_rounded,
-                  color: banner ? DuelColors.gold : DuelColors.silver, size: 24),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  (notice['title'] as String).toUpperCase(),
-                  style: AppText.label(18, color: banner ? DuelColors.gold : DuelColors.silver, weight: FontWeight.w900),
-                ),
-              ),
+              Icon(banner ? Icons.campaign_rounded : Icons.mail_rounded, color: banner ? DesignColors.pcGold : Colors.white, size: 44),
+              const SizedBox(width: 14),
+              Expanded(child: Text(titleCase(notice['title'] as String), style: pcText(34, color: banner ? DesignColors.pcGold : Colors.white))),
             ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            notice['body'] as String,
-            style: const TextStyle(fontFamily: 'sans-serif', fontSize: 14, height: 1.4, color: DuelColors.silver),
-          ),
+          const SizedBox(height: 12),
+          Text(notice['body'] as String, style: pcText(28, color: const Color(0xFFE6E2FF), weight: FontWeight.w500, shadow: false).copyWith(height: 1.4)),
         ],
       ),
     );

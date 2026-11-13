@@ -45,7 +45,7 @@ void main() {
         expect(tester.takeException(), isNull);
       }
 
-      expect(find.textContaining('ACCOUNT', findRichText: true), findsWidgets);
+      expect(find.textContaining('Account', findRichText: true), findsWidgets);
     });
   }
 }

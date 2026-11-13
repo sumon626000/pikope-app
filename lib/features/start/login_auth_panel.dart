@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/design/pool_city.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,7 +9,6 @@ import '../../core/bd_phone.dart';
 import '../../core/design/design.dart';
 import '../../core/env.dart';
 import '../../core/phone_countries.dart';
-import '../../core/widgets.dart';
 import '../../core/widgets/international_phone_field.dart';
 import '../../data/api_client.dart';
 import '../../l10n/strings.dart';
@@ -128,7 +128,7 @@ class _LoginAuthPanelState extends ConsumerState<LoginAuthPanel> {
     child: Text(
       label,
       style: AppText.label(
-        widget.compact ? 13 : 18,
+        widget.compact ? 13 : 26,
         color: AppColors.active,
         weight: FontWeight.w800,
       ),
@@ -140,12 +140,12 @@ class _LoginAuthPanelState extends ConsumerState<LoginAuthPanel> {
     // read: avoid rebuild-on-keyboard MediaQuery churn in compact login dialog.
     final s = ref.read(stringsProvider);
     final compact = widget.compact;
-    final titleSize = compact ? 18.0 : 46.0;
-    final subSize = compact ? 12.0 : 20.0;
-    final inputSize = compact ? 15.0 : 32.0;
+    final titleSize = compact ? 18.0 : 54.0;
+    final subSize = compact ? 12.0 : 27.0;
+    final inputSize = compact ? 15.0 : 42.0;
     final btnH = compact ? 40.0 : DesignLayout.formButtonHeight + 28;
     final btnFont = compact ? 14.0 : 28.0;
-    final errFont = compact ? 13.0 : 22.0;
+    final errFont = compact ? 13.0 : 28.0;
     final padding = compact
         ? DesignAuth.loginPopupPadding
         : DesignAuth.loginPanelPadding;
@@ -155,18 +155,24 @@ class _LoginAuthPanelState extends ConsumerState<LoginAuthPanel> {
 
     return Container(
       padding: padding,
-      decoration: panelDecoration(
-        radius: radius,
-        borderWidth: compact ? 2 : 3,
-        opacity: 1,
-      ),
+      // The popup is a Pool City dialog sheet; the full page sits bare on
+      // the page panel.
+      decoration: compact
+          ? BoxDecoration(
+              gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF3A2A7A), Color(0xFF2E2564), Color(0xFF3A2A7A)]),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF8C7CE8), width: 2),
+              boxShadow: const [BoxShadow(color: Color(0xCC000000), blurRadius: 24, offset: Offset(0, 10))],
+            )
+          : panelDecoration(radius: radius, borderWidth: 3, opacity: 1),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            s.signUpOrLogin,
-            style: AppText.label(titleSize, weight: FontWeight.w900),
+            titleCase(s.signUpOrLogin),
+            textAlign: compact ? TextAlign.center : TextAlign.start,
+            style: pcText(titleSize + (compact ? 2 : 0)),
           ),
           if (!compact) ...[
             SizedBox(height: DesignSpacing.x3),
@@ -223,28 +229,20 @@ class _LoginAuthPanelState extends ConsumerState<LoginAuthPanel> {
             ),
           ],
           SizedBox(height: compact ? DesignSpacing.x3 : DesignSpacing.x6),
-          Row(
-            children: [
-              Expanded(
-                child: GameButton(
-                  label: s.signUp,
-                  height: btnH,
-                  fontSize: btnFont,
-                  color: AppColors.gold,
-                  onPressed: _busy ? null : _signUp,
-                ),
-              ),
-              SizedBox(width: compact ? DesignSpacing.x3 : DesignSpacing.x5),
-              Expanded(
-                child: GameButton(
-                  label: s.logIn,
-                  height: btnH,
-                  fontSize: btnFont,
-                  onPressed: _busy ? null : _login,
-                ),
-              ),
-            ],
-          ),
+          if (compact)
+            Row(
+              children: [
+                Expanded(child: PcButton(label: s.signUp, style: PcButtonStyle.gold, height: btnH + 4, fontSize: btnFont + 3, onPressed: _busy ? null : _signUp)),
+                const SizedBox(width: DesignSpacing.x3),
+                Expanded(child: PcButton(label: s.logIn, style: PcButtonStyle.blue, height: btnH + 4, fontSize: btnFont + 3, onPressed: _busy ? null : _login)),
+              ],
+            )
+          else ...[
+            // Reference sign-in: full-width buttons stacked.
+            PcButton(label: s.logIn, style: PcButtonStyle.blue, height: 116, fontSize: 44, onPressed: _busy ? null : _login),
+            const SizedBox(height: 22),
+            PcButton(label: s.signUp, style: PcButtonStyle.gold, height: 116, fontSize: 44, onPressed: _busy ? null : _signUp),
+          ],
           if (Env.hasBackend) ...[
             const SizedBox(height: 8),
             Align(
@@ -262,7 +260,7 @@ class _LoginAuthPanelState extends ConsumerState<LoginAuthPanel> {
                 child: Text(
                   s.forgotPassword,
                   style: AppText.label(
-                    compact ? 14 : 20,
+                    compact ? 14 : 30,
                     color: AppColors.textDim,
                   ),
                 ),
@@ -291,7 +289,7 @@ class _LoginAuthPanelState extends ConsumerState<LoginAuthPanel> {
               Text(
                 '·',
                 style: AppText.label(
-                  compact ? 12 : 16,
+                  compact ? 12 : 24,
                   color: AppColors.textDim,
                 ),
               ),
@@ -299,7 +297,7 @@ class _LoginAuthPanelState extends ConsumerState<LoginAuthPanel> {
               Text(
                 '·',
                 style: AppText.label(
-                  compact ? 12 : 16,
+                  compact ? 12 : 24,
                   color: AppColors.textDim,
                 ),
               ),

@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import '../../core/design/pool_city.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -78,10 +79,12 @@ class _CreateProfileScreenState extends ConsumerState<CreateProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final t = ref.watch(stringsProvider);
-    return DuelCanvas(
-        child: Center(
+    // Portrait page; the panel sits high so the keyboard leaves it visible.
+    return PortraitCanvas(
+        builder: (context, height) => Align(
+          alignment: const Alignment(0, -0.55),
           child: Container(
-            width: 880,
+            width: 990,
             padding: const EdgeInsets.fromLTRB(28, 30, 28, 34),
             decoration: duelPanel(radius: 20, rim: DuelColors.rim, fill: const Color(0xD9121627)),
             child: Column(

@@ -166,6 +166,7 @@ class _ZiniPayCheckoutScreenState extends ConsumerState<ZiniPayCheckoutScreen> {
     final t = ref.watch(stringsProvider);
     return DuelPage(
       title: t.autoAddTitle,
+      legacyScale: 2.1,
       sub: t.autoAddSub,
       expanded: true,
       sideBack: true,

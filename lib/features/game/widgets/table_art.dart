@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -7,7 +8,10 @@ import '../../../data/demo_data.dart';
 /// Vector pool table drawn in the same 600x351 layout as the supplied table
 /// images (cushion noses at 50..550 x 50.5..300.5), so it is sharp at any
 /// resolution and lines up with the physics playfield.
-void paintProTable(Canvas canvas, Size size, TableStyle st) {
+///
+/// [logo] (optional) is painted as a faint watermark in the centre of the
+/// cloth, the way the reference tables carry a brand mark on the felt.
+void paintProTable(Canvas canvas, Size size, TableStyle st, {ui.Image? logo}) {
   canvas.save();
   canvas.scale(size.width / 600);
 
@@ -155,6 +159,22 @@ void paintProTable(Canvas canvas, Size size, TableStyle st) {
   canvas.drawCircle(const Offset(425, 175.5), 1.6, Paint()..color = Colors.white.withValues(alpha: 0.38));
   canvas.drawCircle(const Offset(175, 175.5), 1.4, Paint()..color = Colors.white.withValues(alpha: 0.3));
 
+  // ---- centre brand watermark on the felt (faint, under the balls)
+  if (logo != null) {
+    const logoW = 176.0;
+    final logoH = logoW * logo.height / logo.width;
+    final dst = Rect.fromCenter(center: const Offset(300, 175.5), width: logoW, height: logoH);
+    final src = Rect.fromLTWH(0, 0, logo.width.toDouble(), logo.height.toDouble());
+    canvas.drawImageRect(
+      logo,
+      src,
+      dst,
+      Paint()
+        ..colorFilter = ColorFilter.mode(Colors.white.withValues(alpha: 0.11), BlendMode.srcIn)
+        ..filterQuality = FilterQuality.medium,
+    );
+  }
+
   // ---- cushions with a soft shadow on the cloth
   void cushionPiece(List<Offset> back, List<Offset> nose, Offset inward) {
     final shadow = Path()
@@ -227,6 +247,21 @@ void paintProTable(Canvas canvas, Size size, TableStyle st) {
           stops: [0, 0.7, 1],
         ).createShader(rect),
     );
+    // Woven net inside the pocket: a faint diamond mesh, as on the reference
+    // tables, so a pocketed ball looks like it drops into a basket.
+    canvas.save();
+    canvas.clipPath(Path()..addOval(rect));
+    final net = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.45
+      ..color = const Color(0x33B8AF9E);
+    final step = r / 3.0;
+    for (var i = -3; i <= 3; i++) {
+      final x = c.dx + i * step;
+      canvas.drawLine(Offset(x, c.dy - r), Offset(x + r * 0.55, c.dy + r), net);
+      canvas.drawLine(Offset(x, c.dy - r), Offset(x - r * 0.55, c.dy + r), net);
+    }
+    canvas.restore();
   }
 
   pocket(const Offset(44, 44.5), 15);

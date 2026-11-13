@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -49,6 +51,29 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
   late bool _intro = widget.intro && widget.config.bet.mode == 'billiard';
   bool _resultBooked = false;
   int? _reward;
+
+  // Quick-chat: the picker panel and the emote currently floating over the
+  // viewer's avatar (cleared after a few seconds).
+  bool _chatOpen = false;
+  String? _emote;
+  Timer? _emoteTimer;
+
+  /// Preset quick-chat tokens (emoji or short phrase).
+  static const _quickChat = ['👍', '😂', '😮', '🎯', '🔥', '😎', 'Nice shot!', 'Good luck', 'Oops!', 'Well played'];
+
+  void _sendEmote(String e) {
+    AudioService.tap();
+    _emoteTimer?.cancel();
+    setState(() {
+      _emote = e;
+      _chatOpen = false;
+    });
+    // Let the opponent see it in an online match; harmless if unsupported.
+    widget.driver?.send({'type': 'emote', 'value': e});
+    _emoteTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _emote = null);
+    });
+  }
 
   static const _tableRect = DesignGameplay.poolTableRect;
 
@@ -133,6 +158,7 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
 
   @override
   void dispose() {
+    _emoteTimer?.cancel();
     _ticker.dispose();
     widget.driver?.dispose();
     _c
@@ -164,6 +190,21 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
             clipBehavior: Clip.none,
             children: [
               // --- top bar: menu, both players, coins, spin
+              // Reference scoreboard: one violet bar behind both players.
+              Positioned(
+                left: 384,
+                top: -6,
+                width: 1182,
+                height: 104,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF3B2C86), Color(0xFF2A1F66)]),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFF6E5BD6), width: 2),
+                    boxShadow: const [BoxShadow(color: Color(0x99000000), blurRadius: 10, offset: Offset(0, 4))],
+                  ),
+                ),
+              ),
               Positioned(left: 24, top: 8, child: MenuTile(onTap: () => setState(() => _paused = true))),
               Positioned(
                 left: 126,
@@ -215,6 +256,23 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
                 child: PowerBar(controller: c),
               ),
               if (c.canShoot) const Positioned(left: 138, top: 738, child: IgnorePointer(child: ShootHint())),
+              // --- quick chat
+              Positioned(left: 1836, top: 772, child: _ChatButton(onTap: () => setState(() => _chatOpen = !_chatOpen))),
+              if (_chatOpen)
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() => _chatOpen = false),
+                  ),
+                ),
+              if (_chatOpen)
+                Positioned(left: 1440, top: 548, width: 476, child: _ChatPanel(items: _quickChat, onPick: _sendEmote)),
+              if (_emote != null)
+                Positioned(
+                  left: 706,
+                  top: 104,
+                  child: IgnorePointer(child: _EmoteBubble(_emote!)),
+                ),
               // --- table
               Positioned.fromRect(
                 rect: _tableRect.deflate(18),
@@ -396,10 +454,17 @@ class _PlayerTray extends StatelessWidget {
       children: [
         Text(p.name.toUpperCase(), maxLines: 1, style: AppText.label(19, weight: FontWeight.w900)),
         const SizedBox(height: 2),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: side,
-          child: Text(label, style: AppText.label(13, color: AppColors.textDim)),
+        // Fixed size + ellipsis: the label must not resize (jump) as its text
+        // changes between "OPEN TABLE", "SOLIDS 5 LEFT", etc.
+        SizedBox(
+          width: double.infinity,
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+            style: AppText.label(13, color: AppColors.textDim),
+          ),
         ),
         if (balls.isNotEmpty) ...[
           const SizedBox(height: 3),
@@ -436,6 +501,114 @@ class _TrayBall extends StatelessWidget {
           BallIcon(number, size: 32, opacity: gone ? 0.3 : 1),
           if (gone) const Icon(Icons.check_rounded, color: AppColors.active, size: 24),
         ],
+      ),
+    );
+  }
+}
+
+bool _isEmoji(String s) => !RegExp(r'[A-Za-z]').hasMatch(s);
+
+/// Reference-style quick-chat button: a violet square with a speech bubble.
+class _ChatButton extends StatelessWidget {
+  const _ChatButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        AudioService.tap();
+        onTap();
+      },
+      child: Container(
+        width: 84,
+        height: 84,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+              begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF5A63D8), Color(0xFF3B3FA8)]),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFF8E96F0), width: 2),
+          boxShadow: const [BoxShadow(color: Color(0x99000000), blurRadius: 8, offset: Offset(0, 4))],
+        ),
+        child: const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 44),
+      ),
+    );
+  }
+}
+
+/// The emoji / phrase picker that drops from the chat button.
+class _ChatPanel extends StatelessWidget {
+  const _ChatPanel({required this.items, required this.onPick});
+
+  final List<String> items;
+  final void Function(String) onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+            begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF2A1F66), Color(0xFF17123A)]),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFF6E5BD6), width: 2),
+        boxShadow: const [BoxShadow(color: Color(0xAA000000), blurRadius: 18, offset: Offset(0, 6))],
+      ),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        alignment: WrapAlignment.center,
+        children: [
+          for (final e in items)
+            GestureDetector(
+              onTap: () => onPick(e),
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: _isEmoji(e) ? 12 : 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3B2C86),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF6E5BD6)),
+                ),
+                child: Text(
+                  e,
+                  style: TextStyle(
+                      fontSize: _isEmoji(e) ? 34 : 22, fontWeight: FontWeight.w800, color: Colors.white),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A speech bubble floating over the viewer's avatar after they quick-chat.
+class _EmoteBubble extends StatelessWidget {
+  const _EmoteBubble(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final emoji = _isEmoji(text);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutBack,
+      builder: (_, t, child) =>
+          Transform.scale(scale: t.clamp(0.0, 1.0), alignment: Alignment.topLeft, child: child),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: emoji ? 16 : 22, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: const [BoxShadow(color: Color(0x88000000), blurRadius: 10, offset: Offset(0, 4))],
+        ),
+        child: Text(
+          text,
+          style: TextStyle(fontSize: emoji ? 40 : 26, fontWeight: FontWeight.w900, color: const Color(0xFF17123A)),
+        ),
       ),
     );
   }

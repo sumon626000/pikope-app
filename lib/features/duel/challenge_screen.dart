@@ -102,6 +102,7 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
     final players = _players;
     return DuelPage(
       title: t.challengePageTitle,
+      legacyScale: 2.1,
       sub: t.challengePageSub,
       child: players == null
           ? Center(
@@ -117,15 +118,11 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
                   : const CircularProgressIndicator(color: DuelColors.silver))
           : players.isEmpty
               ? Center(child: Text(t.noPlayersOnline, style: AppText.label(20, color: DuelColors.dim)))
-              : GridView.count(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
-                  childAspectRatio: 4.3,
-                  padding: const EdgeInsets.only(bottom: 10),
-                  children: [
-                    for (final p in players) _PlayerRow(player: p, onChallenge: () => _challenge(p)),
-                  ],
+              : ListView.separated(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  itemCount: players.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemBuilder: (_, i) => _PlayerRow(player: players[i], onChallenge: () => _challenge(players[i])),
                 ),
     );
   }
@@ -169,8 +166,9 @@ class _PlayerRow extends ConsumerWidget {
               children: [
                 Text((player['name'] as String).toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.label(18, weight: FontWeight.w800)),
                 const SizedBox(height: 3),
-                Text('LV ${player['level']}  -  ${player['rank']}  -  ${formatCoins(player['coins'] as int)}', style: AppText.label(12, color: DuelColors.dim)),
-                Text(activity, style: AppText.label(11, color: busy ? DuelColors.red : DuelColors.green, weight: FontWeight.w700)),
+                Text('LV ${player['level']}  -  ${player['rank']}  -  ${formatCoins(player['coins'] as int)}',
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.label(12, color: DuelColors.dim)),
+                Text(activity, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.label(11, color: busy ? DuelColors.red : DuelColors.green, weight: FontWeight.w700)),
               ],
             ),
           ),
@@ -236,20 +234,16 @@ class _ChallengeGamePickScreenState extends ConsumerState<ChallengeGamePickScree
   @override
   Widget build(BuildContext context) {
     final t = ref.watch(stringsProvider);
-    return DuelCanvas(
-      child: Stack(
-        children: [
-          const Positioned(left: 0, right: 0, top: 6, child: DuelTopBar()),
-          Positioned(
-            left: 42,
-            top: 722,
-            child: NavTile(icon: Icons.reply_rounded, label: t.navBack, onTap: _goBack),
-          ),
-          Center(
+    return DuelPage(
+      title: t.challengePageTitle,
+      legacyScale: 1.9,
+      onBack: _goBack,
+      child: Align(
+            alignment: Alignment.topCenter,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 620),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 100, 24, 80),
+                padding: const EdgeInsets.fromLTRB(8, 20, 8, 20),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -267,8 +261,6 @@ class _ChallengeGamePickScreenState extends ConsumerState<ChallengeGamePickScree
                 ),
               ),
             ),
-          ),
-        ],
       ),
     );
   }

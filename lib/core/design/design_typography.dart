@@ -7,6 +7,9 @@ abstract final class DesignTypography {
   static const displayFont = 'Roboto';
   static const cardFont = 'DMSerifDisplay';
 
+  /// Rounded bold face of the Pool City look (home, gameplay HUD).
+  static const poolCityFont = 'Rubik';
+
   /// UI labels (matches legacy [AppText.label]).
   static TextStyle label(
     double size, {

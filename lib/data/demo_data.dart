@@ -37,12 +37,14 @@ class DemoData {
   static const _goldDark = Color(0xFF8A6A22);
 
   static const tableSkins = [
-    // Vector tables. "Club Teal" follows the client's gameplay mockup.
-    TableSkin('pro_teal', 'Club Teal',
+    // Vector tables. The default follows the reference app: a vivid blue
+    // cloth, maroon wooden rails and brushed-silver pocket hardware.
+    TableSkin('pro_teal', 'Club Blue',
         style: TableStyle(
-            cloth: Color(0xFF14A7BC), clothDark: Color(0xFF086E86),
-            rail: Color(0xFF8A4A22), railDark: Color(0xFF4A2410),
-            metal: _gold, metalDark: _goldDark)),
+            cloth: Color(0xFF2E73C4), clothDark: Color(0xFF154B8E),
+            rail: Color(0xFF7A2A2E), railDark: Color(0xFF3A1416),
+            metal: Color(0xFFCCD1D9), metalDark: Color(0xFF6C727C),
+            sight: Color(0xFFF4F6FA))),
     TableSkin('pro_green', 'Classic Green',
         style: TableStyle(
             cloth: Color(0xFF1F9150), clothDark: Color(0xFF0C5A2E),

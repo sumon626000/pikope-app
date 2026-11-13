@@ -1,7 +1,6 @@
 import 'package:billiard_poker/core/app_state.dart';
 import 'package:billiard_poker/core/app_theme.dart';
 import 'package:billiard_poker/core/audio_service.dart';
-import 'package:billiard_poker/features/duel/duel_home_screen.dart';
 import 'package:billiard_poker/features/duel/lobby_data.dart';
 import 'package:billiard_poker/features/duel/shop_screen.dart';
 import 'package:flutter/material.dart';
@@ -9,9 +8,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _viewports = <Size>[
-  Size(915, 412),
-  Size(640, 360),
-  Size(1280, 800),
+  // The shop is a portrait page now.
+  Size(412, 915),
+  Size(360, 640),
+  Size(800, 1280),
 ];
 
 LobbyData _shopLobby() => LobbyData(
