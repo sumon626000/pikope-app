@@ -278,12 +278,25 @@ class AppStrings {
   String get choosePaymentMethod =>
       _t('CHOOSE PAYMENT', 'পেমেন্ট বেছে নিন');
   String get choosePaymentBody => _t(
-    'Pay with mobile banking or crypto.',
-    'মোবাইল ব্যাংকিং অথবা ক্রিপ্টো দিয়ে পেমেন্ট করুন।',
+    'Pay with bKash / Nagad / Rocket or USD crypto.',
+    'বিকাশ / নগদ / রকেট অথবা USD ক্রিপ্টো দিয়ে পেমেন্ট করুন।',
+  );
+  String get bdtCoinParityNotice => _t(
+    'Notice: 1 Piko coin = 1 BDT',
+    'নোটিশ: ১ পিকো কয়েন = ১ টাকা',
   );
   String get payLocalMfs =>
       _t('bKash / Nagad / Rocket', 'বিকাশ / নগদ / রকেট');
+  String get payLocalMfsNotice => _t(
+    'Pay in BDT · 1 coin = 1 ৳',
+    'টাকায় পে · ১ কয়েন = ১ ৳',
+  );
   String get payCrypto => _t('CRYPTO', 'ক্রিপ্টো');
+  String get payCryptoUsd => _t('CRYPTO (USD)', 'ক্রিপ্টো (USD)');
+  String usdCoinsNotice(int coins) => _t(
+    'Notice: 1 USD = $coins Piko coin (market)',
+    'নোটিশ: ১ USD = $coins পিকো কয়েন (মার্কেট)',
+  );
   String get cryptoPendingConfirm => _t(
     'Payment is confirming. Coins will appear shortly.',
     'পেমেন্ট নিশ্চিত হচ্ছে। কয়েন শিগগিরই যোগ হবে।',
@@ -479,6 +492,10 @@ class AppStrings {
   String redeemRateHint(int rate) => _t(
     '1 Pico coin = $rate BDT. Coins are held until admin approves.',
     '১ পিকো কয়েন = $rate টাকা। অ্যাডমিন অনুমোদন পর্যন্ত কয়েন ধরে রাখা হয়।',
+  );
+  String redeemUsdRateHint(int coinsPerUsd) => _t(
+    'Notice: 1 USD = $coinsPerUsd Piko coin (market rate).',
+    'নোটিশ: ১ USD = $coinsPerUsd পিকো কয়েন (মার্কেট রেট)।',
   );
   String get coinAmountLabel => _t('Pico coin amount', 'পিকো কয়েন পরিমাণ');
   String youReceiveBdt(int bdt) =>

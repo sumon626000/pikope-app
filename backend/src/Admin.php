@@ -77,6 +77,10 @@ final class Admin
                     self::saveZiniPayConfig();
                 case '/admin/nowpayments/save':
                     self::saveNowPaymentsConfig();
+                case '/admin/nowpayments/fx-save':
+                    self::saveUsdMarketRate();
+                case '/admin/nowpayments/fx-refresh':
+                    self::refreshUsdMarketRate();
                 case '/admin/deposit/approve':
                     self::reviewDeposit(true);
                 case '/admin/deposit/reject':
@@ -1946,9 +1950,27 @@ CSS;
             'apiKey' => $key,
             'ipnSecret' => $ipn,
             'priceCurrency' => (string) ($_POST['priceCurrency'] ?? 'usd'),
-            'bdtPerUsd' => (float) ($_POST['bdtPerUsd'] ?? 110),
+            'bdtPerUsd' => UsdMarketRate::bdtPerUsd(),
         ]);
         self::back('/admin/nowpayments', 'NOWPayments settings saved.');
+    }
+
+    private static function saveUsdMarketRate(): never
+    {
+        UsdMarketRate::saveAdmin([
+            'followMarket' => ($_POST['followMarket'] ?? '0') === '1',
+            'manualBdtPerUsd' => (float) ($_POST['manualBdtPerUsd'] ?? 125),
+        ]);
+        self::back('/admin/nowpayments', 'USD market rate settings saved.');
+    }
+
+    private static function refreshUsdMarketRate(): never
+    {
+        $snap = UsdMarketRate::snapshot(true);
+        self::back(
+            '/admin/nowpayments',
+            'Market rate refreshed: 1 USD ≈ ' . $snap['bdtPerUsd'] . ' BDT (' . $snap['source'] . ').'
+        );
     }
 
     private static function nowPaymentsPage(string $csrf): never
@@ -1957,6 +1979,8 @@ CSS;
         $urls = NowPayments::adminUrls();
         $ready = NowPayments::publicEnabled();
         $c = NowPayments::config();
+        $fx = UsdMarketRate::snapshot();
+        $pub = UsdMarketRate::public();
         $rows = [];
         try {
             $rows = NowPayments::listRecent(80);
@@ -1964,12 +1988,23 @@ CSS;
             error_log('[admin/nowpayments] ' . $e->getMessage());
         }
         self::begin('NOWPayments (crypto)', 'nowpayments');
-        self::pageLead('Players pick <b>Crypto</b> on the coin pack popup. API key and IPN secret never ship in the APK.');
+        self::pageLead('Players pick <b>bKash/Nagad/Rocket</b> or <b>Crypto (USD)</b> on the coin pack popup. 1 Piko coin = 1 BDT; 1 USD ≈ market BDT in coins.');
         echo '<section class="section"><h2>Status</h2><div class="stats">';
         echo '<div class="stat"><b>', $ready ? 'ON' : 'OFF', '</b><span>Crypto in app</span></div>';
         echo '<div class="stat"><b>', self::e(NowPayments::maskedApiKey()), '</b><span>API key</span></div>';
+        echo '<div class="stat"><b>', self::e((string) $pub['coinsPerUsd']), '</b><span>Coins / 1 USD</span></div>';
         echo '<div class="stat"><b>', $urls['appUrl'] !== '' ? 'OK' : 'MISSING', '</b><span>APP_URL</span></div>';
         echo '</div></section>';
+        echo '<section class="section"><h2>USD market rate</h2><div class="card">';
+        echo '<p class="hint">App notice: <b>1 USD = ', self::e((string) $pub['coinsPerUsd']), ' Piko coin</b> (source: ', self::e((string) $fx['source']),
+            ', updated ', self::e((string) $fx['updatedAt']), ').</p>';
+        echo '<form method="post" action="', self::e($base), '/admin/nowpayments/fx-save">', self::csrfField($csrf),
+            '<label class="check"><input type="checkbox" name="followMarket" value="1"', $fx['followMarket'] ? ' checked' : '', '> Follow live USD→BDT market (recommended)</label>',
+            '<label>Manual BDT per 1 USD (fallback / when follow is off)<input type="number" step="0.01" min="1" name="manualBdtPerUsd" value="',
+            self::e((string) $fx['manualBdtPerUsd']), '"></label>',
+            '<button>Save rate mode</button></form>';
+        echo '<form method="post" action="', self::e($base), '/admin/nowpayments/fx-refresh" style="margin-top:10px">', self::csrfField($csrf),
+            '<button type="submit">Refresh market rate now</button></form></div></section>';
         echo '<section class="section"><h2>Settings</h2><div class="card"><form method="post" action="', self::e($base), '/admin/nowpayments/save">',
             self::csrfField($csrf),
             '<label class="check"><input type="checkbox" name="enabled" value="1"', $c['enabled'] ? ' checked' : '', '> Enable crypto (NOWPayments) in the shop popup</label>',
@@ -1978,10 +2013,8 @@ CSS;
             '<label class="check"><input type="checkbox" name="clearKey" value="1"> Clear API key</label>',
             '<label>IPN secret<input type="password" name="ipnSecret" value="" autocomplete="new-password" placeholder="Dashboard → Payment Settings → IPN secret"></label>',
             '<label class="check"><input type="checkbox" name="clearIpn" value="1"> Clear IPN secret</label>',
-            '<label>Price currency<select name="priceCurrency"><option value="usd"', $c['priceCurrency'] === 'usd' ? ' selected' : '', '>USD (convert from BDT)</option>',
+            '<label>Price currency<select name="priceCurrency"><option value="usd"', $c['priceCurrency'] === 'usd' ? ' selected' : '', '>USD (convert from BDT via market)</option>',
             '<option value="bdt"', $c['priceCurrency'] === 'bdt' ? ' selected' : '', '>BDT (if enabled on NOWPayments)</option></select></label>',
-            '<label>BDT per 1 USD<input type="number" step="0.01" min="1" name="bdtPerUsd" value="', self::e((string) $c['bdtPerUsd']), '"></label>',
-            '<p class="hint">Used when currency is USD. Pack prices stay in BDT in the app.</p>',
             '<button>Save NOWPayments</button></form></div>';
         echo '<div class="card grid" style="margin-top:12px">';
         foreach ([

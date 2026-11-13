@@ -148,6 +148,9 @@ class CoinDepositConfig {
     required this.minBdt,
     required this.maxBdt,
     required this.coinPerBdt,
+    this.bdtPerUsd = 125,
+    this.coinsPerUsd = 125,
+    this.usdRateSource = 'fallback',
     required this.maxPendingPerUser,
     required this.paymentType,
     required this.agents,
@@ -160,25 +163,37 @@ class CoinDepositConfig {
   final int minBdt;
   final int maxBdt;
   final int coinPerBdt;
+  final double bdtPerUsd;
+  final int coinsPerUsd;
+  final String usdRateSource;
   final int maxPendingPerUser;
   final String paymentType;
   final List<({String id, String label, String number})> agents;
 
-  factory CoinDepositConfig.fromJson(Map<String, dynamic> j) => CoinDepositConfig(
-        enabled: j['enabled'] as bool? ?? false,
-        manualEnabled: j['manualEnabled'] as bool? ?? j['enabled'] as bool? ?? false,
-        autoEnabled: j['autoEnabled'] as bool? ?? false,
-        cryptoEnabled: j['cryptoEnabled'] as bool? ?? false,
-        minBdt: j['minBdt'] as int? ?? 100,
-        maxBdt: j['maxBdt'] as int? ?? 50000,
-        coinPerBdt: j['coinPerBdt'] as int? ?? 1,
-        maxPendingPerUser: j['maxPendingPerUser'] as int? ?? 3,
-        paymentType: j['paymentType'] as String? ?? 'personal',
-        agents: [
-          for (final a in (j['agents'] as List? ?? const []).cast<Map<String, dynamic>>())
-            (id: a['id'] as String, label: a['label'] as String, number: a['number'] as String),
-        ],
-      );
+  factory CoinDepositConfig.fromJson(Map<String, dynamic> j) {
+    final coinPerBdt = j['coinPerBdt'] as int? ?? 1;
+    final bdtPerUsd = (j['bdtPerUsd'] as num?)?.toDouble() ?? 125.0;
+    final coinsPerUsd = j['coinsPerUsd'] as int? ??
+        (bdtPerUsd * coinPerBdt).round().clamp(1, 1000000);
+    return CoinDepositConfig(
+      enabled: j['enabled'] as bool? ?? false,
+      manualEnabled: j['manualEnabled'] as bool? ?? j['enabled'] as bool? ?? false,
+      autoEnabled: j['autoEnabled'] as bool? ?? false,
+      cryptoEnabled: j['cryptoEnabled'] as bool? ?? false,
+      minBdt: j['minBdt'] as int? ?? 100,
+      maxBdt: j['maxBdt'] as int? ?? 50000,
+      coinPerBdt: coinPerBdt,
+      bdtPerUsd: bdtPerUsd,
+      coinsPerUsd: coinsPerUsd,
+      usdRateSource: j['usdRateSource'] as String? ?? 'fallback',
+      maxPendingPerUser: j['maxPendingPerUser'] as int? ?? 3,
+      paymentType: j['paymentType'] as String? ?? 'personal',
+      agents: [
+        for (final a in (j['agents'] as List? ?? const []).cast<Map<String, dynamic>>())
+          (id: a['id'] as String, label: a['label'] as String, number: a['number'] as String),
+      ],
+    );
+  }
 }
 
 class CoinTransferConfig {
@@ -209,6 +224,9 @@ class RedeemConfig {
     required this.maxCoins,
     required this.maxPendingPerUser,
     required this.coinPerBdt,
+    this.bdtPerUsd = 125,
+    this.coinsPerUsd = 125,
+    this.usdRateSource = 'fallback',
     required this.providers,
   });
 
@@ -217,19 +235,31 @@ class RedeemConfig {
   final int maxCoins;
   final int maxPendingPerUser;
   final int coinPerBdt;
+  final double bdtPerUsd;
+  final int coinsPerUsd;
+  final String usdRateSource;
   final List<({String id, String label})> providers;
 
-  factory RedeemConfig.fromJson(Map<String, dynamic> j) => RedeemConfig(
-        enabled: j['enabled'] as bool? ?? false,
-        minCoins: j['minCoins'] as int? ?? 300,
-        maxCoins: j['maxCoins'] as int? ?? 200000,
-        maxPendingPerUser: j['maxPendingPerUser'] as int? ?? 2,
-        coinPerBdt: j['coinPerBdt'] as int? ?? 1,
-        providers: [
-          for (final p in (j['providers'] as List? ?? const []).cast<Map<String, dynamic>>())
-            (id: p['id'] as String, label: p['label'] as String),
-        ],
-      );
+  factory RedeemConfig.fromJson(Map<String, dynamic> j) {
+    final coinPerBdt = j['coinPerBdt'] as int? ?? 1;
+    final bdtPerUsd = (j['bdtPerUsd'] as num?)?.toDouble() ?? 125.0;
+    final coinsPerUsd = j['coinsPerUsd'] as int? ??
+        (bdtPerUsd * coinPerBdt).round().clamp(1, 1000000);
+    return RedeemConfig(
+      enabled: j['enabled'] as bool? ?? false,
+      minCoins: j['minCoins'] as int? ?? 300,
+      maxCoins: j['maxCoins'] as int? ?? 200000,
+      maxPendingPerUser: j['maxPendingPerUser'] as int? ?? 2,
+      coinPerBdt: coinPerBdt,
+      bdtPerUsd: bdtPerUsd,
+      coinsPerUsd: coinsPerUsd,
+      usdRateSource: j['usdRateSource'] as String? ?? 'fallback',
+      providers: [
+        for (final p in (j['providers'] as List? ?? const []).cast<Map<String, dynamic>>())
+          (id: p['id'] as String, label: p['label'] as String),
+      ],
+    );
+  }
 }
 
 class CoinShopInfo {

@@ -45,12 +45,20 @@ final class Redeem
     public static function publicConfig(): array
     {
         $c = self::config();
+        $fx = class_exists(UsdMarketRate::class) ? UsdMarketRate::public() : [
+            'bdtPerUsd' => 125.0,
+            'coinsPerUsd' => max(1, (int) $c['coinPerBdt'] * 125),
+            'source' => 'fallback',
+        ];
         return [
             'enabled' => (bool) $c['enabled'],
             'minCoins' => (int) $c['minCoins'],
             'maxCoins' => (int) $c['maxCoins'],
             'maxPendingPerUser' => (int) $c['maxPendingPerUser'],
             'coinPerBdt' => (int) $c['coinPerBdt'],
+            'bdtPerUsd' => (float) $fx['bdtPerUsd'],
+            'coinsPerUsd' => (int) $fx['coinsPerUsd'],
+            'usdRateSource' => (string) ($fx['source'] ?? 'fallback'),
             'providers' => array_map(
                 static fn (string $id, string $label): array => ['id' => $id, 'label' => $label],
                 array_keys(self::PROVIDERS),

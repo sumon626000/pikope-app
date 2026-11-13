@@ -117,7 +117,8 @@ final class NowPayments
         if ($currency === 'bdt') {
             $priceAmount = (float) $bdt;
         } else {
-            $rate = max(1.0, (float) $c['bdtPerUsd']);
+            // 1 coin ≈ 1 BDT; invoice USD = pack BDT ÷ live/manual market rate.
+            $rate = max(1.0, UsdMarketRate::bdtPerUsd());
             $priceAmount = round($bdt / $rate, 2);
             $currency = 'usd';
         }

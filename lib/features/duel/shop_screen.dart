@@ -352,6 +352,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
       context,
       localAvailable: localOk,
       cryptoAvailable: cryptoOk,
+      coinsPerUsd: cfg.coinsPerUsd,
     );
     if (!mounted || method == null) {
       if (method == null && mounted && !localOk && !cryptoOk) {
@@ -1373,13 +1374,24 @@ class _RedeemTabState extends ConsumerState<_RedeemTab> {
           overflow: phone ? TextOverflow.ellipsis : null,
           style: AppText.label(phone ? 9 : 18, color: DuelColors.dim),
         ),
-        if (!phone) ...[
-          const SizedBox(height: 10),
-          Text(
-            t.redeemRateHint(cfg.coinPerBdt),
-            style: AppText.label(18, color: DuelColors.dim),
+        SizedBox(height: phone ? 4 : 10),
+        Text(
+          t.redeemRateHint(cfg.coinPerBdt),
+          maxLines: phone ? 2 : null,
+          overflow: phone ? TextOverflow.ellipsis : null,
+          style: AppText.label(phone ? 9 : 18, color: DuelColors.dim),
+        ),
+        SizedBox(height: phone ? 2 : 6),
+        Text(
+          t.redeemUsdRateHint(cfg.coinsPerUsd),
+          maxLines: phone ? 2 : null,
+          overflow: phone ? TextOverflow.ellipsis : null,
+          style: AppText.label(
+            phone ? 9 : 18,
+            color: DuelColors.gold,
+            weight: FontWeight.w700,
           ),
-        ],
+        ),
         SizedBox(height: phone ? 6 : 22),
         TextField(
           controller: _coins,

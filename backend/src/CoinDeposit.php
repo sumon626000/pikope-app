@@ -57,6 +57,13 @@ final class CoinDeposit
                 $agents[] = ['id' => $id, 'label' => $label, 'number' => self::formatAgentNumber($num)];
             }
         }
+        $fx = class_exists(UsdMarketRate::class) ? UsdMarketRate::public() : [
+            'bdtPerUsd' => 125.0,
+            'coinsPerUsd' => max(1, (int) $c['coinPerBdt'] * 125),
+            'source' => 'fallback',
+            'updatedAt' => '',
+            'followMarket' => true,
+        ];
         return [
             'enabled' => (bool) $c['enabled'],
             'manualEnabled' => (bool) $c['enabled'],
@@ -65,6 +72,9 @@ final class CoinDeposit
             'minBdt' => (int) $c['minBdt'],
             'maxBdt' => (int) $c['maxBdt'],
             'coinPerBdt' => (int) $c['coinPerBdt'],
+            'bdtPerUsd' => (float) $fx['bdtPerUsd'],
+            'coinsPerUsd' => (int) $fx['coinsPerUsd'],
+            'usdRateSource' => (string) $fx['source'],
             'maxPendingPerUser' => (int) $c['maxPendingPerUser'],
             'paymentType' => (string) $c['paymentType'],
             'agents' => $agents,

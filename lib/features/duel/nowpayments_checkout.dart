@@ -161,7 +161,7 @@ class _NowPaymentsCheckoutScreenState
   Widget build(BuildContext context) {
     final t = ref.watch(stringsProvider);
     return DuelPage(
-      title: t.payCrypto,
+      title: t.payCryptoUsd,
       child: Column(
         children: [
           if (_finishing)
