@@ -36,6 +36,8 @@ Future<ShopPayMethod?> showShopPaymentMethodChooser(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const DuelLogo(height: 64),
+              const SizedBox(height: 18),
               Text(
                 dual ? t.choosePaymentBody : t.chooseLocalPaymentBody,
                 textAlign: TextAlign.center,
