@@ -312,9 +312,18 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
             you: false,
           ),
         ),
+        // PikoPe mark between the two seat cards (existing asset, no new art).
+        Positioned(
+          left: (_canvasW - 200) / 2,
+          top: 2,
+          width: 200,
+          child: const IgnorePointer(
+            child: Center(child: DuelLogo(height: 40)),
+          ),
+        ),
         Positioned(
           left: (_canvasW - 120) / 2,
-          top: 28,
+          top: 44,
           width: 120,
           child: IgnorePointer(
             child: widget.config.bet.staked
