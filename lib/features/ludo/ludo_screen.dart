@@ -1090,32 +1090,39 @@ class _Board extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (d) {
-        const size = 820.0;
-        final s = size / LudoBoard.n;
-        final movable = controller.movable;
-        if (movable.isEmpty) return;
-        final seat = controller.turn;
-        // Find the nearest movable token to the tap.
-        var best = -1;
-        var bestDist = 1e9;
-        for (final t in movable) {
-          final pos = controller.tokenPos(seat, t);
-          final c = Offset(pos[0] * s, pos[1] * s);
-          final dist = (c - d.localPosition).distance;
-          if (dist < bestDist) {
-            bestDist = dist;
-            best = t;
-          }
-        }
-        if (best >= 0 && bestDist < s * 1.2) onTapToken(best);
+    // Must match the painted board size (portrait places this in a 1040 box).
+    // Hardcoding 820 made taps miss tokens until the turn timer auto-moved.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final side = constraints.biggest.shortestSide;
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (d) {
+            if (side <= 0) return;
+            final s = side / LudoBoard.n;
+            final movable = controller.movable;
+            if (movable.isEmpty) return;
+            final seat = controller.turn;
+            // Find the nearest movable token to the tap.
+            var best = -1;
+            var bestDist = 1e9;
+            for (final t in movable) {
+              final pos = controller.tokenPos(seat, t);
+              final c = Offset(pos[0] * s, pos[1] * s);
+              final dist = (c - d.localPosition).distance;
+              if (dist < bestDist) {
+                bestDist = dist;
+                best = t;
+              }
+            }
+            if (best >= 0 && bestDist < s * 1.2) onTapToken(best);
+          },
+          child: CustomPaint(
+            size: Size.square(side),
+            painter: _BoardPainter(controller, theme),
+          ),
+        );
       },
-      child: CustomPaint(
-        size: const Size.square(820),
-        painter: _BoardPainter(controller, theme),
-      ),
     );
   }
 }

@@ -283,27 +283,31 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
         Builder(builder: (context) {
           final p = state.players[seat];
           final you = seat == _c.mySeat;
+          // HUD only — IgnorePointer so the 420-tall card cannot steal
+          // aim/pan hits from the board (portrait overlap above the frame).
           return Positioned(
             left: (_canvasW - _SeatPanel.width) / 2,
             // Opponent: avatar, name and score end just above the board.
             top: you ? belowSlider + 24 : boardTop - 296,
-            child: _SeatPanel(
-              name: p.name,
-              avatar: p.avatar,
-              colour: p.colour,
-              pocketed: p.pocketed,
-              hasQueen: p.hasQueen,
-              active: _c.turn == seat && !_c.over,
-              out: p.out,
-              you: you,
-              coins: you ? myCoins : null,
-              level: you ? session.level : null,
-              right: !you,
-              clock: _c.clock,
-              shotSeconds: state.shotSeconds,
-              pieces: _c.pieceSkin,
-              chat: _c.chatTextOf(seat),
-              missed: widget.driver != null ? p.missed : null,
+            child: IgnorePointer(
+              child: _SeatPanel(
+                name: p.name,
+                avatar: p.avatar,
+                colour: p.colour,
+                pocketed: p.pocketed,
+                hasQueen: p.hasQueen,
+                active: _c.turn == seat && !_c.over,
+                out: p.out,
+                you: you,
+                coins: you ? myCoins : null,
+                level: you ? session.level : null,
+                right: !you,
+                clock: _c.clock,
+                shotSeconds: state.shotSeconds,
+                pieces: _c.pieceSkin,
+                chat: _c.chatTextOf(seat),
+                missed: widget.driver != null ? p.missed : null,
+              ),
             ),
           );
         }),
