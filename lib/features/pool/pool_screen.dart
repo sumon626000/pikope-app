@@ -14,7 +14,6 @@ import '../../core/orientation.dart';
 import '../../core/widgets.dart';
 import '../../data/demo_data.dart';
 import '../../game/pool/pool_rules.dart';
-import '../duel/cues_screen.dart';
 import '../game/widgets/hud.dart';
 import '../game/widgets/overlays.dart';
 import '../game/widgets/table_view.dart';
@@ -433,7 +432,8 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
             ),
           ),
 
-        // ----- Right control column -----
+        // ----- Right column: only existing controls (spin + chat + power) -----
+        // Do not add pause/cues here — menu stays the original MenuTile.
         Positioned(
           left: rightColLeft,
           top: tableTop,
@@ -441,29 +441,9 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
           bottom: bottomBar,
           child: Column(
             children: [
-              _RailIconButton(
-                icon: Icons.close_rounded,
-                onTap: () => setState(() => _paused = true),
-              ),
-              const SizedBox(height: 14),
-              _RailIconButton(
-                icon: Icons.sports_esports_rounded,
-                onTap: () {
-                  AudioService.tap();
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const CuesScreen(ownedOnly: true),
-                    ),
-                  );
-                },
-              ),
-              // Placeholder: real SpinControl is stacked above so PowerBar
-              // overflow / table pans cannot steal its hits.
-              const SizedBox(height: 14 + 120 + 14),
-              _RailIconButton(
-                icon: Icons.chat_bubble_rounded,
-                onTap: () => setState(() => _chatOpen = !_chatOpen),
-              ),
+              // Space for SpinControl (stacked above so pans cannot steal hits).
+              const SizedBox(height: 120 + 14),
+              _ChatButton(onTap: () => setState(() => _chatOpen = !_chatOpen)),
               if (c.canPushOut) ...[
                 const SizedBox(height: 12),
                 GameButton(
@@ -488,11 +468,9 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
             ],
           ),
         ),
-        // Spin dial above the rail (Listener + fat touch pad) so portrait
-        // scaling still leaves a usable finger target for English / follow / draw.
         Positioned(
           left: rightColLeft - 10,
-          top: tableTop + 78 + 14 + 78,
+          top: tableTop,
           width: _rightColW + 20,
           child: Center(
             child: SpinControl(
@@ -503,19 +481,19 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
           ),
         ),
 
-        // ----- Bottom: menu + aim ruler -----
+        // ----- Bottom: original menu only (no extra aim-ruler chrome) -----
         Positioned(
           left: _sidePad,
           bottom: 28,
           child: MenuTile(onTap: () => setState(() => _paused = true), size: 78),
         ),
-        Positioned(
-          left: _sidePad + 100,
-          right: _sidePad + _rightColW + 8,
-          bottom: 36,
-          height: 64,
-          child: _AimRuler(onNudge: c.canAim ? c.nudgeAim : null),
-        ),
+        if (c.canShoot)
+          Positioned(
+            left: rightColLeft - 8,
+            bottom: bottomBar + 8,
+            width: _rightColW + 16,
+            child: const IgnorePointer(child: ShootHint()),
+          ),
         if (s.game.isRotation)
           Positioned(
             left: _sidePad,
@@ -755,10 +733,10 @@ class _PortraitBallRow extends StatelessWidget {
   }
 }
 
-class _RailIconButton extends StatelessWidget {
-  const _RailIconButton({required this.icon, required this.onTap});
+/// Original quick-chat button: violet square with a speech bubble.
+class _ChatButton extends StatelessWidget {
+  const _ChatButton({required this.onTap});
 
-  final IconData icon;
   final VoidCallback onTap;
 
   @override
@@ -772,75 +750,21 @@ class _RailIconButton extends StatelessWidget {
         width: 78,
         height: 78,
         decoration: BoxDecoration(
-          shape: BoxShape.circle,
+          borderRadius: BorderRadius.circular(14),
           gradient: const LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [Color(0xFF5A63D8), Color(0xFF3B3FA8)],
           ),
           border: Border.all(color: const Color(0xFF8E96F0), width: 2),
-          boxShadow: const [BoxShadow(color: Color(0x99000000), blurRadius: 8, offset: Offset(0, 4))],
+          boxShadow: const [
+            BoxShadow(color: Color(0x99000000), blurRadius: 8, offset: Offset(0, 4)),
+          ],
         ),
-        child: Icon(icon, color: Colors.white, size: 38),
+        child: const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 44),
       ),
     );
   }
-}
-
-/// Fine aim: drag left/right to nudge the cue angle.
-class _AimRuler extends StatelessWidget {
-  const _AimRuler({required this.onNudge});
-
-  final void Function(double radians)? onNudge;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onHorizontalDragUpdate: onNudge == null
-          ? null
-          : (d) => onNudge!(d.delta.dx * 0.0045),
-      child: CustomPaint(
-        painter: _AimRulerPainter(enabled: onNudge != null),
-        child: const SizedBox.expand(),
-      ),
-    );
-  }
-}
-
-class _AimRulerPainter extends CustomPainter {
-  _AimRulerPainter({required this.enabled});
-
-  final bool enabled;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final r = RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(12));
-    canvas.drawRRect(r, Paint()..color = const Color(0xCC1A1240));
-    canvas.drawRRect(
-      r,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
-        ..color = enabled ? const Color(0xFF8E96F0) : const Color(0x668E96F0),
-    );
-    final midY = size.height / 2;
-    final paint = Paint()
-      ..color = enabled ? Colors.white70 : Colors.white30
-      ..strokeWidth = 2;
-    for (var i = 0; i <= 24; i++) {
-      final x = size.width * (i / 24);
-      final tall = i % 4 == 0;
-      canvas.drawLine(
-        Offset(x, midY - (tall ? 18 : 10)),
-        Offset(x, midY + (tall ? 18 : 10)),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _AimRulerPainter old) => old.enabled != enabled;
 }
 
 class _TrayBall extends StatelessWidget {
