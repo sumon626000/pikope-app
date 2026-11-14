@@ -371,6 +371,9 @@ final class Server
                     $chat = ['t' => 'chat', 'gameId' => $gameId, 's' => $seat, 'text' => $text];
                 } else {
                     $m = $msg['m'] ?? null;
+                    if (is_numeric($m)) {
+                        $m = (int) $m;
+                    }
                     if (!is_int($m) || $m < 0 || $m > 59) {
                         return;
                     }

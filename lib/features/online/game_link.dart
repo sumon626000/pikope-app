@@ -125,15 +125,15 @@ class OnlineGameDriver implements GameLink {
       case 'aim':
         onAim?.call(message);
       case 'chat':
-        final seat = message['s'];
-        if (seat is! int) break;
+        final seat = _asInt(message['s']);
+        if (seat == null) break;
         final text = message['text'];
         if (text is String && text.trim().isNotEmpty) {
           onChatText?.call(seat, text.trim());
           break;
         }
-        final m = message['m'];
-        if (m is int) onChat?.call(seat, m);
+        final m = _asInt(message['m']);
+        if (m != null) onChat?.call(seat, m);
       case 'error':
         _settle(message['re']);
         onError?.call(ApiException(409, message['code'] as String? ?? 'error',
@@ -233,13 +233,23 @@ class OnlineGameDriver implements GameLink {
   /// Sends a quick-chat preset to the other players. Best effort: dropped
   /// when there is no live connection.
   void sendChat(int message) {
-    if (realtime) _socket!.send({'t': 'chat', 'gameId': gameId, 'm': message});
+    final sock = _socket;
+    if (sock == null || !sock.connected) return;
+    sock.send({'t': 'chat', 'gameId': gameId, 'm': message});
   }
 
   void sendChatText(String text) {
     final t = text.trim();
-    if (t.isEmpty || !realtime) return;
-    _socket!.send({'t': 'chat', 'gameId': gameId, 'text': t});
+    if (t.isEmpty) return;
+    final sock = _socket;
+    if (sock == null || !sock.connected) return;
+    sock.send({'t': 'chat', 'gameId': gameId, 'text': t});
+  }
+
+  static int? _asInt(Object? v) {
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return null;
   }
 
   /// Completes once every action sent so far has been answered.

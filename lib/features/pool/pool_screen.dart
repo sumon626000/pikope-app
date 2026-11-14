@@ -55,27 +55,74 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
   bool _resultBooked = false;
   int? _reward;
 
-  // Quick-chat: the picker panel and the emote currently floating over the
-  // viewer's avatar (cleared after a few seconds).
+  // Quick-chat: picker + bubbles over me / opponent (cleared after a few seconds).
   bool _chatOpen = false;
-  String? _emote;
+  String? _emoteMe;
+  String? _emoteOpp;
   Timer? _emoteTimer;
 
   /// Preset quick-chat tokens (emoji or short phrase).
-  static const _quickChat = ['👍', '😂', '😮', '🎯', '🔥', '😎', 'Nice shot!', 'Good luck', 'Oops!', 'Well played'];
+  static const _quickChat = [
+    '👍',
+    '😂',
+    '😮',
+    '🎯',
+    '🔥',
+    '😎',
+    'Nice shot!',
+    'Good luck',
+    'Oops!',
+    'Well played',
+  ];
+
+  void _flashEmote({required bool mine, required String text}) {
+    final msg = text.trim();
+    if (msg.isEmpty) return;
+    _emoteTimer?.cancel();
+    if (!mounted) return;
+    setState(() {
+      _chatOpen = false;
+      if (mine) {
+        _emoteMe = msg;
+      } else {
+        _emoteOpp = msg;
+      }
+    });
+    _emoteTimer = Timer(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      setState(() {
+        if (mine) {
+          _emoteMe = null;
+        } else {
+          _emoteOpp = null;
+        }
+      });
+    });
+  }
 
   void _sendEmote(String e) {
     AudioService.tap();
-    _emoteTimer?.cancel();
-    setState(() {
-      _emote = e;
-      _chatOpen = false;
-    });
-    // Let the opponent see it in an online match; harmless if unsupported.
-    widget.driver?.send({'type': 'emote', 'value': e});
-    _emoteTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _emote = null);
-    });
+    _flashEmote(mine: true, text: e);
+    // Relay over the live chat channel (not a game action).
+    final i = _quickChat.indexOf(e);
+    final driver = widget.driver;
+    if (driver == null) return;
+    if (i >= 0) {
+      driver.sendChat(i);
+    } else {
+      driver.sendChatText(e);
+    }
+  }
+
+  void _onRemoteChat(int seat, String text) {
+    final driver = widget.driver;
+    if (driver == null || seat == driver.seat) return;
+    _flashEmote(mine: false, text: text);
+  }
+
+  void _onRemoteChatPreset(int seat, int message) {
+    if (message < 0 || message >= _quickChat.length) return;
+    _onRemoteChat(seat, _quickChat[message]);
   }
 
   static const _canvasW = PortraitGameCanvas.width;
@@ -97,6 +144,8 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
         ..onPresence = _c.applyPresence
         ..onError = _onNetError
         ..onAim = _c.applyRemoteAim
+        ..onChat = _onRemoteChatPreset
+        ..onChatText = _onRemoteChat
         ..start();
     }
     _ticker = createTicker((elapsed) {
@@ -489,11 +538,17 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
             top: tableTop + 40,
             child: _ChatPanel(items: _quickChat, onPick: _sendEmote),
           ),
-        if (_emote != null)
+        if (_emoteMe != null)
           Positioned(
-            left: _sidePad + 40,
+            left: _sidePad + 24,
             top: 100,
-            child: IgnorePointer(child: _EmoteBubble(_emote!)),
+            child: IgnorePointer(child: _EmoteBubble(_emoteMe!)),
+          ),
+        if (_emoteOpp != null)
+          Positioned(
+            right: _sidePad + 24,
+            top: 100,
+            child: IgnorePointer(child: _EmoteBubble(_emoteOpp!)),
           ),
 
         if (_intro)
