@@ -488,20 +488,27 @@ class _ObjectiveChip extends StatelessWidget {
 // ------------------------------------------------------------- controls
 
 class PowerBar extends StatelessWidget {
-  const PowerBar({super.key, required this.controller});
+  const PowerBar({super.key, required this.controller, this.compact = false});
 
   final ShotTable controller;
+
+  /// Portrait rail: drop the wide side margins so the bar cannot spill into
+  /// neighbouring HUD controls (spin dial, chat).
+  final bool compact;
+
   static const size = Size(58, 456);
 
   /// Invisible margin around the bar that still catches the finger: the bar
   /// itself is only a few millimetres wide on a phone.
   static const touchPad = EdgeInsets.fromLTRB(47, 40, 60, 30);
+  static const compactTouchPad = EdgeInsets.fromLTRB(20, 24, 20, 24);
 
   @override
   Widget build(BuildContext context) {
     final c = controller;
+    final pad = compact ? compactTouchPad : touchPad;
     void set(Offset local) =>
-        c.setPower((local.dy - touchPad.top - 30) / (size.height - 60));
+        c.setPower((local.dy - pad.top - 30) / (size.height - 60));
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onVerticalDragStart: (d) => set(d.localPosition),
@@ -509,7 +516,7 @@ class PowerBar extends StatelessWidget {
       onVerticalDragEnd: (_) => c.releaseShot(),
       onVerticalDragCancel: c.releaseShot,
       child: Padding(
-        padding: touchPad,
+        padding: pad,
         child: RepaintBoundary(child: CustomPaint(size: size, painter: _PowerBarPainter(c))),
       ),
     );
@@ -631,39 +638,120 @@ class _PowerBarPainter extends CustomPainter {
 }
 
 /// Cue-ball spin selector: the red dot is where the tip strikes.
-class SpinControl extends StatelessWidget {
-  const SpinControl({super.key, required this.controller});
+///
+/// Uses a [Listener] (not a pan [GestureDetector]) so table aim pans and the
+/// power bar cannot win the gesture arena over this control. Tap or drag to
+/// place English / follow / draw; double-tap resets to centre.
+class SpinControl extends StatefulWidget {
+  const SpinControl({
+    super.key,
+    required this.controller,
+    this.diameter = defaultDiameter,
+    this.touchPad = defaultTouchPad,
+  });
 
   final ShotTable controller;
-  static const diameter = 96.0;
+
+  /// Visual ball size (logical design pixels).
+  final double diameter;
+
+  /// Extra opaque hit margin around the ball (portrait rail needs this).
+  final EdgeInsets touchPad;
+
+  static const defaultDiameter = 96.0;
+  static const defaultTouchPad = EdgeInsets.zero;
+
+  @override
+  State<SpinControl> createState() => _SpinControlState();
+}
+
+class _SpinControlState extends State<SpinControl> {
+  bool _armed = false;
+  bool _moved = false;
+  Offset? _downPos;
+  DateTime? _lastTapAt;
+  Offset? _lastTapPos;
+
+  void _apply(Offset local) {
+    final pad = widget.touchPad;
+    final p = Offset(local.dx - pad.left, local.dy - pad.top);
+    final r = widget.diameter / 2;
+    widget.controller.setSpin(Vec2((p.dx - r) / (r * 0.75), -(p.dy - r) / (r * 0.75)));
+  }
+
+  void _onDown(PointerDownEvent e) {
+    _armed = true;
+    _moved = false;
+    _downPos = e.localPosition;
+    _apply(e.localPosition);
+  }
+
+  void _onMove(PointerMoveEvent e) {
+    if (!_armed) return;
+    final origin = _downPos;
+    if (origin != null && (e.localPosition - origin).distance > 8) _moved = true;
+    _apply(e.localPosition);
+  }
+
+  void _onUp(PointerUpEvent e) {
+    if (!_armed) return;
+    _armed = false;
+    if (_moved) {
+      _lastTapAt = null;
+      return;
+    }
+    final now = DateTime.now();
+    final lastAt = _lastTapAt;
+    final lastPos = _lastTapPos;
+    final pos = _downPos ?? e.localPosition;
+    if (lastAt != null &&
+        lastPos != null &&
+        now.difference(lastAt) < const Duration(milliseconds: 320) &&
+        (pos - lastPos).distance < 28) {
+      widget.controller.setSpin(Vec2.zero);
+      _lastTapAt = null;
+      _lastTapPos = null;
+      return;
+    }
+    _lastTapAt = now;
+    _lastTapPos = pos;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final c = controller;
-    const r = diameter / 2;
-    void set(Offset local) => c.setSpin(Vec2((local.dx - r) / (r * 0.75), -(local.dy - r) / (r * 0.75)));
-    return GestureDetector(
-      onPanStart: (d) => set(d.localPosition),
-      onPanUpdate: (d) => set(d.localPosition),
-      onDoubleTap: () => c.setSpin(Vec2.zero),
-      child: Container(
-        width: diameter,
-        height: diameter,
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            center: Alignment(-0.3, -0.35),
-            colors: [Colors.white, Color(0xFFE4E4DC), Color(0xFFB9B9B0)],
-            stops: [0, 0.7, 1],
+    final c = widget.controller;
+    final d = widget.diameter;
+    final dot = (d * 0.145).clamp(12.0, 18.0);
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: _onDown,
+      onPointerMove: _onMove,
+      onPointerUp: _onUp,
+      onPointerCancel: (_) {
+        _armed = false;
+        _moved = false;
+      },
+      child: Padding(
+        padding: widget.touchPad,
+        child: Container(
+          width: d,
+          height: d,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              center: Alignment(-0.3, -0.35),
+              colors: [Colors.white, Color(0xFFE4E4DC), Color(0xFFB9B9B0)],
+              stops: [0, 0.7, 1],
+            ),
+            boxShadow: [BoxShadow(color: Colors.black54, blurRadius: 8, offset: Offset(0, 3))],
           ),
-          boxShadow: [BoxShadow(color: Colors.black54, blurRadius: 8, offset: Offset(0, 3))],
-        ),
-        child: Align(
-          alignment: Alignment(c.spin.x * 0.75, -c.spin.y * 0.75),
-          child: Container(
-            width: 14,
-            height: 14,
-            decoration: const BoxDecoration(color: Color(0xFFE0261B), shape: BoxShape.circle),
+          child: Align(
+            alignment: Alignment(c.spin.x * 0.75, -c.spin.y * 0.75),
+            child: Container(
+              width: dot,
+              height: dot,
+              decoration: const BoxDecoration(color: Color(0xFFE0261B), shape: BoxShape.circle),
+            ),
           ),
         ),
       ),

@@ -296,8 +296,11 @@ class PoolController extends ChangeNotifier implements ShotTable {
 
   @override
   void setSpin(Vec2 value) {
+    // Allow placing English while the human is lining up (same window as aim).
     if (!canAim) return;
-    spin = value.length > 1 ? value.normalized : value;
+    final next = value.length > 1 ? value.normalized : value;
+    if ((next - spin).length2 < 1e-8) return;
+    spin = next;
     notifyListeners();
   }
 

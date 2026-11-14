@@ -408,13 +408,9 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
                   );
                 },
               ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: 88,
-                height: 88,
-                child: FittedBox(child: SpinControl(controller: c)),
-              ),
-              const SizedBox(height: 14),
+              // Placeholder: real SpinControl is stacked above so PowerBar
+              // overflow / table pans cannot steal its hits.
+              const SizedBox(height: 14 + 120 + 14),
               _RailIconButton(
                 icon: Icons.chat_bubble_rounded,
                 onTap: () => setState(() => _chatOpen = !_chatOpen),
@@ -431,17 +427,30 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
                 ),
               ],
               const Spacer(),
-              // Power bar: drop touchPad so it fits the rail.
               SizedBox(
                 width: _rightColW,
                 height: 420,
                 child: FittedBox(
                   fit: BoxFit.contain,
                   alignment: Alignment.bottomCenter,
-                  child: PowerBar(controller: c),
+                  child: PowerBar(controller: c, compact: true),
                 ),
               ),
             ],
+          ),
+        ),
+        // Spin dial above the rail (Listener + fat touch pad) so portrait
+        // scaling still leaves a usable finger target for English / follow / draw.
+        Positioned(
+          left: rightColLeft - 10,
+          top: tableTop + 78 + 14 + 78,
+          width: _rightColW + 20,
+          child: Center(
+            child: SpinControl(
+              controller: c,
+              diameter: 108,
+              touchPad: const EdgeInsets.all(16),
+            ),
           ),
         ),
 
