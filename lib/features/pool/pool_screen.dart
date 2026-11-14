@@ -8,10 +8,12 @@ import '../../core/app_state.dart';
 import '../../core/audio_service.dart';
 import '../../core/app_theme.dart';
 import '../../core/design/design.dart';
+import '../../core/design/pool_city.dart';
 import '../../core/duel_ui.dart';
 import '../../core/widgets.dart';
 import '../../data/demo_data.dart';
 import '../../game/pool/pool_rules.dart';
+import '../duel/cues_screen.dart';
 import '../game/widgets/hud.dart';
 import '../game/widgets/overlays.dart';
 import '../game/widgets/table_view.dart';
@@ -75,7 +77,11 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
     });
   }
 
-  static const _tableRect = DesignGameplay.poolTableRect;
+  static const _canvasW = PortraitGameCanvas.width;
+  static const _rightColW = 118.0;
+  static const _sidePad = 18.0;
+  /// Landscape table art aspect (width / height) before portrait rotate.
+  static const _tableAspect = TableProjection.imageWidth / TableProjection.imageHeight;
 
   @override
   void initState() {
@@ -170,253 +176,475 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    final t = ref.watch(stringsProvider);
     final settings = ref.watch(settingsProvider);
-    final c = _c;
-    final s = c.state;
-    final over = s.phase == PoolPhase.gameOver;
-    final live = !over && !c.presenting &&
-        (s.phase == PoolPhase.playerTurn || s.phase == PoolPhase.shooting || s.phase == PoolPhase.pushOutChoice);
-
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) setState(() => _paused = !_paused);
       },
       child: Scaffold(
-        body: DesignCanvas(
-          size: DesignCanvas.tableSize,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              // --- top bar: menu, both players, coins, spin
-              // Reference scoreboard: one violet bar behind both players.
-              Positioned(
-                left: 384,
-                top: -6,
-                width: 1182,
-                height: 104,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF3B2C86), Color(0xFF2A1F66)]),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFF6E5BD6), width: 2),
-                    boxShadow: const [BoxShadow(color: Color(0x99000000), blurRadius: 10, offset: Offset(0, 4))],
-                  ),
-                ),
-              ),
-              Positioned(left: 24, top: 8, child: MenuTile(onTap: () => setState(() => _paused = true))),
-              Positioned(
-                left: 126,
-                top: 28,
-                child: Text(s.game.title, style: AppText.label(28, color: AppColors.gold, weight: FontWeight.w900)),
-              ),
-              Positioned(
-                left: 933,
-                top: 6,
-                child: widget.config.bet.staked
-                    ? MatchPrizeTile(prize: widget.config.bet.prize)
-                    : CoinsTile(coins: settings.coins, size: 84),
-              ),
-              Positioned(left: 1836, top: 4, child: SpinControl(controller: c)),
-              for (var i = 0; i < 2; i++) ...[
-                AnimatedPositioned(
-                  key: ValueKey('seat-$i'),
-                  duration: const Duration(milliseconds: 450),
-                  curve: Curves.easeInOut,
-                  left: _onLeft(i) ? 800 : 1006,
-                  top: 6,
-                  child: AvatarSeat(
-                    name: c.players[i].name,
-                    avatar: c.players[i].avatar,
-                    isCurrent: live && s.turn == i,
-                    isWinner: s.winner == i,
-                    clock: c.clock,
-                    shotSeconds: c.config.shotSeconds,
-                    size: 84,
-                    nameSide: NameSide.hidden,
-                    turnMisses: widget.driver != null ? c.players[i].missed : null,
-                  ),
-                ),
-                AnimatedPositioned(
-                  key: ValueKey('tray-$i'),
-                  duration: const Duration(milliseconds: 450),
-                  curve: Curves.easeInOut,
-                  left: _onLeft(i) ? 400 : 1140,
-                  top: 8,
-                  width: 420,
-                  child: _PlayerTray(controller: c, index: i, alignEnd: _onLeft(i)),
-                ),
-              ],
-              Positioned(left: 575, top: 98, width: 800, height: 46, child: StatusPill(c.statusText)),
-              // --- controls
-              Positioned(
-                left: 150 - PowerBar.touchPad.left,
-                top: 250 - PowerBar.touchPad.top,
-                child: PowerBar(controller: c),
-              ),
-              if (c.canShoot) const Positioned(left: 138, top: 738, child: IgnorePointer(child: ShootHint())),
-              // --- quick chat
-              Positioned(left: 1836, top: 772, child: _ChatButton(onTap: () => setState(() => _chatOpen = !_chatOpen))),
-              if (_chatOpen)
-                Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => setState(() => _chatOpen = false),
-                  ),
-                ),
-              if (_chatOpen)
-                Positioned(left: 1440, top: 548, width: 476, child: _ChatPanel(items: _quickChat, onPick: _sendEmote)),
-              if (_emote != null)
-                Positioned(
-                  left: 706,
-                  top: 104,
-                  child: IgnorePointer(child: _EmoteBubble(_emote!)),
-                ),
-              // --- table
-              Positioned.fromRect(
-                rect: _tableRect.deflate(18),
-                child: const DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.all(Radius.circular(40)),
-                    boxShadow: [
-                      BoxShadow(color: Color(0xCC000000), blurRadius: 50, spreadRadius: 8, offset: Offset(0, 22)),
-                      BoxShadow(color: Color(0x22FFFFFF), blurRadius: 70, spreadRadius: 4),
-                    ],
-                  ),
-                ),
-              ),
-              Positioned.fromRect(
-                rect: _tableRect,
-                child: TableView(controller: c, skin: DemoData.skin(settings.tableSkin)),
-              ),
-              if (s.game.isRotation)
-                Positioned(left: 1634, top: 430, width: 296, child: _RackStrip(controller: c)),
-              if (c.canPushOut)
-                Positioned(
-                  left: 1636,
-                  top: 250,
-                  child: GameButton(
-                    label: s.pushOutDeclared ? 'PUSH OUT: ON' : 'PUSH OUT',
-                    icon: Icons.open_with_rounded,
-                    width: 290,
-                    height: 70,
-                    fontSize: 20,
-                    color: s.pushOutDeclared ? AppColors.gold : AppColors.frame,
-                    onPressed: c.togglePushOut,
-                  ),
-                ),
-              if (c.choosingPushOut)
-                Positioned.fromRect(
-                  rect: _tableRect,
-                  child: Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        GameButton(
-                          label: 'SHOOT',
-                          width: 250,
-                          height: 84,
-                          fontSize: 26,
-                          onPressed: () => c.answerPushOut(shoot: true),
-                        ),
-                        const SizedBox(width: 24),
-                        GameButton(
-                          label: 'PASS BACK',
-                          width: 250,
-                          height: 84,
-                          fontSize: 26,
-                          color: AppColors.gold,
-                          onPressed: () => c.answerPushOut(shoot: false),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              if (c.banner != null)
-                Positioned.fromRect(
-                  rect: _tableRect,
-                  child: IgnorePointer(
-                    child: Center(child: BannerView(key: ValueKey(c.bannerId), banner: c.banner!)),
-                  ),
-                ),
-              if (_intro)
-                GameRevealOverlay(
-                  ball: switch (s.game) { PoolGame.eightBall => 8, PoolGame.nineBall => 9, PoolGame.tenBall => 10 },
-                  onDone: () => setState(() => _intro = false),
-                ),
-              if (over && widget.driver != null)
-                DuelResultOverlay(
-                  players: [
-                    for (var i = 0; i < c.players.length; i++)
-                      ResultPlayer(
-                        name: c.players[i].name,
-                        avatar: widget.config.seats[i].avatar,
-                        won: i == s.winner,
-                        me: i == widget.driver!.seat,
-                      ),
-                  ],
-                  bet: widget.config.bet,
-                  reason: ref.read(stringsProvider).formatMatchWinReason(s.winReason),
-                  onBack: () => Navigator.of(context).pop(),
-                )
-              else if (over)
-                _PoolGameOver(
-                  controller: c,
-                  reward: _reward,
-                  rematchLabel: widget.driver == null ? t.rematch : t.playAgain,
-                  onRematch: widget.driver != null
-                      ? _playAgain
-                      : () {
-                          _resultBooked = false;
-                          _reward = null;
-                          c.rematch();
-                        },
-                  onHome: () => Navigator.of(context).pop(),
-                ),
-              if (widget.driver != null) ...[
-                OpponentDisconnectBanner(
-                  presence: _c.opponentPresence,
-                  serverOffsetMs: _c.serverOffsetMs,
-                  opponentName: _c.players[1 - widget.driver!.seat].name,
-                ),
-                ConnectionStatusLayer(
-                  offline: widget.driver!.offline,
-                  // Still seated on the server: the home screen offers to rejoin.
-                  onLeave: () => Navigator.of(context).pop(),
-                ),
-              ],
-              if (_paused)
-                PauseOverlay(
-                  soundOn: settings.soundOn,
-                  onResume: () => setState(() => _paused = false),
-                  onToggleSound: () => ref
-                      .read(settingsProvider.notifier)
-                      .update((s) => s.copyWith(soundOn: !s.soundOn)),
-                  onRules: () => Navigator.of(context)
-                      .push(MaterialPageRoute<void>(builder: (_) => const HowToPlayScreen())),
-                  onQuit: _quit,
-                ),
-            ],
+        backgroundColor: const Color(0xFF140B2E),
+        body: ColoredBox(
+          color: const Color(0xFF140B2E),
+          child: PortraitGameCanvas(
+            builder: (context, height) => _portraitTable(context, height, settings),
           ),
         ),
       ),
     );
   }
 
-  /// The viewer's panel is on the left of the bar, the opponent's on the right.
-  bool _onLeft(int player) => player == _c.viewerIndex;
+  /// Portrait stack: top seats + pot + ball slots, rotated table, right rail,
+  /// bottom menu + aim ruler. Keeps existing PikoPe table/ball/cue assets.
+  Widget _portraitTable(BuildContext context, double height, AppSettings settings) {
+    final t = ref.watch(stringsProvider);
+    final c = _c;
+    final s = c.state;
+    final over = s.phase == PoolPhase.gameOver;
+    final live = !over &&
+        !c.presenting &&
+        (s.phase == PoolPhase.playerTurn ||
+            s.phase == PoolPhase.shooting ||
+            s.phase == PoolPhase.pushOutChoice);
+
+    const topHud = 268.0;
+    const bottomBar = 128.0;
+    final rightColLeft = _canvasW - _rightColW - _sidePad;
+    final tableAreaTop = topHud;
+    final tableAreaBottom = height - bottomBar;
+    final tableAreaH = (tableAreaBottom - tableAreaTop).clamp(400.0, 2400.0);
+    // After 90° rotate, visual width = landscape height, visual height = landscape width.
+    var tableVisW = rightColLeft - _sidePad * 2;
+    var tableVisH = tableVisW * _tableAspect;
+    if (tableVisH > tableAreaH - 16) {
+      tableVisH = tableAreaH - 16;
+      tableVisW = tableVisH / _tableAspect;
+    }
+    final tableLeft = _sidePad + ((rightColLeft - _sidePad) - tableVisW) / 2;
+    final tableTop = tableAreaTop + (tableAreaH - tableVisH) / 2;
+
+    final me = c.viewerIndex;
+    final opp = 1 - me;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // ----- Top HUD: two player cards + pot -----
+        Positioned(
+          left: _sidePad,
+          top: 12,
+          width: (_canvasW - _sidePad * 2 - 140) / 2,
+          child: _PortraitSeatCard(
+            name: c.players[me].name,
+            avatar: c.players[me].avatar,
+            accent: const Color(0xFF2E8BE8),
+            active: live && s.turn == me,
+            clock: c.clock,
+            shotSeconds: c.config.shotSeconds,
+            missed: widget.driver != null ? c.players[me].missed : null,
+            you: true,
+          ),
+        ),
+        Positioned(
+          right: _sidePad,
+          top: 12,
+          width: (_canvasW - _sidePad * 2 - 140) / 2,
+          child: _PortraitSeatCard(
+            name: c.players[opp].name,
+            avatar: c.players[opp].avatar,
+            accent: const Color(0xFF9B5CF0),
+            active: live && s.turn == opp,
+            clock: c.clock,
+            shotSeconds: c.config.shotSeconds,
+            missed: widget.driver != null ? c.players[opp].missed : null,
+            you: false,
+          ),
+        ),
+        Positioned(
+          left: (_canvasW - 120) / 2,
+          top: 28,
+          width: 120,
+          child: IgnorePointer(
+            child: widget.config.bet.staked
+                ? MatchPrizeTile(prize: widget.config.bet.prize)
+                : CoinsTile(coins: settings.coins, size: 100),
+          ),
+        ),
+        // Ball trays under the cards
+        Positioned(
+          left: _sidePad,
+          top: 168,
+          width: (_canvasW - _sidePad * 2 - 24) / 2,
+          child: IgnorePointer(
+            child: _PortraitBallRow(controller: c, index: me, alignEnd: false),
+          ),
+        ),
+        Positioned(
+          right: _sidePad,
+          top: 168,
+          width: (_canvasW - _sidePad * 2 - 24) / 2,
+          child: IgnorePointer(
+            child: _PortraitBallRow(controller: c, index: opp, alignEnd: true),
+          ),
+        ),
+        Positioned(
+          left: _sidePad,
+          right: _sidePad + _rightColW + 8,
+          top: 228,
+          height: 36,
+          child: IgnorePointer(
+            child: Center(
+              child: Text(
+                c.statusText,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: AppText.label(22, color: DesignGameplay.hintActive, weight: FontWeight.w800),
+              ),
+            ),
+          ),
+        ),
+
+        // ----- Table (rotated 90° so long axis is vertical) -----
+        Positioned(
+          left: tableLeft - 10,
+          top: tableTop - 10,
+          width: tableVisW + 20,
+          height: tableVisH + 20,
+          child: const IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.all(Radius.circular(28)),
+                boxShadow: [
+                  BoxShadow(color: Color(0xCC000000), blurRadius: 28, offset: Offset(0, 14)),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          left: tableLeft,
+          top: tableTop,
+          width: tableVisW,
+          height: tableVisH,
+          child: RotatedBox(
+            quarterTurns: 3,
+            child: SizedBox(
+              // Pre-rotate landscape box: width = visual height, height = visual width.
+              width: tableVisH,
+              height: tableVisW,
+              child: TableView(controller: c, skin: DemoData.skin(settings.tableSkin)),
+            ),
+          ),
+        ),
+        if (c.choosingPushOut)
+          Positioned(
+            left: tableLeft,
+            top: tableTop,
+            width: tableVisW,
+            height: tableVisH,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GameButton(
+                    label: 'SHOOT',
+                    width: 280,
+                    height: 80,
+                    fontSize: 28,
+                    onPressed: () => c.answerPushOut(shoot: true),
+                  ),
+                  const SizedBox(height: 16),
+                  GameButton(
+                    label: 'PASS BACK',
+                    width: 280,
+                    height: 80,
+                    fontSize: 28,
+                    color: AppColors.gold,
+                    onPressed: () => c.answerPushOut(shoot: false),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        if (c.banner != null)
+          Positioned(
+            left: tableLeft,
+            top: tableTop,
+            width: tableVisW,
+            height: tableVisH,
+            child: IgnorePointer(
+              child: Center(child: BannerView(key: ValueKey(c.bannerId), banner: c.banner!)),
+            ),
+          ),
+
+        // ----- Right control column -----
+        Positioned(
+          left: rightColLeft,
+          top: tableTop,
+          width: _rightColW,
+          bottom: bottomBar,
+          child: Column(
+            children: [
+              _RailIconButton(
+                icon: Icons.pause_rounded,
+                onTap: () => setState(() => _paused = true),
+              ),
+              const SizedBox(height: 14),
+              _RailIconButton(
+                icon: Icons.sports_esports_rounded,
+                onTap: () {
+                  AudioService.tap();
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const CuesScreen(ownedOnly: true),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: 88,
+                height: 88,
+                child: FittedBox(child: SpinControl(controller: c)),
+              ),
+              const SizedBox(height: 14),
+              _ChatButton(
+                size: 78,
+                onTap: () => setState(() => _chatOpen = !_chatOpen),
+              ),
+              if (c.canPushOut) ...[
+                const SizedBox(height: 12),
+                GameButton(
+                  label: s.pushOutDeclared ? 'PUSH' : 'PUSH',
+                  width: 100,
+                  height: 56,
+                  fontSize: 16,
+                  color: s.pushOutDeclared ? AppColors.gold : AppColors.frame,
+                  onPressed: c.togglePushOut,
+                ),
+              ],
+              const Spacer(),
+              // Power bar: drop touchPad so it fits the rail.
+              SizedBox(
+                width: _rightColW,
+                height: 420,
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  alignment: Alignment.bottomCenter,
+                  child: PowerBar(controller: c),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // ----- Bottom: menu + aim ruler -----
+        Positioned(
+          left: _sidePad,
+          bottom: 28,
+          child: MenuTile(onTap: () => setState(() => _paused = true), size: 78),
+        ),
+        Positioned(
+          left: _sidePad + 100,
+          right: _sidePad + _rightColW + 8,
+          bottom: 36,
+          height: 64,
+          child: _AimRuler(onNudge: c.canAim ? c.nudgeAim : null),
+        ),
+        if (s.game.isRotation)
+          Positioned(
+            left: _sidePad,
+            right: _sidePad + _rightColW + 8,
+            bottom: bottomBar + 4,
+            child: IgnorePointer(child: _RackStrip(controller: c)),
+          ),
+
+        if (_chatOpen)
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => _chatOpen = false),
+            ),
+          ),
+        if (_chatOpen)
+          Positioned(
+            left: 120,
+            right: _rightColW + 40,
+            top: tableTop + 40,
+            child: _ChatPanel(items: _quickChat, onPick: _sendEmote),
+          ),
+        if (_emote != null)
+          Positioned(
+            left: _sidePad + 40,
+            top: 100,
+            child: IgnorePointer(child: _EmoteBubble(_emote!)),
+          ),
+
+        if (_intro)
+          GameRevealOverlay(
+            ball: switch (s.game) {
+              PoolGame.eightBall => 8,
+              PoolGame.nineBall => 9,
+              PoolGame.tenBall => 10,
+            },
+            onDone: () => setState(() => _intro = false),
+          ),
+        if (over && widget.driver != null)
+          DuelResultOverlay(
+            players: [
+              for (var i = 0; i < c.players.length; i++)
+                ResultPlayer(
+                  name: c.players[i].name,
+                  avatar: widget.config.seats[i].avatar,
+                  won: i == s.winner,
+                  me: i == widget.driver!.seat,
+                ),
+            ],
+            bet: widget.config.bet,
+            reason: ref.read(stringsProvider).formatMatchWinReason(s.winReason),
+            onBack: () => Navigator.of(context).pop(),
+          )
+        else if (over)
+          _PoolGameOver(
+            controller: c,
+            reward: _reward,
+            rematchLabel: widget.driver == null ? t.rematch : t.playAgain,
+            onRematch: widget.driver != null
+                ? _playAgain
+                : () {
+                    _resultBooked = false;
+                    _reward = null;
+                    c.rematch();
+                  },
+            onHome: () => Navigator.of(context).pop(),
+          ),
+        if (widget.driver != null) ...[
+          OpponentDisconnectBanner(
+            presence: _c.opponentPresence,
+            serverOffsetMs: _c.serverOffsetMs,
+            opponentName: _c.players[1 - widget.driver!.seat].name,
+          ),
+          ConnectionStatusLayer(
+            offline: widget.driver!.offline,
+            onLeave: () => Navigator.of(context).pop(),
+            scale: 1.35,
+          ),
+        ],
+        if (_paused)
+          PauseOverlay(
+            scale: 1.55,
+            soundOn: settings.soundOn,
+            onResume: () => setState(() => _paused = false),
+            onToggleSound: () => ref
+                .read(settingsProvider.notifier)
+                .update((s) => s.copyWith(soundOn: !s.soundOn)),
+            onRules: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const HowToPlayScreen()),
+            ),
+            onQuit: _quit,
+          ),
+      ],
+    );
+  }
 }
 
-/// What a player still has to do: their group in 8-ball, their record in the
-/// rotation games.
-class _PlayerTray extends StatelessWidget {
-  const _PlayerTray({required this.controller, required this.index, required this.alignEnd});
+class _PortraitSeatCard extends StatelessWidget {
+  const _PortraitSeatCard({
+    required this.name,
+    required this.avatar,
+    required this.accent,
+    required this.active,
+    required this.clock,
+    required this.shotSeconds,
+    required this.you,
+    this.missed,
+  });
+
+  final String name;
+  final String avatar;
+  final Color accent;
+  final bool active;
+  final ValueNotifier<double> clock;
+  final int shotSeconds;
+  final bool you;
+  final int? missed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF3B2C86), Color(0xFF221852)],
+          ),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: accent.withValues(alpha: 0.9), width: 2.5),
+          boxShadow: [
+            if (active) BoxShadow(color: accent.withValues(alpha: 0.55), blurRadius: 14),
+            const BoxShadow(color: Color(0x88000000), blurRadius: 8, offset: Offset(0, 3)),
+          ],
+        ),
+        child: Row(
+          children: [
+            if (!you) ...[
+              Expanded(
+                child: Text(
+                  name.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: AppText.label(22, weight: FontWeight.w900),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            SizedBox(
+              width: 72,
+              height: 72,
+              child: AvatarSeat(
+                name: name,
+                avatar: avatar,
+                isCurrent: active,
+                isWinner: false,
+                clock: clock,
+                shotSeconds: shotSeconds,
+                size: 72,
+                nameSide: NameSide.hidden,
+                turnMisses: missed,
+              ),
+            ),
+            if (you) ...[
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  name.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.label(22, weight: FontWeight.w900),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact 8-ball group slots (or pocketed count for rotation games).
+class _PortraitBallRow extends StatelessWidget {
+  const _PortraitBallRow({
+    required this.controller,
+    required this.index,
+    required this.alignEnd,
+  });
 
   final PoolController controller;
   final int index;
-
-  /// Right-align (the panel left of the avatars).
   final bool alignEnd;
 
   @override
@@ -426,92 +654,41 @@ class _PlayerTray extends StatelessWidget {
     final game = c.state.game;
     final onTable = c.onTable;
     final List<Widget> balls;
-    final String label;
     if (game == PoolGame.eightBall) {
       final group = p.group;
       if (group == PoolGroup.none) {
-        label = 'OPEN TABLE';
-        balls = const [];
+        balls = List.generate(
+          7,
+          (_) => const _TrayBall(0, gone: true, empty: true),
+        );
       } else {
-        final mine = [for (var b = 1; b <= 15; b++) if (PoolRules.groupOf(b) == group) b];
-        final left = mine.where(onTable.contains).length;
-        label = left == 0 ? '${group.label} CLEARED - ON THE 8' : '${group.label}  $left LEFT';
-        balls = [
-          for (final b in mine) _TrayBall(b, gone: !onTable.contains(b)),
-          const SizedBox(width: 10),
-          _TrayBall(8, gone: !onTable.contains(8), ring: left == 0),
+        final mine = [
+          for (var b = 1; b <= 15; b++)
+            if (PoolRules.groupOf(b) == group) b,
         ];
+        balls = [for (final b in mine) _TrayBall(b, gone: !onTable.contains(b))];
       }
     } else {
-      label = 'POCKETED ${p.ballsPocketed}   FOULS ${p.fouls}'
-          '${game == PoolGame.nineBall ? '   IN A ROW ${p.consecutiveFouls}/3' : ''}';
-      balls = const [];
+      return Text(
+        'POCKETED ${p.ballsPocketed} · FOULS ${p.fouls}',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+        style: AppText.label(18, color: AppColors.textDim, weight: FontWeight.w700),
+      );
     }
-    final side = alignEnd ? Alignment.centerRight : Alignment.centerLeft;
-    return Column(
-      crossAxisAlignment: alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(p.name.toUpperCase(), maxLines: 1, style: AppText.label(19, weight: FontWeight.w900)),
-        const SizedBox(height: 2),
-        // Fixed size + ellipsis: the label must not resize (jump) as its text
-        // changes between "OPEN TABLE", "SOLIDS 5 LEFT", etc.
-        SizedBox(
-          width: double.infinity,
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: alignEnd ? TextAlign.right : TextAlign.left,
-            style: AppText.label(13, color: AppColors.textDim),
-          ),
-        ),
-        if (balls.isNotEmpty) ...[
-          const SizedBox(height: 3),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: side,
-            child: Row(mainAxisSize: MainAxisSize.min, children: balls),
-          ),
-        ],
-      ],
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: alignEnd ? Alignment.centerRight : Alignment.centerLeft,
+      child: Row(mainAxisSize: MainAxisSize.min, children: balls),
     );
   }
 }
 
-class _TrayBall extends StatelessWidget {
-  const _TrayBall(this.number, {required this.gone, this.ring = false});
+class _RailIconButton extends StatelessWidget {
+  const _RailIconButton({required this.icon, required this.onTap});
 
-  final int number;
-  final bool gone;
-  final bool ring;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(right: 3),
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: ring ? AppColors.gold : Colors.transparent, width: 3),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          BallIcon(number, size: 32, opacity: gone ? 0.3 : 1),
-          if (gone) const Icon(Icons.check_rounded, color: AppColors.active, size: 24),
-        ],
-      ),
-    );
-  }
-}
-
-bool _isEmoji(String s) => !RegExp(r'[A-Za-z]').hasMatch(s);
-
-/// Reference-style quick-chat button: a violet square with a speech bubble.
-class _ChatButton extends StatelessWidget {
-  const _ChatButton({required this.onTap});
-
+  final IconData icon;
   final VoidCallback onTap;
 
   @override
@@ -522,8 +699,138 @@ class _ChatButton extends StatelessWidget {
         onTap();
       },
       child: Container(
-        width: 84,
-        height: 84,
+        width: 78,
+        height: 78,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF5A63D8), Color(0xFF3B3FA8)],
+          ),
+          border: Border.all(color: const Color(0xFF8E96F0), width: 2),
+          boxShadow: const [BoxShadow(color: Color(0x99000000), blurRadius: 8, offset: Offset(0, 4))],
+        ),
+        child: Icon(icon, color: Colors.white, size: 38),
+      ),
+    );
+  }
+}
+
+/// Fine aim: drag left/right to nudge the cue angle.
+class _AimRuler extends StatelessWidget {
+  const _AimRuler({required this.onNudge});
+
+  final void Function(double radians)? onNudge;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragUpdate: onNudge == null
+          ? null
+          : (d) => onNudge!(d.delta.dx * 0.0045),
+      child: CustomPaint(
+        painter: _AimRulerPainter(enabled: onNudge != null),
+        child: const SizedBox.expand(),
+      ),
+    );
+  }
+}
+
+class _AimRulerPainter extends CustomPainter {
+  _AimRulerPainter({required this.enabled});
+
+  final bool enabled;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(12));
+    canvas.drawRRect(r, Paint()..color = const Color(0xCC1A1240));
+    canvas.drawRRect(
+      r,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = enabled ? const Color(0xFF8E96F0) : const Color(0x668E96F0),
+    );
+    final midY = size.height / 2;
+    final paint = Paint()
+      ..color = enabled ? Colors.white70 : Colors.white30
+      ..strokeWidth = 2;
+    for (var i = 0; i <= 24; i++) {
+      final x = size.width * (i / 24);
+      final tall = i % 4 == 0;
+      canvas.drawLine(
+        Offset(x, midY - (tall ? 18 : 10)),
+        Offset(x, midY + (tall ? 18 : 10)),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _AimRulerPainter old) => old.enabled != enabled;
+}
+
+class _TrayBall extends StatelessWidget {
+  const _TrayBall(
+    this.number, {
+    required this.gone,
+    this.empty = false,
+  });
+
+  final int number;
+  final bool gone;
+  final bool empty;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(right: 4),
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: empty ? const Color(0x44221852) : null,
+        border: Border.all(
+          color: empty ? const Color(0x668E96F0) : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      child: empty
+          ? null
+          : Stack(
+              alignment: Alignment.center,
+              children: [
+                BallIcon(number, size: 32, opacity: gone ? 0.3 : 1),
+                if (gone)
+                  const Icon(Icons.check_rounded, color: AppColors.active, size: 22),
+              ],
+            ),
+    );
+  }
+}
+
+bool _isEmoji(String s) => !RegExp(r'[A-Za-z]').hasMatch(s);
+
+/// Reference-style quick-chat button: a violet square with a speech bubble.
+class _ChatButton extends StatelessWidget {
+  const _ChatButton({required this.onTap, this.size = 84});
+
+  final VoidCallback onTap;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        AudioService.tap();
+        onTap();
+      },
+      child: Container(
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
               begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF5A63D8), Color(0xFF3B3FA8)]),
@@ -531,7 +838,7 @@ class _ChatButton extends StatelessWidget {
           border: Border.all(color: const Color(0xFF8E96F0), width: 2),
           boxShadow: const [BoxShadow(color: Color(0x99000000), blurRadius: 8, offset: Offset(0, 4))],
         ),
-        child: const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 44),
+        child: Icon(Icons.chat_bubble_rounded, color: Colors.white, size: size * 0.52),
       ),
     );
   }

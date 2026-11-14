@@ -394,8 +394,8 @@ class DesignCanvas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => OrientationLock(
-    // Match screens are landscape (pool tables; Ludo / Carrom until their
-    // portrait layouts land).
+    // Poker / legacy landscape match canvas. Pool / Ludo / Carrom use
+    // [PortraitGameCanvas] instead.
     orientation: AppOrientation.landscape,
     child: RoomBackground(
       child: SafeArea(
