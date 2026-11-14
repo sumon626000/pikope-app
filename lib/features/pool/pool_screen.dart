@@ -259,8 +259,10 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
             s.phase == PoolPhase.shooting ||
             s.phase == PoolPhase.pushOutChoice);
 
-    const topHud = 268.0;
+    // Compact clean HUD (ref: flat name bars + center coin pot + ball trays).
+    const topHud = 210.0;
     const bottomBar = 128.0;
+    const potW = 118.0;
     final rightColLeft = _canvasW - _rightColW - _sidePad;
     final tableAreaTop = topHud;
     final tableAreaBottom = height - bottomBar;
@@ -277,19 +279,22 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
 
     final me = c.viewerIndex;
     final opp = 1 - me;
+    final cardW = (_canvasW - _sidePad * 2 - potW - 28) / 2;
+    final potCoins =
+        widget.config.bet.staked ? widget.config.bet.prize : settings.coins;
 
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // ----- Top HUD: two player cards + pot -----
+        // ----- Top HUD: clean name bars + coin pot + ball trays -----
         Positioned(
           left: _sidePad,
-          top: 12,
-          width: (_canvasW - _sidePad * 2 - 140) / 2,
+          top: 14,
+          width: cardW,
           child: _PortraitSeatCard(
             name: c.players[me].name,
             avatar: c.players[me].avatar,
-            accent: const Color(0xFF2E8BE8),
+            accent: const Color(0xFF6EC8FF),
             active: live && s.turn == me,
             clock: c.clock,
             shotSeconds: c.config.shotSeconds,
@@ -299,12 +304,12 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
         ),
         Positioned(
           right: _sidePad,
-          top: 12,
-          width: (_canvasW - _sidePad * 2 - 140) / 2,
+          top: 14,
+          width: cardW,
           child: _PortraitSeatCard(
             name: c.players[opp].name,
             avatar: c.players[opp].avatar,
-            accent: const Color(0xFF9B5CF0),
+            accent: const Color(0xFFB59CFF),
             active: live && s.turn == opp,
             clock: c.clock,
             shotSeconds: c.config.shotSeconds,
@@ -312,38 +317,24 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
             you: false,
           ),
         ),
-        // PikoPe mark between the two seat cards (existing asset, no new art).
         Positioned(
-          left: (_canvasW - 200) / 2,
-          top: 2,
-          width: 200,
-          child: const IgnorePointer(
-            child: Center(child: DuelLogo(height: 40)),
-          ),
+          left: (_canvasW - potW) / 2,
+          top: 10,
+          width: potW,
+          child: IgnorePointer(child: _PortraitPot(coins: potCoins)),
         ),
-        Positioned(
-          left: (_canvasW - 120) / 2,
-          top: 44,
-          width: 120,
-          child: IgnorePointer(
-            child: widget.config.bet.staked
-                ? MatchPrizeTile(prize: widget.config.bet.prize)
-                : CoinsTile(coins: settings.coins, size: 100),
-          ),
-        ),
-        // Ball trays under the cards
         Positioned(
           left: _sidePad,
-          top: 168,
-          width: (_canvasW - _sidePad * 2 - 24) / 2,
+          top: 96,
+          width: cardW,
           child: IgnorePointer(
             child: _PortraitBallRow(controller: c, index: me, alignEnd: false),
           ),
         ),
         Positioned(
           right: _sidePad,
-          top: 168,
-          width: (_canvasW - _sidePad * 2 - 24) / 2,
+          top: 96,
+          width: cardW,
           child: IgnorePointer(
             child: _PortraitBallRow(controller: c, index: opp, alignEnd: true),
           ),
@@ -351,8 +342,8 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
         Positioned(
           left: _sidePad,
           right: _sidePad + _rightColW + 8,
-          top: 228,
-          height: 36,
+          top: 152,
+          height: 40,
           child: IgnorePointer(
             child: Center(
               child: Text(
@@ -360,7 +351,11 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: AppText.label(22, color: DesignGameplay.hintActive, weight: FontWeight.w800),
+                style: AppText.label(
+                  24,
+                  color: const Color(0xFFFFE27A),
+                  weight: FontWeight.w900,
+                ),
               ),
             ),
           ),
@@ -606,6 +601,7 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
   }
 }
 
+/// Flat name bar + small avatar (clean ref layout; existing avatars/clock).
 class _PortraitSeatCard extends StatelessWidget {
   const _PortraitSeatCard({
     required this.name,
@@ -629,64 +625,93 @@ class _PortraitSeatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final avatar = SizedBox(
+      width: 52,
+      height: 52,
+      child: AvatarSeat(
+        name: name,
+        avatar: this.avatar,
+        isCurrent: active,
+        isWinner: false,
+        clock: clock,
+        shotSeconds: shotSeconds,
+        size: 52,
+        nameSide: NameSide.hidden,
+        turnMisses: missed,
+      ),
+    );
+    final label = Expanded(
+      child: Text(
+        name.toUpperCase(),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: you ? TextAlign.left : TextAlign.right,
+        style: AppText.label(24, weight: FontWeight.w900, color: Colors.white),
+      ),
+    );
     return IgnorePointer(
       child: Container(
-        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+        height: 70,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF3B2C86), Color(0xFF221852)],
-          ),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: accent.withValues(alpha: 0.9), width: 2.5),
-          boxShadow: [
-            if (active) BoxShadow(color: accent.withValues(alpha: 0.55), blurRadius: 14),
-            const BoxShadow(color: Color(0x88000000), blurRadius: 8, offset: Offset(0, 3)),
-          ],
+          color: const Color(0xE61A1240),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: accent, width: 2),
+          boxShadow: active
+              ? [BoxShadow(color: accent.withValues(alpha: 0.35), blurRadius: 10)]
+              : const [
+                  BoxShadow(
+                    color: Color(0x66000000),
+                    blurRadius: 6,
+                    offset: Offset(0, 2),
+                  ),
+                ],
         ),
         child: Row(
-          children: [
-            if (!you) ...[
-              Expanded(
-                child: Text(
-                  name.toUpperCase(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.right,
-                  style: AppText.label(22, weight: FontWeight.w900),
-                ),
-              ),
-              const SizedBox(width: 8),
-            ],
-            SizedBox(
-              width: 72,
-              height: 72,
-              child: AvatarSeat(
-                name: name,
-                avatar: avatar,
-                isCurrent: active,
-                isWinner: false,
-                clock: clock,
-                shotSeconds: shotSeconds,
-                size: 72,
-                nameSide: NameSide.hidden,
-                turnMisses: missed,
-              ),
-            ),
-            if (you) ...[
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  name.toUpperCase(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppText.label(22, weight: FontWeight.w900),
-                ),
-              ),
-            ],
-          ],
+          children: you
+              ? [avatar, const SizedBox(width: 10), label]
+              : [label, const SizedBox(width: 10), avatar],
         ),
+      ),
+    );
+  }
+}
+
+/// Compact center pot — existing Pico coin art only.
+class _PortraitPot extends StatelessWidget {
+  const _PortraitPot({required this.coins});
+
+  final int coins;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 78,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xE61A1240),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF8E96F0), width: 2),
+        boxShadow: const [
+          BoxShadow(color: Color(0x66000000), blurRadius: 6, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Image.asset(
+            PicoCoin.asset,
+            height: 34,
+            filterQuality: FilterQuality.medium,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            formatCoins(coins),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppText.label(22, color: AppColors.gold, weight: FontWeight.w900),
+          ),
+        ],
       ),
     );
   }
