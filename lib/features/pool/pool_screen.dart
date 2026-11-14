@@ -10,6 +10,7 @@ import '../../core/app_theme.dart';
 import '../../core/design/design.dart';
 import '../../core/design/pool_city.dart';
 import '../../core/duel_ui.dart';
+import '../../core/orientation.dart';
 import '../../core/widgets.dart';
 import '../../data/demo_data.dart';
 import '../../game/pool/pool_rules.dart';
@@ -184,10 +185,13 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
       },
       child: Scaffold(
         backgroundColor: const Color(0xFF140B2E),
-        body: ColoredBox(
-          color: const Color(0xFF140B2E),
-          child: PortraitGameCanvas(
-            builder: (context, height) => _portraitTable(context, height, settings),
+        body: OrientationLock(
+          orientation: AppOrientation.portrait,
+          child: ColoredBox(
+            color: const Color(0xFF140B2E),
+            child: PortraitGameCanvas(
+              builder: (context, height) => _portraitTable(context, height, settings),
+            ),
           ),
         ),
       ),
@@ -306,6 +310,8 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
         ),
 
         // ----- Table (rotated 90° so long axis is vertical) -----
+        // TableView uses LayoutBuilder for live size; RotatedBox remaps hits.
+        // HUD chrome above/beside uses IgnorePointer so it cannot steal aim/pan.
         Positioned(
           left: tableLeft - 10,
           top: tableTop - 10,
@@ -387,7 +393,7 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
           child: Column(
             children: [
               _RailIconButton(
-                icon: Icons.pause_rounded,
+                icon: Icons.close_rounded,
                 onTap: () => setState(() => _paused = true),
               ),
               const SizedBox(height: 14),
@@ -409,8 +415,8 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
                 child: FittedBox(child: SpinControl(controller: c)),
               ),
               const SizedBox(height: 14),
-              _ChatButton(
-                size: 78,
+              _RailIconButton(
+                icon: Icons.chat_bubble_rounded,
                 onTap: () => setState(() => _chatOpen = !_chatOpen),
               ),
               if (c.canPushOut) ...[
@@ -813,36 +819,6 @@ class _TrayBall extends StatelessWidget {
 }
 
 bool _isEmoji(String s) => !RegExp(r'[A-Za-z]').hasMatch(s);
-
-/// Reference-style quick-chat button: a violet square with a speech bubble.
-class _ChatButton extends StatelessWidget {
-  const _ChatButton({required this.onTap, this.size = 84});
-
-  final VoidCallback onTap;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        AudioService.tap();
-        onTap();
-      },
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-              begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF5A63D8), Color(0xFF3B3FA8)]),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF8E96F0), width: 2),
-          boxShadow: const [BoxShadow(color: Color(0x99000000), blurRadius: 8, offset: Offset(0, 4))],
-        ),
-        child: Icon(Icons.chat_bubble_rounded, color: Colors.white, size: size * 0.52),
-      ),
-    );
-  }
-}
 
 /// The emoji / phrase picker that drops from the chat button.
 class _ChatPanel extends StatelessWidget {

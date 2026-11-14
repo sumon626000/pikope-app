@@ -17,7 +17,27 @@ Verification levels: L1 analyze | L2 test | L3 multi-size | L4 device | L5 web r
 | Design primitives (P-xx) | **11 / 11** |
 | Overall UI overhaul | **~88%** (see `FINAL_REPORT.md`) |
 
-**Reports:** `AUDIT_REPORT.md` · `RESPONSIVE_REPORT.md` · `FINAL_REPORT.md`
+**Reports:** `AUDIT_REPORT.md` · `RESPONSIVE_REPORT.md` · `FINAL_REPORT.md` · **`WEBSITE_COMPLETE_AUDIT.md`** · **`APK_COMPLETE_AUDIT.md`** (2026-11-14)
+
+### Website audit addendum (2026-11-14)
+
+| Item | Status |
+|------|--------|
+| Desktop phone column + dialog caps | Live verified on home |
+| Gem wallet chip | Hidden (`HomeWalletBar.showGems`) |
+| Practice chooser 1-line | Shipped |
+| Remaining CRITICAL | Shop manual bottom sheet |
+| Website readiness (honest) | ~85% lobby; ~78% with Pool+pay QA |
+
+### APK audit addendum (2026-11-14)
+
+| Item | Status |
+|------|--------|
+| Shared Dart UI vs web | ~92–95% (gems/practice/dialogs same) |
+| End-to-end product parity | ~75% |
+| **APK CI** | Gradle wrapper at 9.5.0 (was 9.1.0); verify latest deploy run |
+| Landing APK vs live web | Re-check after Pool portrait APK+web deploys |
+| Next for “web = APK” | Confirm APK CI green; then `resumeActiveOnlineMatch` on APK |
 
 ---
 
@@ -45,7 +65,7 @@ Verification levels: L1 analyze | L2 test | L3 multi-size | L4 device | L5 web r
 | S-36 | ChallengeScreen | Redesigned | L1 | `DuelPage` |
 | S-37 | ChallengeGamePickScreen | Redesigned | L1 | |
 | S-38 | ChallengeWaitScreen | Redesigned | L1 | |
-| S-40 | PoolScreen | Redesigned | L1 | |
+| S-40 | PoolScreen | Redesigned | L1 | Portrait (Ludo/Carrom canvas); PikoPe assets kept |
 | S-41 | LudoScreen | Redesigned | L1 | |
 | S-42 | CarromScreen | Redesigned | L1 | |
 | S-43 | GameScreen (legacy) | Deferred | — | |

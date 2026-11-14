@@ -225,7 +225,10 @@ void main() {
   }, skip: true);
 
   testWidgets('8-ball: the 8 cannot be shot until a pocket is called by tapping it', (tester) async {
-    await useLandscape(tester);
+    // Portrait Pool canvas (same as production).
+    await tester.binding.setSurfaceSize(const Size(1080, 1920));
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     const config = PoolMatchConfig(game: PoolGame.eightBall, seed: 5, seats: [
       SeatConfig(name: 'YOU', avatar: 'asset:avatar_1'),
       SeatConfig(name: 'PAL', avatar: 'asset:avatar_2'),
@@ -250,9 +253,11 @@ void main() {
     expect(c.onEight, isTrue);
     expect(c.canShoot, isFalse);
 
+    // TableView sits in a RotatedBox — map local → global via the render box.
     final table = find.byType(TableView);
-    final projection = TableProjection(tester.getSize(table), c.viewRotated);
-    await tester.tapAt(tester.getTopLeft(table) + projection.toLocal(TableGeometry.pockets[2].aim));
+    final box = tester.renderObject(table) as RenderBox;
+    final projection = TableProjection(box.size, c.viewRotated);
+    await tester.tapAt(box.localToGlobal(projection.toLocal(TableGeometry.pockets[2].aim)));
     await tester.pump();
     expect(c.state.calledPocket, 2);
     expect(c.canShoot, isTrue);

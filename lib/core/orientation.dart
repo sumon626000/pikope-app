@@ -17,8 +17,8 @@ final routeObserver = RouteObserver<PageRoute<dynamic>>();
 /// Applies orientations and remembers the last request, so a route that
 /// hands over to another portrait route does not flip through landscape.
 abstract final class AppOrientationController {
-  /// Portrait, like the reference app; the pool tables (and any page still
-  /// on the 1600×900 canvas) lock landscape while they are on top.
+  /// Portrait, like the reference app; legacy 1600×900 / 1950×900 canvases
+  /// (poker) lock landscape while they are on top. Pool uses portrait.
   static const defaultOrientation = AppOrientation.portrait;
 
   static AppOrientation _desired = defaultOrientation;
