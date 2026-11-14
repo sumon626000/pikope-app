@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_state.dart';
 import '../../core/audio_service.dart';
 import '../../core/app_theme.dart';
-import '../../core/design/design.dart';
 import '../../core/design/pool_city.dart';
 import '../../core/duel_ui.dart';
 import '../../core/orientation.dart';
@@ -259,10 +258,10 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
             s.phase == PoolPhase.shooting ||
             s.phase == PoolPhase.pushOutChoice);
 
-    // Compact clean HUD (ref: flat name bars + center coin pot + ball trays).
-    const topHud = 210.0;
+    // Compact clean HUD (ref: flat neon name bars + coin pot + ball trays).
+    const topHud = 200.0;
     const bottomBar = 128.0;
-    const potW = 118.0;
+    const potW = 108.0;
     final rightColLeft = _canvasW - _rightColW - _sidePad;
     final tableAreaTop = topHud;
     final tableAreaBottom = height - bottomBar;
@@ -325,7 +324,7 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
         ),
         Positioned(
           left: _sidePad,
-          top: 96,
+          top: 88,
           width: cardW,
           child: IgnorePointer(
             child: _PortraitBallRow(controller: c, index: me, alignEnd: false),
@@ -333,7 +332,7 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
         ),
         Positioned(
           right: _sidePad,
-          top: 96,
+          top: 88,
           width: cardW,
           child: IgnorePointer(
             child: _PortraitBallRow(controller: c, index: opp, alignEnd: true),
@@ -342,8 +341,8 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
         Positioned(
           left: _sidePad,
           right: _sidePad + _rightColW + 8,
-          top: 152,
-          height: 40,
+          top: 140,
+          height: 44,
           child: IgnorePointer(
             child: Center(
               child: Text(
@@ -352,7 +351,7 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: AppText.label(
-                  24,
+                  22,
                   color: const Color(0xFFFFE27A),
                   weight: FontWeight.w900,
                 ),
@@ -601,7 +600,7 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
   }
 }
 
-/// Flat name bar + small avatar (clean ref layout; existing avatars/clock).
+/// Flat neon name bar + small avatar (clean ref; existing avatars/clock).
 class _PortraitSeatCard extends StatelessWidget {
   const _PortraitSeatCard({
     required this.name,
@@ -625,17 +624,17 @@ class _PortraitSeatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final avatar = SizedBox(
-      width: 52,
-      height: 52,
+    final avatarChip = SizedBox(
+      width: 48,
+      height: 48,
       child: AvatarSeat(
         name: name,
-        avatar: this.avatar,
+        avatar: avatar,
         isCurrent: active,
         isWinner: false,
         clock: clock,
         shotSeconds: shotSeconds,
-        size: 52,
+        size: 48,
         nameSide: NameSide.hidden,
         turnMisses: missed,
       ),
@@ -646,38 +645,41 @@ class _PortraitSeatCard extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         textAlign: you ? TextAlign.left : TextAlign.right,
-        style: AppText.label(24, weight: FontWeight.w900, color: Colors.white),
+        style: AppText.label(22, weight: FontWeight.w800, color: Colors.white),
       ),
     );
     return IgnorePointer(
       child: Container(
-        height: 70,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        height: 64,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: const Color(0xE61A1240),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: accent, width: 2),
-          boxShadow: active
-              ? [BoxShadow(color: accent.withValues(alpha: 0.35), blurRadius: 10)]
-              : const [
-                  BoxShadow(
-                    color: Color(0x66000000),
-                    blurRadius: 6,
-                    offset: Offset(0, 2),
-                  ),
-                ],
+          color: const Color(0xF0140E32),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: accent.withValues(alpha: 0.95), width: 1.8),
+          boxShadow: [
+            BoxShadow(
+              color: accent.withValues(alpha: active ? 0.55 : 0.28),
+              blurRadius: active ? 14 : 8,
+              spreadRadius: active ? 1 : 0,
+            ),
+            const BoxShadow(
+              color: Color(0x66000000),
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           children: you
-              ? [avatar, const SizedBox(width: 10), label]
-              : [label, const SizedBox(width: 10), avatar],
+              ? [avatarChip, const SizedBox(width: 10), label]
+              : [label, const SizedBox(width: 10), avatarChip],
         ),
       ),
     );
   }
 }
 
-/// Compact center pot — existing Pico coin art only.
+/// Compact center pot — existing Piko coin art only.
 class _PortraitPot extends StatelessWidget {
   const _PortraitPot({required this.coins});
 
@@ -686,30 +688,35 @@ class _PortraitPot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 78,
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      height: 72,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xE61A1240),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF8E96F0), width: 2),
+        color: const Color(0xF0140E32),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF9AA3F5), width: 1.8),
         boxShadow: const [
-          BoxShadow(color: Color(0x66000000), blurRadius: 6, offset: Offset(0, 2)),
+          BoxShadow(
+            color: Color(0x669AA3F5),
+            blurRadius: 10,
+            spreadRadius: 0,
+          ),
+          BoxShadow(
+            color: Color(0x66000000),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset(
-            PicoCoin.asset,
-            height: 34,
-            filterQuality: FilterQuality.medium,
-          ),
+          const PikoCoinIcon(size: 30),
           const SizedBox(height: 2),
           Text(
             formatCoins(coins),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppText.label(22, color: AppColors.gold, weight: FontWeight.w900),
+            style: AppText.label(20, color: AppColors.gold, weight: FontWeight.w900),
           ),
         ],
       ),
@@ -815,15 +822,15 @@ class _TrayBall extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(right: 4),
-      width: 36,
-      height: 36,
+      margin: const EdgeInsets.only(right: 3),
+      width: 34,
+      height: 34,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: empty ? const Color(0x44221852) : null,
         border: Border.all(
           color: empty ? const Color(0x668E96F0) : Colors.transparent,
-          width: 2,
+          width: 1.5,
         ),
       ),
       child: empty
@@ -831,9 +838,9 @@ class _TrayBall extends StatelessWidget {
           : Stack(
               alignment: Alignment.center,
               children: [
-                BallIcon(number, size: 32, opacity: gone ? 0.3 : 1),
+                BallIcon(number, size: 30, opacity: gone ? 0.28 : 1),
                 if (gone)
-                  const Icon(Icons.check_rounded, color: AppColors.active, size: 22),
+                  const Icon(Icons.check_rounded, color: Color(0xFF3DFF8A), size: 20),
               ],
             ),
     );
