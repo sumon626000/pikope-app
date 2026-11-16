@@ -498,17 +498,7 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen>
                             ],
                             label: t.playPool,
                             artInsets: const EdgeInsets.fromLTRB(26, 4, 70, 96),
-                            art: const Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                Positioned.fill(child: RackArt()),
-                                Positioned(
-                                  right: -50,
-                                  bottom: -56,
-                                  child: TapHandHint(size: 170),
-                                ),
-                              ],
-                            ),
+                            art: const RackArt(),
                             onTap: () => _open(const PoolHubScreen()),
                           ),
                           HeroTile(
