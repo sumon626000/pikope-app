@@ -488,7 +488,11 @@ class _ObjectiveChip extends StatelessWidget {
 // ------------------------------------------------------------- controls
 
 class PowerBar extends StatelessWidget {
-  const PowerBar({super.key, required this.controller, this.compact = false});
+  const PowerBar({
+    super.key,
+    required this.controller,
+    this.compact = false,
+  });
 
   final ShotTable controller;
 
@@ -507,8 +511,13 @@ class PowerBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = controller;
     final pad = compact ? compactTouchPad : touchPad;
-    void set(Offset local) =>
-        c.setPower((local.dy - pad.top - 30) / (size.height - 60));
+    // Tip at the top of the gauge; drag toward the bottom to charge, release to shoot.
+    void set(Offset local) {
+      final track = size.height - 60;
+      if (track <= 0) return;
+      final t = ((local.dy - pad.top - 30) / track).clamp(0.0, 1.0);
+      c.setPower(t);
+    }
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onVerticalDragStart: (d) => set(d.localPosition),
@@ -517,7 +526,12 @@ class PowerBar extends StatelessWidget {
       onVerticalDragCancel: c.releaseShot,
       child: Padding(
         padding: pad,
-        child: RepaintBoundary(child: CustomPaint(size: size, painter: _PowerBarPainter(c))),
+        child: RepaintBoundary(
+          child: CustomPaint(
+            size: size,
+            painter: _PowerBarPainter(c),
+          ),
+        ),
       ),
     );
   }
@@ -561,7 +575,7 @@ class _PowerBarPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final outer = RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(14));
     if (c.canShoot && c.power == 0) {
-      // Breathing gold halo: "this is what you pull".
+      // Breathing gold halo: pull starts at the tip (top).
       final pulse = 0.5 + 0.5 * sin(c.frame.value / 11);
       canvas.drawRRect(
         outer.inflate(3 + pulse * 4),
@@ -599,6 +613,7 @@ class _PowerBarPainter extends CustomPainter {
     }
     final power = c.power;
     if (power > 0) {
+      // Charge grows from the tip (top) downward as the player pulls down.
       final h = (size.height - 10) * power;
       canvas.drawRect(
         Rect.fromLTWH(5, 5, size.width - 10, h),
@@ -610,14 +625,14 @@ class _PowerBarPainter extends CustomPainter {
           ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
       );
     }
-    // The cue slides down as power builds.
-    final top = 14 + (size.height - 60) * power;
+    // Cue tip at the top; slides down as power builds.
+    final tip = 14 + (size.height - 60) * power;
     final cx = size.width / 2;
     final cue = Path()
-      ..moveTo(cx - 3, top + 8)
-      ..lineTo(cx + 3, top + 8)
-      ..lineTo(cx + 8, top + size.height - 30)
-      ..lineTo(cx - 8, top + size.height - 30)
+      ..moveTo(cx - 3, tip + 8)
+      ..lineTo(cx + 3, tip + 8)
+      ..lineTo(cx + 8, tip + size.height - 30)
+      ..lineTo(cx - 8, tip + size.height - 30)
       ..close();
     canvas.drawPath(
       cue,
@@ -627,7 +642,7 @@ class _PowerBarPainter extends CustomPainter {
         ).createShader(Rect.fromLTWH(cx - 8, 0, 16, size.height)),
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(cx - 3.5, top, 7, 9), const Radius.circular(3)),
+      RRect.fromRectAndRadius(Rect.fromLTWH(cx - 3.5, tip, 7, 9), const Radius.circular(3)),
       Paint()..color = const Color(0xFFE8E8EE),
     );
     canvas.restore();

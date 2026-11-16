@@ -474,25 +474,22 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
           ),
         ),
 
-        // ----- Bottom: menu + original PowerBar (no aim-ruler) -----
+        // ----- Bottom: menu; power stands upright — pull tip (top) → down -----
         Positioned(
           left: _sidePad,
           bottom: 28,
           child: MenuTile(onTap: () => setState(() => _paused = true), size: 78),
         ),
         Positioned(
-          left: _sidePad + 96,
-          right: _sidePad,
+          // Upright gauge left of the spin/chat column: tip at top, pull down.
+          right: _sidePad + _rightColW + 4,
           bottom: 18,
-          height: 96,
+          width: 72,
+          height: 220,
           child: FittedBox(
             fit: BoxFit.contain,
-            alignment: Alignment.center,
-            child: RotatedBox(
-              // Child vertical axis → visual left→right; same pull-to-shoot.
-              quarterTurns: 3,
-              child: PowerBar(controller: c, compact: true),
-            ),
+            alignment: Alignment.bottomCenter,
+            child: PowerBar(controller: c, compact: true),
           ),
         ),
         if (s.game.isRotation)
