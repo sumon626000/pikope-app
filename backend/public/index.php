@@ -12,4 +12,5 @@ if (PHP_SAPI === 'cli-server') {
 
 require dirname(__DIR__) . '/src/bootstrap.php';
 
+// Touch this file on deploy so Hostinger/OPcache picks up src/ changes.
 App\Api::handle();

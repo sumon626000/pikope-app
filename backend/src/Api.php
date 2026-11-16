@@ -56,7 +56,16 @@ final class Api
     {
         $m = [];
         return match (true) {
-            $method === 'GET' && $path === '/health' => ['ok' => true, 'time' => GameService::nowMs()],
+            $method === 'GET' && $path === '/health' => [
+                'ok' => true,
+                'time' => GameService::nowMs(),
+                // Deploy fingerprint — bump when verifying Hostinger sync.
+                'build' => '2026-11-17-pay-routes',
+                'routes' => [
+                    'zinipayReturn' => true,
+                    'nowpaymentsReturn' => true,
+                ],
+            ],
             // Where the app finds the WebSocket server; null means it polls instead.
             $method === 'GET' && $path === '/app/update' => AppUpdate::published(),
             $method === 'GET' && $path === '/landing/public' => self::landingPublic(),

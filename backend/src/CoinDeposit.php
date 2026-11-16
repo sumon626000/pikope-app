@@ -64,6 +64,7 @@ final class CoinDeposit
             'updatedAt' => '',
             'followMarket' => true,
         ];
+        // Lobby deposit flags (includes cryptoEnabled when NOWPayments is present).
         return [
             'enabled' => (bool) $c['enabled'],
             'manualEnabled' => (bool) $c['enabled'],
@@ -334,6 +335,7 @@ final class CoinDeposit
     /** @param array<string,mixed> $raw */
     private static function normalize(array $raw): array
     {
+        // Lobby deposit flags (includes cryptoEnabled when NOWPayments is present).
         return [
             'enabled' => (bool) ($raw['enabled'] ?? true),
             'minBdt' => max(10, min(1_000_000, (int) ($raw['minBdt'] ?? 100))),
