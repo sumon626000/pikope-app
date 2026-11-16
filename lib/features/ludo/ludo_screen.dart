@@ -195,14 +195,18 @@ class _LudoScreenState extends ConsumerState<LudoScreen>
           width: _boardSize,
           height: _boardSize,
           child: RepaintBoundary(
-            child: _Board(
-              controller: _c,
-              theme: ludoThemeOf(settings.ludoBoard),
-              onTapToken: _c.moveToken,
+            child: Transform.rotate(
+              // Hit-tests are inverse-transformed automatically — taps stay correct.
+              angle: _c.viewRot * pi / 2,
+              child: _Board(
+                controller: _c,
+                theme: ludoThemeOf(settings.ludoBoard),
+                onTapToken: _c.moveToken,
+              ),
             ),
           ),
         ),
-        // Player cards above / below the board corners (dice sits in the active card).
+        // Player cards: local colour always on the bottom edge (dice “nice”).
         ..._seatPanels(boardTop, boardBottom),
         // Chat bubble between the two bottom cards.
         Positioned(
@@ -309,42 +313,53 @@ class _LudoScreenState extends ConsumerState<LudoScreen>
     final session = ref.watch(sessionProvider);
     final myCoins = ref.watch(settingsProvider).coins;
     const w = _SeatPanel.width * _seatScale;
+    final rot = _c.viewRot;
     return [
       for (var seat = 0; seat < state.seats; seat++)
         Builder(
           builder: (context) {
             final p = state.players[seat];
-            final top = p.colour == 1 || p.colour == 2;
-            final mirror = p.colour == 2 || p.colour == 3;
-            final you =
-                _c.online && seat == _c.mySeat || (!_c.online && seat == 0);
+            // 0 bottom, 1 left, 2 top, 3 right — after view rotation.
+            final side = (p.colour + rot) % 4;
+            final top = side == 2;
+            final mirror = side == 2 || side == 3;
+            final you = seat == _c.viewSeat;
             final active = _c.diceSeat == seat && !_c.over;
-            final h = (_SeatPanel._h + (you ? _SeatPanel._coinsH : 0)) * _seatScale;
+            final h =
+                (_SeatPanel._h + (you ? _SeatPanel._coinsH : 0)) * _seatScale;
+            final left = (side == 1 || side == 0)
+                ? 30.0
+                : PortraitGameCanvas.width - 30 - w;
+            final panelTop = switch (side) {
+              2 => boardTop - 24 - h,
+              0 => boardBottom + 24,
+              _ => boardTop + (_boardSize - h) / 2,
+            };
             return Positioned(
-              left: mirror ? PortraitGameCanvas.width - 30 - w : 30,
-              top: top ? boardTop - 24 - h : boardBottom + 24,
+              left: left,
+              top: panelTop,
               width: w,
               height: h,
               child: FittedBox(
                 child: _SeatPanel(
-                name: p.name,
-                avatar: p.avatar,
-                colour: LudoBoard.colours[p.colour],
-                active: active,
-                out: p.out,
-                you: you,
-                coins: you ? myCoins : null,
-                level: you ? session.level : null,
-                top: top,
-                mirror: mirror,
-                face: _c.diceFace,
-                rolling: active && _c.diceRolling,
-                canRoll: active && _c.canRoll,
-                onRoll: _c.roll,
-                missed: p.missed,
-                clock: _c.clock,
-                turnLeft: active && _c.online ? () => _c.turnLeft : null,
-                chat: _c.chatTextOf(seat),
+                  name: p.name,
+                  avatar: p.avatar,
+                  colour: LudoBoard.colours[p.colour],
+                  active: active,
+                  out: p.out,
+                  you: you,
+                  coins: you ? myCoins : null,
+                  level: you ? session.level : null,
+                  top: top,
+                  mirror: mirror,
+                  face: _c.diceFace,
+                  rolling: active && _c.diceRolling,
+                  canRoll: active && _c.canRoll,
+                  onRoll: _c.roll,
+                  missed: p.missed,
+                  clock: _c.clock,
+                  turnLeft: active && _c.online ? () => _c.turnLeft : null,
+                  chat: _c.chatTextOf(seat),
                 ),
               ),
             );

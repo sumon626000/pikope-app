@@ -75,6 +75,28 @@ class LudoController extends ChangeNotifier {
   int get activeSeat => _state?.turn ?? 0;
   int _mySeat = 0;
 
+  /// Whose colour sits at the bottom of the portrait table (dice near the
+  /// bottom edge). Online: this client. Pass & play: the human whose turn
+  /// it is. Solo vs bots: seat 0.
+  int get viewSeat {
+    if (online) return _mySeat;
+    final s = _state;
+    if (s != null &&
+        config.humanSeats > 1 &&
+        s.turn < s.players.length &&
+        !s.players[s.turn].isBot) {
+      return s.turn;
+    }
+    return 0;
+  }
+
+  /// 90° CCW steps applied to the board so [viewSeat]'s colour yard is bottom.
+  int get viewRot {
+    final s = _state;
+    if (s == null || viewSeat >= s.players.length) return 0;
+    return (4 - s.players[viewSeat].colour) % 4;
+  }
+
   LudoState? _state;
   LudoState? get state => _state;
 
