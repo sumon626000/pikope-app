@@ -245,8 +245,8 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
     );
   }
 
-  /// Portrait stack: top seats + pot + ball slots, rotated table, right rail,
-  /// bottom menu + aim ruler. Keeps existing PikoPe table/ball/cue assets.
+  /// Portrait stack: top seats + pot + ball slots, rotated table, right rail
+  /// (spin/chat), bottom menu + power. Keeps existing PikoPe assets.
   Widget _portraitTable(BuildContext context, double height, AppSettings settings) {
     final t = ref.watch(stringsProvider);
     final c = _c;
@@ -435,8 +435,7 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
             ),
           ),
 
-        // ----- Right column: only existing controls (spin + chat + power) -----
-        // Do not add pause/cues here — menu stays the original MenuTile.
+        // ----- Right column: spin + chat only (power lives at the bottom) -----
         Positioned(
           left: rightColLeft,
           top: tableTop,
@@ -459,15 +458,6 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
                 ),
               ],
               const Spacer(),
-              SizedBox(
-                width: _rightColW,
-                height: 420,
-                child: FittedBox(
-                  fit: BoxFit.contain,
-                  alignment: Alignment.bottomCenter,
-                  child: PowerBar(controller: c, compact: true),
-                ),
-              ),
             ],
           ),
         ),
@@ -484,19 +474,27 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
           ),
         ),
 
-        // ----- Bottom: original menu only (no extra aim-ruler chrome) -----
+        // ----- Bottom: menu + original PowerBar (no aim-ruler) -----
         Positioned(
           left: _sidePad,
           bottom: 28,
           child: MenuTile(onTap: () => setState(() => _paused = true), size: 78),
         ),
-        if (c.canShoot)
-          Positioned(
-            left: rightColLeft - 8,
-            bottom: bottomBar + 8,
-            width: _rightColW + 16,
-            child: const IgnorePointer(child: ShootHint()),
+        Positioned(
+          left: _sidePad + 96,
+          right: _sidePad,
+          bottom: 18,
+          height: 96,
+          child: FittedBox(
+            fit: BoxFit.contain,
+            alignment: Alignment.center,
+            child: RotatedBox(
+              // Child vertical axis → visual left→right; same pull-to-shoot.
+              quarterTurns: 3,
+              child: PowerBar(controller: c, compact: true),
+            ),
           ),
+        ),
         if (s.game.isRotation)
           Positioned(
             left: _sidePad,
