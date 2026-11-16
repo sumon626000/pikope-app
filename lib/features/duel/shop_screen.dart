@@ -540,7 +540,15 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                 ),
               ),
             ),
-          Expanded(child: _shopBody(context, lobby, t, data, phone: false)),
+          Expanded(
+            child: _shopBody(
+              context,
+              lobby,
+              t,
+              data,
+              phone: DesignBreakpoints.phoneLike(context),
+            ),
+          ),
         ],
       ),
     );

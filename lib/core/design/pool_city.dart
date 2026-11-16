@@ -1359,6 +1359,10 @@ Future<void> showPcMessage(
 /// Hosts content that was laid out in phone logical pixels (the shop tabs,
 /// the settings cards) on the 1080 canvas: the child gets a phone-sized box
 /// and is magnified to fill the width.
+///
+/// Also overrides [MediaQuery.size] to that phone box so [DesignBreakpoints.phoneLike]
+/// and compact shop/settings layouts match APK on wide desktop / web (otherwise
+/// tabs pick desktop fonts then get magnified again and look huge).
 class PcLegacyScale extends StatelessWidget {
   const PcLegacyScale({super.key, required this.child, this.factor = 2.5});
 
@@ -1367,18 +1371,31 @@ class PcLegacyScale extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, c) => SizedBox(
-      width: c.maxWidth,
-      child: FittedBox(
-        fit: BoxFit.fitWidth,
-        alignment: Alignment.topCenter,
-        child: SizedBox(
-          width: c.maxWidth / factor,
-          height: c.hasBoundedHeight ? c.maxHeight / factor : null,
-          child: child,
+    builder: (context, c) {
+      final logicalW = c.maxWidth / factor;
+      final logicalH =
+          c.hasBoundedHeight ? c.maxHeight / factor : null;
+      final mq = MediaQuery.of(context);
+      final logicalSize = Size(
+        logicalW,
+        logicalH ?? (mq.size.height / factor),
+      );
+      return SizedBox(
+        width: c.maxWidth,
+        child: FittedBox(
+          fit: BoxFit.fitWidth,
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            width: logicalW,
+            height: logicalH,
+            child: MediaQuery(
+              data: mq.copyWith(size: logicalSize),
+              child: child,
+            ),
+          ),
         ),
-      ),
-    ),
+      );
+    },
   );
 }
 
