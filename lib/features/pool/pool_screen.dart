@@ -25,6 +25,8 @@ import '../online/online_screens.dart';
 import '../online/session.dart';
 import '../../l10n/strings.dart';
 import '../duel/match_overlays.dart';
+import '../game/match_chat_dialog.dart';
+import 'pool_chat.dart';
 import 'pool_controller.dart';
 
 /// Match screen for 9-Ball, 8-Ball and 10-Ball (two players).
@@ -53,25 +55,10 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
   bool _resultBooked = false;
   int? _reward;
 
-  // Quick-chat: picker + bubbles over me / opponent (cleared after a few seconds).
-  bool _chatOpen = false;
+  // Quick-chat bubbles over me / opponent (cleared after a few seconds).
   String? _emoteMe;
   String? _emoteOpp;
   Timer? _emoteTimer;
-
-  /// Preset quick-chat tokens (emoji or short phrase).
-  static const _quickChat = [
-    '👍',
-    '😂',
-    '😮',
-    '🎯',
-    '🔥',
-    '😎',
-    'Nice shot!',
-    'Good luck',
-    'Oops!',
-    'Well played',
-  ];
 
   void _flashEmote({required bool mine, required String text}) {
     final msg = text.trim();
@@ -79,7 +66,6 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
     _emoteTimer?.cancel();
     if (!mounted) return;
     setState(() {
-      _chatOpen = false;
       if (mine) {
         _emoteMe = msg;
       } else {
@@ -98,18 +84,27 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
     });
   }
 
-  void _sendEmote(String e) {
-    AudioService.tap();
-    _flashEmote(mine: true, text: e);
-    // Relay over the live chat channel (not a game action).
-    final i = _quickChat.indexOf(e);
-    final driver = widget.driver;
-    if (driver == null) return;
-    if (i >= 0) {
-      driver.sendChat(i);
-    } else {
-      driver.sendChatText(e);
-    }
+  void _openChat() {
+    final t = ref.read(stringsProvider);
+    showMatchChatDialog(
+      context: context,
+      t: t,
+      maxCustomLength: PoolChat.maxCustomLength,
+      phrases: PoolChat.phrases,
+      emojis: PoolChat.emojis,
+      onPreset: (i) {
+        final msg = PoolChat.messageAt(i);
+        if (msg.isEmpty) return;
+        _flashEmote(mine: true, text: msg);
+        widget.driver?.sendChat(i);
+      },
+      onCustom: (text) {
+        final msg = PoolChat.sanitizeCustom(text);
+        if (msg.isEmpty) return;
+        _flashEmote(mine: true, text: msg);
+        widget.driver?.sendChatText(msg);
+      },
+    );
   }
 
   void _onRemoteChat(int seat, String text) {
@@ -119,8 +114,9 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
   }
 
   void _onRemoteChatPreset(int seat, int message) {
-    if (message < 0 || message >= _quickChat.length) return;
-    _onRemoteChat(seat, _quickChat[message]);
+    final msg = PoolChat.messageAt(message);
+    if (msg.isEmpty) return;
+    _onRemoteChat(seat, msg);
   }
 
   static const _canvasW = PortraitGameCanvas.width;
@@ -445,7 +441,7 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
             children: [
               // Space for SpinControl (stacked above so pans cannot steal hits).
               const SizedBox(height: 120 + 14),
-              _ChatButton(onTap: () => setState(() => _chatOpen = !_chatOpen)),
+              _ChatButton(onTap: _openChat),
               if (c.canPushOut) ...[
                 const SizedBox(height: 12),
                 GameButton(
@@ -500,20 +496,6 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
             child: IgnorePointer(child: _RackStrip(controller: c)),
           ),
 
-        if (_chatOpen)
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => setState(() => _chatOpen = false),
-            ),
-          ),
-        if (_chatOpen)
-          Positioned(
-            left: _sidePad + 8,
-            right: _rightColW + _sidePad + 4,
-            top: tableTop + 16,
-            child: _ChatPanel(items: _quickChat, onPick: _sendEmote),
-          ),
         if (_emoteMe != null)
           Positioned(
             left: _sidePad + 24,
@@ -843,112 +825,6 @@ class _TrayBall extends StatelessWidget {
 }
 
 bool _isEmoji(String s) => !RegExp(r'[A-Za-z]').hasMatch(s);
-
-/// The emoji / phrase picker that drops from the chat button.
-/// Two clear rows so every chip stays fully visible (no clipped labels).
-class _ChatPanel extends StatelessWidget {
-  const _ChatPanel({required this.items, required this.onPick});
-
-  final List<String> items;
-  final void Function(String) onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    final emojis = [for (final e in items) if (_isEmoji(e)) e];
-    final phrases = [for (final e in items) if (!_isEmoji(e)) e];
-    return Material(
-      color: Colors.transparent,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF2A1F66), Color(0xFF17123A)],
-          ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFF6E5BD6), width: 2),
-          boxShadow: const [
-            BoxShadow(color: Color(0xAA000000), blurRadius: 18, offset: Offset(0, 6)),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                for (var i = 0; i < emojis.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 6),
-                  Expanded(child: _ChatChip(label: emojis[i], onPick: onPick)),
-                ],
-              ],
-            ),
-            if (phrases.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              LayoutBuilder(
-                builder: (context, c) {
-                  const gap = 8.0;
-                  final cellW = (c.maxWidth - gap) / 2;
-                  return Wrap(
-                    spacing: gap,
-                    runSpacing: gap,
-                    children: [
-                      for (final p in phrases)
-                        SizedBox(
-                          width: cellW,
-                          child: _ChatChip(label: p, onPick: onPick),
-                        ),
-                    ],
-                  );
-                },
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ChatChip extends StatelessWidget {
-  const _ChatChip({required this.label, required this.onPick});
-
-  final String label;
-  final void Function(String) onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    final emoji = _isEmoji(label);
-    return GestureDetector(
-      onTap: () => onPick(label),
-      child: Container(
-        alignment: Alignment.center,
-        padding: EdgeInsets.symmetric(
-          horizontal: emoji ? 4 : 8,
-          vertical: emoji ? 10 : 12,
-        ),
-        decoration: BoxDecoration(
-          color: const Color(0xFF3B2C86),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF6E5BD6)),
-        ),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: emoji ? 28 : 18,
-            fontWeight: FontWeight.w800,
-            color: Colors.white,
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 /// A speech bubble floating over the viewer's avatar after they quick-chat.
 class _EmoteBubble extends StatelessWidget {
