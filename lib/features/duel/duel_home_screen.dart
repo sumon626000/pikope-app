@@ -396,6 +396,15 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen>
                         height: 470,
                         child: Stack(
                           children: [
+                            // Brand mark above the rank gem (was empty — logo missing).
+                            const Positioned(
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              child: IgnorePointer(
+                                child: Center(child: DuelLogo(height: 118)),
+                              ),
+                            ),
                             Positioned(
                               left: 4,
                               top: 0,
