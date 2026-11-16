@@ -512,9 +512,9 @@ class _PoolScreenState extends ConsumerState<PoolScreen> with SingleTickerProvid
           ),
         if (_chatOpen)
           Positioned(
-            left: 120,
-            right: _rightColW + 40,
-            top: tableTop + 40,
+            left: _sidePad + 8,
+            right: _rightColW + _sidePad + 4,
+            top: tableTop + 16,
             child: _ChatPanel(items: _quickChat, onPick: _sendEmote),
           ),
         if (_emoteMe != null)
@@ -848,6 +848,7 @@ class _TrayBall extends StatelessWidget {
 bool _isEmoji(String s) => !RegExp(r'[A-Za-z]').hasMatch(s);
 
 /// The emoji / phrase picker that drops from the chat button.
+/// Two clear rows so every chip stays fully visible (no clipped labels).
 class _ChatPanel extends StatelessWidget {
   const _ChatPanel({required this.items, required this.onPick});
 
@@ -856,38 +857,97 @@ class _ChatPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-            begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF2A1F66), Color(0xFF17123A)]),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFF6E5BD6), width: 2),
-        boxShadow: const [BoxShadow(color: Color(0xAA000000), blurRadius: 18, offset: Offset(0, 6))],
-      ),
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        alignment: WrapAlignment.center,
-        children: [
-          for (final e in items)
-            GestureDetector(
-              onTap: () => onPick(e),
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: _isEmoji(e) ? 12 : 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF3B2C86),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF6E5BD6)),
-                ),
-                child: Text(
-                  e,
-                  style: TextStyle(
-                      fontSize: _isEmoji(e) ? 34 : 22, fontWeight: FontWeight.w800, color: Colors.white),
-                ),
-              ),
+    final emojis = [for (final e in items) if (_isEmoji(e)) e];
+    final phrases = [for (final e in items) if (!_isEmoji(e)) e];
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF2A1F66), Color(0xFF17123A)],
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFF6E5BD6), width: 2),
+          boxShadow: const [
+            BoxShadow(color: Color(0xAA000000), blurRadius: 18, offset: Offset(0, 6)),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                for (var i = 0; i < emojis.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 6),
+                  Expanded(child: _ChatChip(label: emojis[i], onPick: onPick)),
+                ],
+              ],
             ),
-        ],
+            if (phrases.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              LayoutBuilder(
+                builder: (context, c) {
+                  const gap = 8.0;
+                  final cellW = (c.maxWidth - gap) / 2;
+                  return Wrap(
+                    spacing: gap,
+                    runSpacing: gap,
+                    children: [
+                      for (final p in phrases)
+                        SizedBox(
+                          width: cellW,
+                          child: _ChatChip(label: p, onPick: onPick),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatChip extends StatelessWidget {
+  const _ChatChip({required this.label, required this.onPick});
+
+  final String label;
+  final void Function(String) onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final emoji = _isEmoji(label);
+    return GestureDetector(
+      onTap: () => onPick(label),
+      child: Container(
+        alignment: Alignment.center,
+        padding: EdgeInsets.symmetric(
+          horizontal: emoji ? 4 : 8,
+          vertical: emoji ? 10 : 12,
+        ),
+        decoration: BoxDecoration(
+          color: const Color(0xFF3B2C86),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF6E5BD6)),
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: emoji ? 28 : 18,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }
