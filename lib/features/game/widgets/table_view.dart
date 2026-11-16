@@ -28,6 +28,18 @@ class TableProjection {
   static const double _fieldLeft = 50;
   static const double _fieldTop = 50.5;
 
+  /// Pocket holes as painted in [paintProTable], geometry index order
+  /// (TL, top-side, TR, BL, bottom-side, BR).
+  static const _pocketArt = <Offset>[
+    Offset(44, 44.5),
+    Offset(300, 39.5),
+    Offset(556, 44.5),
+    Offset(44, 306.5),
+    Offset(300, 311.5),
+    Offset(556, 306.5),
+  ];
+  static const _pocketArtR = <double>[15, 12.5, 15, 15, 12.5, 15];
+
   double get _px => size.width / imageWidth;
   double get scale => _px / 2;
 
@@ -41,6 +53,21 @@ class TableProjection {
     final x = (l.dx / _px - _fieldLeft) * 2;
     final y = (l.dy / _px - _fieldTop) * 2;
     return rotated ? Vec2(TableGeometry.width - x, TableGeometry.height - y) : Vec2(x, y);
+  }
+
+  /// Screen centre of the visible pocket hole (aligned with table art).
+  Offset pocketHole(int index) {
+    final p = _pocketArt[index];
+    if (!rotated) return Offset(p.dx * _px, p.dy * _px);
+    return Offset((imageWidth - p.dx) * _px, (imageHeight - p.dy) * _px);
+  }
+
+  double pocketHoleRadius(int index) => _pocketArtR[index] * _px;
+
+  /// World-space point under the painted pocket hole (for tap hit-tests).
+  Vec2 pocketHitWorld(int index) {
+    final p = _pocketArt[index];
+    return Vec2((p.dx - _fieldLeft) * 2, (p.dy - _fieldTop) * 2);
   }
 
   Offset dir(Vec2 d) => rotated ? Offset(-d.x, -d.y) : Offset(d.x, d.y);
@@ -124,7 +151,15 @@ class _TableViewState extends State<TableView> {
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTapUp: (d) {
-          final w = projection().toWorld(d.localPosition);
+          final proj = projection();
+          final w = proj.toWorld(d.localPosition);
+          // Calling the 8: prefer pocket taps over nearby balls so the
+          // signal rings stay easy to hit even when the 8 sits by a corner.
+          if (c.needsPocketCall) {
+            for (var i = 0; i < TableGeometry.pockets.length; i++) {
+              if (proj.pocketHitWorld(i).distanceTo(w) < 72 && c.tapPocket(i)) return;
+            }
+          }
           // A tap on (or near) a ball picks it as the target when allowed
           // and aims at its centre; anywhere else just aims there.
           Ball? near;
@@ -139,7 +174,7 @@ class _TableViewState extends State<TableView> {
             return;
           }
           for (var i = 0; i < TableGeometry.pockets.length; i++) {
-            if (TableGeometry.pockets[i].aim.distanceTo(w) < 60 && c.tapPocket(i)) return;
+            if (proj.pocketHitWorld(i).distanceTo(w) < 64 && c.tapPocket(i)) return;
           }
           c.aimAt(w);
         },
@@ -240,17 +275,7 @@ class _TablePainter extends CustomPainter {
           ..color = AppColors.gold,
       );
     }
-    final called = c.calledPocket;
-    if (called != null) {
-      canvas.drawCircle(
-        proj.toLocal(TableGeometry.pockets[called].aim),
-        r * 2.2 + pulse * 3,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 4
-          ..color = AppColors.gold,
-      );
-    }
+    _paintPocketCalls(canvas, proj, pulse);
 
     if (aiming) _paintGuide(canvas, proj, r, target);
 
@@ -281,6 +306,79 @@ class _TablePainter extends CustomPainter {
             ..style = PaintingStyle.stroke
             ..strokeWidth = 2
             ..color = Colors.white70,
+        );
+      }
+    }
+  }
+
+  void _paintPocketCalls(Canvas canvas, TableProjection proj, double pulse) {
+    final calling = c.needsPocketCall;
+    final called = c.calledPocket;
+    if (!calling && called == null) return;
+
+    for (var i = 0; i < TableGeometry.pockets.length; i++) {
+      final selected = called == i;
+      if (!calling && !selected) continue;
+
+      final center = proj.pocketHole(i);
+      final holeR = proj.pocketHoleRadius(i);
+      final ringR = holeR + (selected ? 3.5 + pulse * 2.2 : 2.5 + pulse * 3.5);
+
+      if (selected) {
+        // Soft gold bloom sitting on the pocket rim.
+        canvas.drawCircle(
+          center,
+          ringR + 5,
+          Paint()
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8)
+            ..color = AppColors.gold.withValues(alpha: 0.45 + 0.2 * pulse),
+        );
+        canvas.drawCircle(
+          center,
+          holeR * 0.92,
+          Paint()..color = AppColors.gold.withValues(alpha: 0.16 + 0.08 * pulse),
+        );
+        canvas.drawCircle(
+          center,
+          ringR,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3.6
+            ..color = AppColors.gold,
+        );
+        canvas.drawCircle(
+          center,
+          holeR * 0.55,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.6
+            ..color = Colors.white.withValues(alpha: 0.85),
+        );
+      } else {
+        // Invite tap: pulsing cyan rings on every pocket.
+        canvas.drawCircle(
+          center,
+          ringR + 3,
+          Paint()
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6)
+            ..color = const Color(0xFF5CE1FF).withValues(alpha: 0.28 + 0.22 * pulse),
+        );
+        canvas.drawCircle(
+          center,
+          holeR * 0.9,
+          Paint()..color = const Color(0xFF5CE1FF).withValues(alpha: 0.10 + 0.08 * pulse),
+        );
+        canvas.drawCircle(
+          center,
+          ringR,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.4
+            ..color = Color.lerp(
+              const Color(0xFF5CE1FF),
+              AppColors.gold,
+              0.25 + 0.35 * pulse,
+            )!,
         );
       }
     }

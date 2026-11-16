@@ -118,6 +118,7 @@ class PoolController extends ChangeNotifier implements ShotTable {
   bool get showBallInHand => state.ballInHand && !current.isBot && _myTurnOnline;
 
   bool get onEight => rules.onEight(state, onTable);
+  @override
   bool get needsPocketCall => canAim && onEight && state.calledPocket == null;
   bool get canPushOut => canAim && state.pushOutAvailable;
   bool get choosingPushOut =>

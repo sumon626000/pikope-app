@@ -60,6 +60,9 @@ abstract class ShotTable {
   /// Pocket marked as called (8-ball), if any.
   int? get calledPocket;
 
+  /// True while the human must tap a pocket before shooting the 8-ball.
+  bool get needsPocketCall;
+
   /// Whether hitting [ball] first would be a foul (turns the guide red).
   bool isWrongContact(int ball);
 

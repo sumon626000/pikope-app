@@ -193,6 +193,9 @@ class GameController extends ChangeNotifier implements ShotTable {
   int? get calledPocket => null;
 
   @override
+  bool get needsPocketCall => false;
+
+  @override
   bool isWrongContact(int ball) =>
       !state.isBreakShot && state.targetBall != null && ball != state.targetBall;
 
