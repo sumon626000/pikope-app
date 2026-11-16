@@ -294,17 +294,23 @@ final class NowPayments
     public static function returnHtml(): never
     {
         $deposit = (int) ($_GET['deposit'] ?? 0);
-        $status = (string) ($_GET['status'] ?? '');
-        $ok = $status === 'success';
+        $status = strtolower((string) ($_GET['status'] ?? ''));
+        if ($status === 'success') {
+            $title = 'Payment submitted';
+            $msg = 'Return to the app — coins appear after confirmation (deposit #' . (int) $deposit . ').';
+        } elseif ($status === 'error' || $status === 'failed' || $status === 'fail') {
+            $title = 'Payment failed';
+            $msg = 'The crypto payment did not go through. Close this and try again in the app.';
+        } else {
+            $title = 'Checkout closed';
+            $msg = 'You can close this page and try again in the app.';
+        }
         header('Content-Type: text/html; charset=utf-8');
         echo '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">',
             '<title>PikoPe Crypto</title><style>body{font-family:system-ui;background:#0b1020;color:#e9ecf5;display:flex;',
             'min-height:100vh;align-items:center;justify-content:center;margin:0;padding:24px;text-align:center}</style></head><body>',
-            '<div><h1>', $ok ? 'Payment submitted' : 'Checkout closed', '</h1>',
-            '<p>', $ok
-                ? 'Return to the app — coins appear after confirmation (deposit #' . (int) $deposit . ').'
-                : 'You can close this page and try again in the app.',
-            '</p></div></body></html>';
+            '<div><h1>', htmlspecialchars($title, ENT_QUOTES, 'UTF-8'), '</h1>',
+            '<p>', htmlspecialchars($msg, ENT_QUOTES, 'UTF-8'), '</p></div></body></html>';
         exit;
     }
 

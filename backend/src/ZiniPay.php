@@ -261,11 +261,17 @@ final class ZiniPay
     public static function returnHtml(): never
     {
         $deposit = (int) ($_GET['deposit'] ?? 0);
-        $status = (string) ($_GET['status'] ?? 'success');
-        $title = $status === 'cancel' ? 'Payment cancelled' : 'Payment complete';
-        $msg = $status === 'cancel'
-            ? 'You can close this and try again in the app.'
-            : 'Return to PikoPe — your coin will appear in a moment.';
+        $status = strtolower((string) ($_GET['status'] ?? 'success'));
+        if ($status === 'cancel' || $status === 'cancelled') {
+            $title = 'Payment cancelled';
+            $msg = 'You can close this and try again in the app.';
+        } elseif ($status === 'error' || $status === 'failed' || $status === 'fail') {
+            $title = 'Payment failed';
+            $msg = 'The payment did not go through. Close this and try again in the app.';
+        } else {
+            $title = 'Payment complete';
+            $msg = 'Return to PikoPe — your coin will appear in a moment.';
+        }
         $webApp = rtrim(trim(Config::get('WEB_APP_URL', '')), '/');
         $jump = '';
         if ($webApp !== '' && $deposit > 0) {
