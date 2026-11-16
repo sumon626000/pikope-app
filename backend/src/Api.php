@@ -60,7 +60,7 @@ final class Api
                 'ok' => true,
                 'time' => GameService::nowMs(),
                 // Deploy fingerprint — bump when verifying Hostinger sync.
-                'build' => '2026-11-17-pay-routes',
+                'build' => '2026-11-17-pay-routes-v2',
                 'routes' => [
                     'zinipayReturn' => true,
                     'nowpaymentsReturn' => true,

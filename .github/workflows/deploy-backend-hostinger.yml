@@ -20,6 +20,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # If REMOTE_DIR was wrong before, the sync-state file can skip uploads forever.
+      # Delete it so this run re-compares and pushes PHP to adminnew.
+      - name: Clear FTP sync state
+        env:
+          FTP_HOST: ${{ secrets.HOSTINGER_API_FTP_HOST }}
+          FTP_USER: ${{ secrets.HOSTINGER_API_FTP_USER }}
+          FTP_PASS: ${{ secrets.HOSTINGER_API_FTP_PASSWORD }}
+          FTP_DIR: ${{ secrets.HOSTINGER_API_FTP_REMOTE_DIR }}
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+          lftp -c "
+            set ssl:verify-certificate no;
+            set ftp:passive-mode true;
+            open -u '${FTP_USER}','${FTP_PASS}' ${FTP_HOST};
+            cd ${FTP_DIR};
+            rm -f .ftp-deploy-sync-state.json;
+            bye
+          " || echo "No sync-state to clear (ok)"
+
       - name: Deploy backend to Hostinger (FTP)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
