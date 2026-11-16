@@ -27,7 +27,8 @@ Add for admin + APK (often same FTP user, different folder):
   HOSTINGER_API_FTP_USER
   HOSTINGER_API_FTP_PASSWORD
   HOSTINGER_API_FTP_REMOTE_DIR   → /public_html/pikope
-  HOSTINGER_APK_FTP_REMOTE_DIR   → /public_html/pikope/public/uploads/landing
+  (APK path is derived)          → HOSTINGER_API_FTP_REMOTE_DIR + /public/uploads/landing
+                                   (live URL: https://adminnew.pikope.com/uploads/landing/pikope-latest.apk)
 
 APK signing (never commit keystore):
   ANDROID_KEYSTORE_BASE64   → base64 of upload-keystore.jks

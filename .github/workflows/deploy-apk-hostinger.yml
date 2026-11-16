@@ -89,13 +89,38 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path deploy/apk | Out-Null
           Copy-Item build/app/outputs/flutter-apk/app-release.apk deploy/apk/pikope-latest.apk
+          $len = (Get-Item deploy/apk/pikope-latest.apk).Length
+          Write-Host "Staged APK bytes=$len"
+          Set-Content -Path deploy/apk-size.txt -Value $len -NoNewline
 
-      - name: Deploy APK to Hostinger (FTP)
+      # Must land where adminnew serves /uploads/landing/pikope-latest.apk
+      # (API FTP home = public_html/pikope → public/uploads/landing).
+      # Do NOT use a separate APK remote dir that can diverge from the live URL.
+      - name: Deploy APK to landing uploads (FTP)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: ${{ secrets.HOSTINGER_API_FTP_HOST }}
           username: ${{ secrets.HOSTINGER_API_FTP_USER }}
           password: ${{ secrets.HOSTINGER_API_FTP_PASSWORD }}
           local-dir: deploy/apk/
-          server-dir: ${{ secrets.HOSTINGER_APK_FTP_REMOTE_DIR }}/
+          server-dir: ${{ secrets.HOSTINGER_API_FTP_REMOTE_DIR }}/public/uploads/landing/
           log-level: minimal
+
+      - name: Verify landing APK URL updated
+        shell: pwsh
+        run: |
+          $expected = [int64](Get-Content deploy/apk-size.txt)
+          $ok = $false
+          foreach ($i in 1..12) {
+            Start-Sleep -Seconds 5
+            $headers = curl.exe -sI "https://adminnew.pikope.com/uploads/landing/pikope-latest.apk"
+            $line = ($headers | Select-String -Pattern '^Content-Length:\s*(\d+)' | Select-Object -First 1)
+            if (-not $line) { Write-Host "Attempt $i: no Content-Length"; continue }
+            $got = [int64]$line.Matches[0].Groups[1].Value
+            Write-Host "Attempt $i: live=$got expected=$expected"
+            if ($got -eq $expected) { $ok = $true; break }
+          }
+          if (-not $ok) {
+            throw "Landing APK URL still stale (expected $expected bytes). Check HOSTINGER_API_FTP_REMOTE_DIR."
+          }
+          Write-Host "Landing APK verified."
