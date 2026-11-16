@@ -1,6 +1,6 @@
-/** APK URL comes from admin upload → GET /landing/public (no static APK on pikope.com). */
+/** APK: prefer /landing/public; fallback is the CI-uploaded file next to this page. */
 window.PIKOPE_LANDING = {
   apiBase: 'https://adminnew.pikope.com',
   defaultLang: 'bn',
-  fallbackApk: '',
+  fallbackApk: 'https://pikope.com/download/pikope-latest.apk',
 };

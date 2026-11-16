@@ -18,12 +18,13 @@
 
   async function load() {
     const base = String(cfg.apiBase || '').replace(/\/$/, '');
+    // CI drops the fresh APK beside this page; use that first.
     let apkUrl = String(cfg.fallbackApk || '').trim();
     try {
       const res = await fetch(base + '/landing/public', { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
-      apkUrl = String(data.apkUrl || apkUrl).trim();
+      if (!apkUrl) apkUrl = String(data.apkUrl || '').trim();
       if (data.appIconUrl) {
         const icon = document.getElementById('landing-app-icon');
         if (icon) icon.src = data.appIconUrl;
