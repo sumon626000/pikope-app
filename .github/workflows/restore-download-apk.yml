@@ -1,0 +1,50 @@
+name: Restore APK to /download
+
+# Copies the live admin landing APK onto pikope.com/download without a full rebuild.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: restore-download-apk
+  cancel-in-progress: true
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download current admin APK
+        run: |
+          mkdir -p deploy/apk
+          curl -fsSL "https://adminnew.pikope.com/uploads/landing/pikope-latest.apk?v=23" \
+            -o deploy/apk/pikope-latest.apk
+          ls -la deploy/apk/pikope-latest.apk
+          test -s deploy/apk/pikope-latest.apk
+
+      - name: Upload to pikope.com/download
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.HOSTINGER_WEB_FTP_HOST }}
+          username: ${{ secrets.HOSTINGER_WEB_FTP_USER }}
+          password: ${{ secrets.HOSTINGER_WEB_FTP_PASSWORD }}
+          local-dir: deploy/apk/
+          server-dir: ${{ secrets.HOSTINGER_WEB_FTP_REMOTE_DIR }}/download/
+          log-level: minimal
+          exclude: |
+            **/.git*
+            **/.git*/**
+
+      - name: Verify download URL
+        run: |
+          set -euo pipefail
+          expected="$(wc -c < deploy/apk/pikope-latest.apk | tr -d ' ')"
+          for i in $(seq 1 12); do
+            sleep 4
+            got="$(curl -sI "https://pikope.com/download/pikope-latest.apk" | tr -d '\r' | awk -F': ' 'tolower($1)=="content-length"{print $2; exit}')"
+            echo "attempt $i live=${got:-none} expected=$expected"
+            if [[ -n "${got:-}" && "$got" == "$expected" ]]; then
+              echo "OK"
+              exit 0
+            fi
+          done
+          echo "::error::download APK still missing/stale"
+          exit 1

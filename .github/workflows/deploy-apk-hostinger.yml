@@ -95,6 +95,7 @@ jobs:
 
       # 1) Admin landing file (download button via /landing/public).
       - name: Deploy APK to admin uploads/landing (FTP)
+        continue-on-error: true
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: ${{ secrets.HOSTINGER_API_FTP_HOST }}
