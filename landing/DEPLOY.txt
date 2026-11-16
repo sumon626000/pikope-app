@@ -1,16 +1,18 @@
-ARCHIVED — do not upload to pikope.com root (main domain is the web app now).
-See landing/README.txt and pikope-web/DEPLOY.txt.
+PikoPe marketing landing → https://pikope.com/download/
+=======================================================
 
---- Original landing deploy notes (backup reference) ---
+LIVE PATH
+  https://pikope.com/download/
+  (main domain root stays the Flutter web app)
 
-PikoPe — static landing (was: pikope.com document root)
-=====================================================
+AUTO DEPLOY
+  - Push to landing/** → workflow "Deploy landing (/download)"
+  - Or: gh workflow run "Deploy landing (/download)"
+  - Full web deploy also re-bundles this folder so /download is not wiped
 
-Upload index.html + assets/ to a Hostinger folder when you want this site live
-(subdomain or path), NOT the main pikope.com root.
+MANUAL
+  Upload landing/index.html + landing/assets/ into public_html/download/
 
-Loads copy and APK URL from:
-  https://adminnew.pikope.com/landing/public
-
-Admin → Landing page:
-  https://adminnew.pikope.com/admin/landing
+API
+  APK + copy: https://adminnew.pikope.com/landing/public
+  Admin: https://adminnew.pikope.com/admin/landing

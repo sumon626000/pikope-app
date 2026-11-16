@@ -54,6 +54,19 @@ jobs:
           cd pikope-web
           flutter build web --release --base-href / --dart-define=API_BASE_URL="$API"
 
+      # Keep old marketing landing at /download so root web sync never wipes it.
+      - name: Bundle landing at /download
+        run: |
+          mkdir -p pikope-web/build/web/download/assets
+          cp landing/index.html pikope-web/build/web/download/
+          cp landing/assets/config.js pikope-web/build/web/download/assets/
+          cp landing/assets/landing.js pikope-web/build/web/download/assets/
+          cp landing/assets/app_icon.jpg pikope-web/build/web/download/assets/
+          cp landing/assets/pikope_logo.png pikope-web/build/web/download/assets/ || true
+          cp landing/assets/logo.svg pikope-web/build/web/download/assets/ || true
+          cp landing/assets/hero-bg.jpg pikope-web/build/web/download/assets/ || true
+          printf '%s\n' 'DirectoryIndex index.html' 'Options -Indexes' > pikope-web/build/web/download/.htaccess
+
       - name: Deploy to Hostinger (FTP)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:

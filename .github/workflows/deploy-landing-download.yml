@@ -1,0 +1,44 @@
+name: Deploy landing (/download)
+
+# Old Play Store marketing page → https://pikope.com/download/
+# Does not touch the Flutter web app root or APK.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'landing/**'
+      - '.github/workflows/deploy-landing-download.yml'
+
+concurrency:
+  group: deploy-landing-download
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stage download site
+        run: |
+          mkdir -p deploy/download/assets
+          cp landing/index.html deploy/download/
+          cp landing/assets/config.js deploy/download/assets/
+          cp landing/assets/landing.js deploy/download/assets/
+          cp landing/assets/app_icon.jpg deploy/download/assets/
+          cp landing/assets/pikope_logo.png deploy/download/assets/ || true
+          cp landing/assets/logo.svg deploy/download/assets/ || true
+          cp landing/assets/hero-bg.jpg deploy/download/assets/ || true
+          printf '%s\n' 'DirectoryIndex index.html' 'Options -Indexes' > deploy/download/.htaccess
+
+      - name: Deploy to Hostinger (FTP → /download)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.HOSTINGER_WEB_FTP_HOST }}
+          username: ${{ secrets.HOSTINGER_WEB_FTP_USER }}
+          password: ${{ secrets.HOSTINGER_WEB_FTP_PASSWORD }}
+          local-dir: deploy/download/
+          server-dir: ${{ secrets.HOSTINGER_WEB_FTP_REMOTE_DIR }}/download/
+          log-level: minimal
