@@ -139,10 +139,11 @@ class _LudoScreenState extends ConsumerState<LudoScreen>
         if (!didPop) setState(() => _paused = !_paused);
       },
       child: Scaffold(
+        // Outside the phone column (wide web): flat ink, not the tiled art.
         backgroundColor: const Color(0xFF060814),
-        body: _LudoBackground(
-          child: PortraitGameCanvas(
-            builder: (context, height) => state == null
+        body: PortraitGameCanvas(
+          builder: (context, height) => _LudoBackground(
+            child: state == null
                 ? const Center(
                     child: CircularProgressIndicator(color: DuelColors.silver),
                   )
@@ -1665,8 +1666,8 @@ class _MenuTabPainter extends CustomPainter {
   bool shouldRepaint(_MenuTabPainter old) => false;
 }
 
-/// Full-screen Ludo wallpaper behind the table, on its own layer so the
-/// animating board never makes it repaint.
+/// Match-column Ludo wallpaper behind the table (not the full browser
+/// viewport). Own layer so the animating board never makes it repaint.
 class _LudoBackground extends StatelessWidget {
   const _LudoBackground({required this.child});
 

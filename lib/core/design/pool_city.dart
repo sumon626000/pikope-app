@@ -1399,8 +1399,9 @@ class PcLegacyScale extends StatelessWidget {
   );
 }
 
-/// Portrait match canvas (Ludo, Carrom): 1080 wide, as tall as the screen
-/// allows, scaled to fit. The screen supplies its own wallpaper behind it.
+/// Portrait match canvas (Ludo, Carrom, Pool): 1080 wide, as tall as the
+/// screen allows, scaled to fit. Put match wallpaper *inside* [builder] so
+/// wide web keeps a phone column (sides stay scaffold ink, not tiled art).
 class PortraitGameCanvas extends StatelessWidget {
   const PortraitGameCanvas({
     super.key,
@@ -1431,7 +1432,11 @@ class PortraitGameCanvas extends StatelessWidget {
           ),
         );
         return Center(
-          child: SizedBox(width: columnW, height: c.maxHeight, child: framed),
+          child: SizedBox(
+            width: columnW,
+            height: c.maxHeight,
+            child: ClipRect(child: framed),
+          ),
         );
       },
     ),

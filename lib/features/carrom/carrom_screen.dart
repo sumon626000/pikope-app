@@ -162,9 +162,12 @@ class _CarromScreenState extends ConsumerState<CarromScreen> with SingleTickerPr
         if (!didPop) setState(() => _paused = !_paused);
       },
       child: Scaffold(
+        // Outside the phone column (wide web): flat felt, not full-bleed art.
         backgroundColor: const Color(0xFF2B0B0B),
-        body: _CarromBackground(
-          child: PortraitGameCanvas(builder: (context, height) => _table(context, height, settings)),
+        body: PortraitGameCanvas(
+          builder: (context, height) => _CarromBackground(
+            child: _table(context, height, settings),
+          ),
         ),
       ),
     );
