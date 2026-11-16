@@ -42,3 +42,9 @@ jobs:
           local-dir: deploy/download/
           server-dir: ${{ secrets.HOSTINGER_WEB_FTP_REMOTE_DIR }}/download/
           log-level: minimal
+          # Never delete the release APK uploaded by Deploy APK workflow.
+          exclude: |
+            **/*.apk
+            **/pikope-latest.apk
+            **/.git*
+            **/.git*/**
