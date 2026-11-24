@@ -485,26 +485,13 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen>
                         ),
                       ),
                       const Spacer(),
-                      // --- the two hero games (one slanted gap between them)
+                      // --- the two hero games (Ludo first, then Pool)
                       Row(
                         children: [
                           HeroTile(
                             width: heroLeftW,
                             height: 350,
                             slantRight: true,
-                            colors: const [
-                              DesignColors.pcTileOrange,
-                              DesignColors.pcTileOrangeDeep,
-                            ],
-                            label: t.playPool,
-                            artInsets: const EdgeInsets.fromLTRB(26, 4, 70, 96),
-                            art: const RackArt(),
-                            onTap: () => _open(const PoolHubScreen()),
-                          ),
-                          HeroTile(
-                            width: heroRightW,
-                            height: 350,
-                            slantRight: false,
                             colors: const [
                               DesignColors.pcTilePink,
                               DesignColors.pcTilePinkDeep,
@@ -519,6 +506,19 @@ class _DuelHomeScreenState extends ConsumerState<DuelHomeScreen>
                             art: const FloatBob(child: LudoHeroArt()),
                             crown: true,
                             onTap: () => _open(const LudoLobbyScreen()),
+                          ),
+                          HeroTile(
+                            width: heroRightW,
+                            height: 350,
+                            slantRight: false,
+                            colors: const [
+                              DesignColors.pcTileOrange,
+                              DesignColors.pcTileOrangeDeep,
+                            ],
+                            label: t.playPool,
+                            artInsets: const EdgeInsets.fromLTRB(26, 4, 70, 96),
+                            art: const RackArt(),
+                            onTap: () => _open(const PoolHubScreen()),
                           ),
                         ],
                       ),
