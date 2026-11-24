@@ -158,8 +158,8 @@ class _LudoScreenState extends ConsumerState<LudoScreen>
   static const _boardLeft = (PortraitGameCanvas.width - _boardSize) / 2;
   static const _seatScale = 1.2;
 
-  /// Portrait table: opponents above the board, the board across the full
-  /// width, this player's card and the hint below.
+  /// Portrait table: seat cards at the four corners (above / below the board),
+  /// never mid-side over the board. Local colour stays on the bottom edge.
   Widget _table(BuildContext context, double height, AppSettings settings) {
     final boardTop = (height - _boardSize) / 2;
     final boardBottom = boardTop + _boardSize;
@@ -222,7 +222,11 @@ class _LudoScreenState extends ConsumerState<LudoScreen>
         Positioned(
           left: 0,
           right: 0,
-          top: boardBottom + 24 + (_SeatPanel._h + _SeatPanel._coinsH) * _seatScale + 6,
+          top:
+              boardBottom +
+              24 +
+              (_SeatPanel._h + _SeatPanel._coinsH) * _seatScale +
+              6,
           height: 44,
           child: Center(
             child: Text(
@@ -288,9 +292,7 @@ class _LudoScreenState extends ConsumerState<LudoScreen>
                 .read(settingsProvider.notifier)
                 .update((s) => s.copyWith(soundOn: !s.soundOn)),
             onRules: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const HowToPlayScreen(),
-              ),
+              MaterialPageRoute<void>(builder: (_) => const HowToPlayScreen()),
             ),
             onQuit: _quit,
           ),
@@ -319,22 +321,18 @@ class _LudoScreenState extends ConsumerState<LudoScreen>
         Builder(
           builder: (context) {
             final p = state.players[seat];
-            // 0 bottom, 1 left, 2 top, 3 right — after view rotation.
+            // After viewRot: 0 bottom, 1 left, 2 top, 3 right (board edges).
+            // Cards sit at corners only — left/top above, bottom/right below —
+            // so mid-side profiles never cover the board (4-player bug).
             final side = (p.colour + rot) % 4;
-            final top = side == 2;
+            final top = side == 1 || side == 2;
             final mirror = side == 2 || side == 3;
             final you = seat == _c.viewSeat;
             final active = _c.diceSeat == seat && !_c.over;
             final h =
                 (_SeatPanel._h + (you ? _SeatPanel._coinsH : 0)) * _seatScale;
-            final left = (side == 1 || side == 0)
-                ? 30.0
-                : PortraitGameCanvas.width - 30 - w;
-            final panelTop = switch (side) {
-              2 => boardTop - 24 - h,
-              0 => boardBottom + 24,
-              _ => boardTop + (_boardSize - h) / 2,
-            };
+            final left = mirror ? PortraitGameCanvas.width - 30 - w : 30.0;
+            final panelTop = top ? boardTop - 24 - h : boardBottom + 24;
             return Positioned(
               left: left,
               top: panelTop,
