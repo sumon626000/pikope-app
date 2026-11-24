@@ -161,6 +161,22 @@ final class Economy
         return min($full, max(0, $prize));
     }
 
+    /**
+     * Split a pot across finish places. One place → 100%. Two places (4p Ludo) → 70/30.
+     * @return list<int>
+     */
+    public static function placePrizeShares(int $prize, int $places): array
+    {
+        if ($prize <= 0 || $places <= 0) {
+            return [];
+        }
+        if ($places === 1) {
+            return [$prize];
+        }
+        $first = intdiv($prize * 70, 100);
+        return [$first, $prize - $first];
+    }
+
     /** Coins owed to a referrer for one player's stake. Fractions are dropped. */
     public static function referralCut(int $stake): int
     {

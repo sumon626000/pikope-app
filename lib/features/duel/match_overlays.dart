@@ -337,12 +337,25 @@ class _WheelPainter extends CustomPainter {
 
 /// One player on the result screen.
 class ResultPlayer {
-  const ResultPlayer({required this.name, required this.avatar, required this.won, this.me = false});
+  const ResultPlayer({
+    required this.name,
+    required this.avatar,
+    required this.won,
+    this.me = false,
+    this.place,
+    this.coins = 0,
+  });
 
   final String name;
   final String avatar;
   final bool won;
   final bool me;
+
+  /// 1 / 2 for paid finishers; null for losers.
+  final int? place;
+
+  /// Coins credited this match (0 for losers / practice).
+  final int coins;
 }
 
 /// End of an online match: who won, what they won, BACK and DATA.
@@ -435,13 +448,25 @@ class _DuelResultOverlayState extends ConsumerState<DuelResultOverlay> with Sing
     final players = widget.players;
     final bet = widget.bet;
     final reason = widget.reason;
-    final winner = players.firstWhere((p) => p.won);
+    final winners = players.where((p) => p.won).toList();
+    final winner = winners.isNotEmpty ? winners.first : players.first;
     final me = players.firstWhere((p) => p.me, orElse: () => players.first);
     final settings = ref.watch(settingsProvider);
     final four = players.length > 2;
     final tile = four ? DesignGameplay.resultSeatCompact : DesignGameplay.resultSeatLarge;
-    // Winner first, as in the mockup.
-    final ordered = [winner, for (final p in players) if (!identical(p, winner)) p];
+    // Place order: 1st, 2nd, then losers (all four always shown).
+    final ordered = [
+      ...players.where((p) => p.place == 1),
+      ...players.where((p) => p.place == 2),
+      ...players.where((p) => p.place == null && p.won),
+      ...players.where((p) => !p.won && p.place == null),
+    ];
+    final title = winners.length >= 2
+        ? t.topTwoFinishedTitle(winners[0].name, winners[1].name)
+        : t.playerWins(winner.name);
+    final sub = bet.staked
+        ? t.winningPrize(formatPicoCoins(bet.prize))
+        : (reason ?? t.practiceFriendlyNoCoin);
     return Positioned.fill(
       child: LayoutBuilder(builder: (context, box) {
         // Landscape pool canvas or the portrait Ludo / Carrom canvas.
@@ -474,9 +499,9 @@ class _DuelResultOverlayState extends ConsumerState<DuelResultOverlay> with Sing
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: DuelTitle(
-                t.playerWins(winner.name),
+                title,
                 size: 70,
-                sub: bet.staked ? t.winningPrize(formatPicoCoins(bet.prize)) : (reason ?? t.practiceFriendlyNoCoin),
+                sub: sub,
                 ),
               ),
             ),
@@ -539,7 +564,8 @@ class _DuelResultOverlayState extends ConsumerState<DuelResultOverlay> with Sing
                                 top: -40,
                                 child: Transform.rotate(
                                   angle: -0.2,
-                                  child: Text(t.winBadge,
+                                  child: Text(
+                                      ordered[i].place == 2 ? t.place2Badge : t.winBadge,
                                       style: AppText.label(64, color: const Color(0xFFFFC21A), weight: FontWeight.w900).copyWith(shadows: const [
                                         Shadow(color: Color(0xFFB85A00), offset: Offset(0, 5)),
                                         Shadow(color: Color(0xCC000000), blurRadius: 10, offset: Offset(0, 8)),
@@ -558,6 +584,19 @@ class _DuelResultOverlayState extends ConsumerState<DuelResultOverlay> with Sing
                               style: AppText.label(30, color: ordered[i].me ? DuelColors.gold : DuelColors.silver, weight: FontWeight.w800)),
                           ),
                         ),
+                        if (bet.staked) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            ordered[i].coins > 0
+                                ? '+${formatPicoCoins(ordered[i].coins)}'
+                                : formatPicoCoins(0),
+                            style: AppText.label(
+                              22,
+                              color: ordered[i].coins > 0 ? DuelColors.green : DuelColors.dim,
+                              weight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],
@@ -573,7 +612,9 @@ class _DuelResultOverlayState extends ConsumerState<DuelResultOverlay> with Sing
                 top: tilesTop + 390,
                 child: Center(
                   child: Text(
-                    me.won ? t.youWonAmount(formatPicoCoins(bet.prize)) : t.betterLuckNext,
+                    me.won
+                        ? t.youWonAmount(formatPicoCoins(me.coins > 0 ? me.coins : bet.prize))
+                        : t.betterLuckNext,
                     style: AppText.label(26, color: me.won ? DuelColors.green : DuelColors.dim, weight: FontWeight.w900),
                   ),
                 ),

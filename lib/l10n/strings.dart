@@ -1090,8 +1090,13 @@ class AppStrings {
   );
   String get readyShort => _t('READY', 'প্রস্তুত');
   String get winBadge => _t('WIN', 'জয়');
+  String get place2Badge => _t('2ND', '২য়');
   String playerWins(String name) =>
       _t('${name.toUpperCase()} WINS!', '${name.toUpperCase()} জিতেছে!');
+  String topTwoFinishedTitle(String first, String second) => _t(
+    '${first.toUpperCase()} & ${second.toUpperCase()}',
+    '${first.toUpperCase()} ও ${second.toUpperCase()}',
+  );
   String winningPrize(String amount) =>
       _t('WINNING PRIZE: $amount', 'জয়ের পুরস্কার: $amount');
   String get practiceFriendlyNoCoin => _t(
@@ -1139,6 +1144,14 @@ class AppStrings {
       'OPPONENTS LEFT' => _t(
         'OPPONENTS LEFT — YOU WIN',
         'প্রতিপক্ষরা চলে গেছে — আপনি জিতেছেন',
+      ),
+      'TOP TWO FINISHED' => _t(
+        'TOP TWO FINISHED — 70% / 30%',
+        'প্রথম দুইজন শেষ — ৭০% / ৩০%',
+      ),
+      'ALL TOKENS HOME' => _t(
+        'ALL TOKENS HOME',
+        'সব টোকেন হোমে',
       ),
       _ => raw,
     };

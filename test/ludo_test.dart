@@ -113,13 +113,23 @@ void main() {
     }
   });
 
-  test('4-player games always finish with a winner', () {
+  test('4-player games end when top two finish (70/30 places)', () {
     for (var seed = 0; seed < 40; seed++) {
       final rng = Random(seed + 100);
       final s = _game(4, rng);
-      final w = _playOut(s, rng);
+      final w = _playOut(s, rng, cap: 12000);
       expect(w, isNot(-1), reason: 'seed ${seed + 100} did not finish');
-      expect(s.players[w].finished, 4);
+      expect(s.finishOrder.length, 2, reason: 'seed ${seed + 100} need two finishers');
+      expect(s.finishOrder.first, w);
+      expect(s.players[s.finishOrder[0]].finished, 4);
+      expect(s.players[s.finishOrder[1]].finished, 4);
+      expect(s.winReason, 'TOP TWO FINISHED');
     }
+  });
+
+  test('prizeShares splits 70/30 and keeps the pot', () {
+    expect(LudoRules.prizeShares(1000, 1), [1000]);
+    expect(LudoRules.prizeShares(1000, 2), [700, 300]);
+    expect(LudoRules.prizeShares(0, 2), isEmpty);
   });
 }

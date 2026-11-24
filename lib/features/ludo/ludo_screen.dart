@@ -381,15 +381,28 @@ class _LudoScreenState extends ConsumerState<LudoScreen>
 
   Widget _result() {
     final state = _c.state!;
-    final w = state.winner!;
+    final order = state.finishOrder.isNotEmpty
+        ? state.finishOrder
+        : (state.winner != null ? [state.winner!] : <int>[]);
+    final paid = order.isEmpty ? 0 : (state.seats >= 4 ? order.length.clamp(1, 2) : 1);
+    final shares = LudoRules.prizeShares(widget.config.bet.prize, paid);
+    final coinBySeat = <int, int>{
+      for (var i = 0; i < order.length && i < shares.length; i++) order[i]: shares[i],
+    };
     return DuelResultOverlay(
       players: [
         for (var i = 0; i < state.seats; i++)
           ResultPlayer(
             name: state.players[i].name,
             avatar: state.players[i].avatar,
-            won: i == w,
+            won: coinBySeat.containsKey(i),
             me: _c.online ? i == _c.mySeat : i == 0,
+            place: () {
+              final idx = order.indexOf(i);
+              if (idx < 0 || idx >= shares.length) return null;
+              return idx + 1;
+            }(),
+            coins: coinBySeat[i] ?? 0,
           ),
       ],
       bet: widget.config.bet,

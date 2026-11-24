@@ -35,7 +35,8 @@ final class LudoEngine
         return [
             'kind' => 'ludo', 'phase' => 'playerTurn', 'seats' => $seats, 'players' => $p,
             'turn' => random_int(0, $seats - 1), 'die' => null, 'sixes' => 0, 'mustRoll' => true, 'movable' => null,
-            'shotNumber' => 0, 'winner' => null, 'winReason' => null, 'lastResult' => null, 'resultSeq' => 0,
+            'shotNumber' => 0, 'winner' => null, 'winReason' => null, 'finishOrder' => [],
+            'lastResult' => null, 'resultSeq' => 0,
             'shotSeconds' => $shotSeconds, 'deadline' => $nowMs + $shotSeconds * 1000,
             'bet' => $meta + ['mode' => 'friendly', 'level' => null, 'stake' => 0, 'prize' => 0, 'multiplier' => null],
         ];
@@ -86,7 +87,8 @@ final class LudoEngine
             'kind' => 'ludo', 'phase' => $s['phase'], 'you' => $pi, 'seats' => $s['seats'], 'players' => $players,
             'turn' => $s['turn'], 'die' => $s['die'], 'sixes' => $s['sixes'], 'mustRoll' => $s['mustRoll'],
             'movable' => $s['movable'], 'shotNumber' => $s['shotNumber'], 'winner' => $s['winner'],
-            'winReason' => $s['winReason'], 'lastResult' => $s['lastResult'], 'shotSeconds' => $s['shotSeconds'],
+            'winReason' => $s['winReason'], 'finishOrder' => $s['finishOrder'] ?? [],
+            'lastResult' => $s['lastResult'], 'shotSeconds' => $s['shotSeconds'],
             'deadline' => $s['deadline'], 'bet' => $s['bet'] ?? null, 'lastRoll' => $s['lastRoll'] ?? null,
         ];
     }
@@ -107,12 +109,8 @@ final class LudoEngine
                     $active[] = $i;
                 }
             }
-            if (count($active) === 1) {
-                $s['winner'] = $active[0];
-                $s['winReason'] = 'OPPONENTS LEFT';
-                $s['phase'] = 'gameOver';
-                $s['die'] = null;
-                $s['movable'] = null;
+            if (count($active) <= 1) {
+                self::endBySurvivors($s);
                 return true;
             }
         }
@@ -142,11 +140,7 @@ final class LudoEngine
             }
         }
         if (count($active) <= 1) {
-            $s['winner'] = $active[0] ?? $seat;
-            $s['winReason'] = 'OPPONENTS LEFT';
-            $s['phase'] = 'gameOver';
-            $s['die'] = null;
-            $s['movable'] = null;
+            self::endBySurvivors($s);
             return;
         }
         if ($s['turn'] === $seat) {
@@ -246,23 +240,25 @@ final class LudoEngine
         if ($finishedToken) {
             $s['players'][$seat]['finished']++;
         }
-        $won = $s['players'][$seat]['finished'] === 4;
+        $racedHome = $s['players'][$seat]['finished'] === 4;
         $s['shotNumber']++;
         $extra = $six || $captured !== [] || $finishedToken;
         $s['players'][$seat]['missed'] = 0;
 
         $s['lastResult'] = [
             'seq' => ++$s['resultSeq'], 'player' => $seat, 'token' => $token, 'from' => $from, 'to' => $to,
-            'die' => $die, 'captured' => $captured, 'finishedToken' => $finishedToken, 'extraTurn' => $extra && !$won,
+            'die' => $die, 'captured' => $captured, 'finishedToken' => $finishedToken, 'extraTurn' => $extra && !$racedHome,
         ];
 
-        if ($won) {
-            $s['winner'] = $seat;
-            $s['winReason'] = 'ALL TOKENS HOME';
-            $s['phase'] = 'gameOver';
+        if ($racedHome) {
+            self::recordFinish($s, $seat);
             $s['die'] = null;
             $s['movable'] = null;
             $s['mustRoll'] = false;
+            if (self::tryEndRace($s)) {
+                return;
+            }
+            self::advanceTurn($s, $nowMs);
             return;
         }
 
@@ -277,6 +273,72 @@ final class LudoEngine
         } else {
             self::advanceTurn($s, $nowMs);
         }
+    }
+
+    private static function neededFinishers(int $seats): int
+    {
+        return $seats >= 4 ? 2 : 1;
+    }
+
+    /** @return list<int> */
+    public static function prizeShares(int $prize, int $places): array
+    {
+        if ($prize <= 0 || $places <= 0) {
+            return [];
+        }
+        if ($places === 1) {
+            return [$prize];
+        }
+        $first = intdiv($prize * 70, 100);
+        return [$first, $prize - $first];
+    }
+
+    private static function recordFinish(array &$s, int $seat): void
+    {
+        $s['finishOrder'] = $s['finishOrder'] ?? [];
+        if (in_array($seat, $s['finishOrder'], true)) {
+            return;
+        }
+        $s['finishOrder'][] = $seat;
+        $s['players'][$seat]['out'] = true;
+    }
+
+    private static function tryEndRace(array &$s): bool
+    {
+        $s['finishOrder'] = $s['finishOrder'] ?? [];
+        if (count($s['finishOrder']) < self::neededFinishers((int) $s['seats'])) {
+            return false;
+        }
+        $s['winner'] = $s['finishOrder'][0];
+        $s['winReason'] = ((int) $s['seats']) >= 4 ? 'TOP TWO FINISHED' : 'ALL TOKENS HOME';
+        $s['phase'] = 'gameOver';
+        $s['die'] = null;
+        $s['movable'] = null;
+        $s['mustRoll'] = false;
+        return true;
+    }
+
+    private static function endBySurvivors(array &$s): void
+    {
+        $s['finishOrder'] = $s['finishOrder'] ?? [];
+        $active = [];
+        for ($i = 0; $i < $s['seats']; $i++) {
+            if (!$s['players'][$i]['out']) {
+                $active[] = $i;
+            }
+        }
+        foreach ($active as $seat) {
+            self::recordFinish($s, $seat);
+        }
+        if ($s['finishOrder'] === [] && $active !== []) {
+            $s['finishOrder'][] = $active[0];
+        }
+        $s['winner'] = $s['finishOrder'][0] ?? ($active[0] ?? 0);
+        $s['winReason'] = 'OPPONENTS LEFT';
+        $s['phase'] = 'gameOver';
+        $s['die'] = null;
+        $s['movable'] = null;
+        $s['mustRoll'] = false;
     }
 
     private static function pass(array &$s, int $nowMs): void

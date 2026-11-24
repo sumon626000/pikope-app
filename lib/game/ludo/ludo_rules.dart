@@ -108,7 +108,7 @@ class LudoRules {
     final finishedToken = to == homeStep;
     if (finishedToken) p.finished++;
 
-    final won = p.finished == 4;
+    final racedHome = p.finished == 4;
     s.shotNumber++;
     final extra = six || captured.isNotEmpty || finishedToken;
 
@@ -121,17 +121,20 @@ class LudoRules {
       die: die,
       captured: captured,
       finishedToken: finishedToken,
-      extraTurn: extra && !won,
+      extraTurn: extra && !racedHome,
     );
 
-    if (won) {
-      s.winner = seat;
-      s.winReason = 'ALL TOKENS HOME';
-      s.phase = LudoPhase.gameOver;
+    if (racedHome) {
+      _recordFinish(s, seat);
       s.die = null;
       s.movable = null;
       s.mustRoll = false;
-      return LudoMove(captured: captured, finished: finishedToken, extraTurn: false, won: true);
+      if (_tryEndRace(s)) {
+        return LudoMove(captured: captured, finished: finishedToken, extraTurn: false, won: true);
+      }
+      // 4-player: 1st is done; others keep racing for 2nd.
+      _advanceTurn(s);
+      return LudoMove(captured: captured, finished: finishedToken, extraTurn: false, won: false);
     }
 
     s.die = null;
@@ -144,6 +147,52 @@ class LudoRules {
       _advanceTurn(s);
     }
     return LudoMove(captured: captured, finished: finishedToken, extraTurn: extra, won: false);
+  }
+
+  /// How many finishers end the match: 1 in 1v1, top-2 in 4-player.
+  static int neededFinishers(int seats) => seats >= 4 ? 2 : 1;
+
+  /// 4-player pot split: 70% 1st / 30% 2nd. Sole survivor gets 100%.
+  static List<int> prizeShares(int prize, int places) {
+    if (prize <= 0 || places <= 0) return const [];
+    if (places == 1) return [prize];
+    final first = prize * 70 ~/ 100;
+    return [first, prize - first];
+  }
+
+  static void _recordFinish(LudoState s, int seat) {
+    if (s.finishOrder.contains(seat)) return;
+    s.finishOrder.add(seat);
+    s.players[seat].out = true; // skip further turns
+  }
+
+  /// Ends the match once enough players have finished (or been promoted).
+  static bool _tryEndRace(LudoState s) {
+    if (s.finishOrder.length < neededFinishers(s.seats)) return false;
+    s.winner = s.finishOrder.first;
+    s.winReason = s.seats >= 4 ? 'TOP TWO FINISHED' : 'ALL TOKENS HOME';
+    s.phase = LudoPhase.gameOver;
+    s.die = null;
+    s.movable = null;
+    s.mustRoll = false;
+    return true;
+  }
+
+  /// Remaining active seats are promoted into [finishOrder], then the match ends.
+  static void _endBySurvivors(LudoState s) {
+    final active = [for (var i = 0; i < s.seats; i++) if (!s.players[i].out) i];
+    for (final seat in active) {
+      _recordFinish(s, seat);
+    }
+    if (s.finishOrder.isEmpty && active.isNotEmpty) {
+      s.finishOrder.add(active.first);
+    }
+    s.winner = s.finishOrder.isNotEmpty ? s.finishOrder.first : (active.isNotEmpty ? active.first : 0);
+    s.winReason = 'OPPONENTS LEFT';
+    s.phase = LudoPhase.gameOver;
+    s.die = null;
+    s.movable = null;
+    s.mustRoll = false;
   }
 
   /// The turn ends with no move played (dead roll or three sixes).
@@ -165,20 +214,16 @@ class LudoRules {
     s.turn = next;
   }
 
-  /// A player who ran out of time too often leaves. With one player left on a
-  /// 2-seat board the other wins; otherwise play continues.
+  /// A player who ran out of time too often leaves. With one racer left the
+  /// match ends (they join [finishOrder]); otherwise play continues.
   static void timeOut(LudoState s) {
     final p = s.players[s.turn];
     p.missed++;
     if (p.missed >= 3) {
       p.out = true;
       final active = [for (var i = 0; i < s.seats; i++) if (!s.players[i].out) i];
-      if (active.length == 1) {
-        s.winner = active.first;
-        s.winReason = 'OPPONENTS LEFT';
-        s.phase = LudoPhase.gameOver;
-        s.die = null;
-        s.movable = null;
+      if (active.length <= 1) {
+        _endBySurvivors(s);
         return;
       }
     }
@@ -317,6 +362,9 @@ class LudoState {
   int shotNumber = 0;
   int? winner;
   String? winReason;
+
+  /// Seats in finish order (1st, 2nd, …). 4-player pays top two 70/30.
+  final List<int> finishOrder = [];
   LudoResult? lastResult;
   int resultSeq = 0;
   int deadlineMs = 0;
@@ -336,6 +384,7 @@ class LudoState {
         'shotNumber': shotNumber,
         'winner': winner,
         'winReason': winReason,
+        'finishOrder': finishOrder,
         'lastResult': lastResult?.toJson(),
         'resultSeq': resultSeq,
         'shotSeconds': shotSeconds,
@@ -356,6 +405,14 @@ class LudoState {
     s.shotNumber = j['shotNumber'] as int? ?? 0;
     s.winner = j['winner'] as int?;
     s.winReason = j['winReason'] as String?;
+    final fo = j['finishOrder'];
+    if (fo is List) {
+      s.finishOrder
+        ..clear()
+        ..addAll(fo.cast<int>());
+    } else if (s.winner != null) {
+      s.finishOrder.add(s.winner!);
+    }
     final lr = j['lastResult'];
     s.lastResult = lr == null ? null : LudoResult.fromJson(lr as Map<String, dynamic>);
     s.resultSeq = j['resultSeq'] as int? ?? 0;

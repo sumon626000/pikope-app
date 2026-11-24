@@ -236,7 +236,13 @@ final class GameService
     /** Books the result: prize, win/game counters, experience, history. @param array<string,mixed> $state */
     private static function finish(int $gameId, int $roomId, string $game, array $state): void
     {
-        $winnerUid = (int) $state['players'][$state['winner']]['uid'];
+        $finishOrder = $state['finishOrder'] ?? null;
+        if (!is_array($finishOrder) || $finishOrder === []) {
+            $finishOrder = isset($state['winner']) ? [(int) $state['winner']] : [0];
+        }
+        $finishOrder = array_values(array_map('intval', $finishOrder));
+        $winnerSeat = (int) ($finishOrder[0] ?? $state['winner'] ?? 0);
+        $winnerUid = (int) $state['players'][$winnerSeat]['uid'];
         // Pay at most once — ignore duplicate gameOver ticks or concurrent finish attempts.
         $done = Db::run(
             "UPDATE games SET status = 'finished', winner_id = ?, finished_at = NOW() WHERE id = ? AND status = 'active'",
@@ -249,9 +255,22 @@ final class GameService
         $bet = $state['bet'] ?? ['stake' => 0, 'prize' => 0];
         $room = Db::one('SELECT fee FROM rooms WHERE id = ?', [$roomId]);
         $buyIn = (int) $bet['stake'] + ((int) $bet['stake'] > 0 ? (int) $room['fee'] : 0);
-        foreach ($state['players'] as $p) {
-            $won = (int) $p['uid'] === $winnerUid;
-            $prize = $won ? Promotions::prizeWithBonus((int) $bet['prize']) : 0;
+        $pool = Promotions::prizeWithBonus((int) $bet['prize']);
+        // 4-player Ludo: top two share 70/30; everyone else gets 0. Other games: sole winner.
+        $isLudo4 = str_starts_with($game, 'ludo') && (int) ($state['seats'] ?? 0) >= 4;
+        $paidPlaces = $isLudo4 ? min(2, count($finishOrder)) : 1;
+        $paidPlaces = max(1, min($paidPlaces, count($finishOrder)));
+        $shares = Economy::placePrizeShares($pool, $paidPlaces);
+        $prizeBySeat = [];
+        foreach ($finishOrder as $i => $seat) {
+            if ($i >= count($shares)) {
+                break;
+            }
+            $prizeBySeat[(int) $seat] = (int) $shares[$i];
+        }
+        foreach ($state['players'] as $seat => $p) {
+            $prize = (int) ($prizeBySeat[(int) $seat] ?? 0);
+            $won = $prize > 0;
             if ($prize > 0) {
                 Economy::move((int) $p['uid'], $prize, 'prize', $roomId);
             }
